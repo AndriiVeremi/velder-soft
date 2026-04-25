@@ -9,6 +9,7 @@ import { MainLayout } from './src/components/Layout';
 import { View, ActivityIndicator, Text as RNText, Platform, LogBox } from 'react-native';
 import styled from 'styled-components/native';
 import { registerForPushNotificationsAsync } from './src/utils/notifications';
+import { WebToaster } from './src/components/WebToaster';
 
 // Screens
 import HomeScreen from './src/screens/HomeScreen';
@@ -27,15 +28,8 @@ import PendingApprovalScreen from './src/screens/PendingApprovalScreen';
 
 LogBox.ignoreLogs(['Image: style.tintColor is deprecated', 'Blocked aria-hidden on an element']);
 
-// Динамічний імпорт Toaster тільки для вебу
-let Toaster: React.FC = () => null;
-if (Platform.OS === 'web') {
-  try {
-    Toaster = require('react-hot-toast').Toaster;
-  } catch (e) {}
-}
-
 type RootStackParamList = {
+
   Home: undefined;
   Tasks: undefined;
   Dashboard: undefined;
@@ -198,7 +192,7 @@ export default function App() {
         <NavigationContainer>
           <RootNavigation />
         </NavigationContainer>
-        {Platform.OS === 'web' && <Toaster />}
+        <WebToaster />
       </AuthProvider>
     </ThemeProvider>
   );

@@ -30,7 +30,7 @@ import { theme } from '../config/theme';
 import { CheckCircle2, Camera, ArrowRight } from 'lucide-react-native';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { toast } from 'react-hot-toast';
+import { notify } from '../utils/notify';
 import { runWeeklyCleanup } from '../utils/cleanup';
 
 interface Task {
@@ -257,7 +257,7 @@ const HomeScreen = ({ navigation }: Props) => {
           batch.update(doc(db, 'tasks', d.id), { date: todayStr, wasMoved: true })
         );
         await batch.commit();
-        if (Platform.OS === 'web') toast.success('Przeniesiono zaległe zadania');
+        if (Platform.OS === 'web') notify.success('Przeniesiono zaległe zadania');
       } catch (e) {}
     };
     moveOverdue();
@@ -295,7 +295,7 @@ const HomeScreen = ({ navigation }: Props) => {
   const toggleTask = async (id: string, currentStatus: boolean) => {
     try {
       await updateDoc(doc(db, 'tasks', id), { done: !currentStatus });
-      if (Platform.OS === 'web' && !currentStatus) toast.success('Zadanie wykonane!');
+      if (Platform.OS === 'web' && !currentStatus) notify.success('Zadanie wykonane!');
     } catch (e) {
       console.error(e);
     }
@@ -320,7 +320,7 @@ const HomeScreen = ({ navigation }: Props) => {
         photoPath: filename,
         done: true,
       });
-      if (Platform.OS === 'web') toast.success('Zdjęcie dodane');
+      if (Platform.OS === 'web') notify.success('Zdjęcie dodane');
     } catch (e) {
       console.error(e);
     } finally {

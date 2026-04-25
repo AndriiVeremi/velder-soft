@@ -40,3 +40,4 @@ yarn-error.*
 .env
 /.vscode
 .firebase/
+docs/PROJECT_STATUS.md

@@ -1,44 +1,50 @@
-# Статус проекту Velder-soft
+# Status Projektu: Velder-soft
 
-## 📋 Огляд
+Poniżej znajduje się szczegółowy przegląd zaimplementowanych funkcji oraz plany na przyszły rozwój systemu.
 
-Кросплатформний додаток (iOS, Android, Web) для управління інженерними проектами, сервісним обслуговуванням та особистими завданнями.
+## ✅ Zrealizowane Funkcje
 
-## ✅ Що зроблено (24.04.2026)
+### 🔐 Autoryzacja i Użytkownicy
+- [x] Rejestracja i logowanie (Firebase Auth).
+- [x] System ról: `DIRECTOR` oraz `EMPLOYEE`.
+- [x] Ekran oczekiwania na akceptację konta przez Dyrektora.
+- [x] Zarządzanie pracownikami (aktywacja kont, zmiana ról, usuwanie).
+- [x] Profil użytkownika z ustawieniami godzin pracy.
 
-### 📂 Проекти та Документація
+### 📋 Zarządzanie Zadaniami (Tasks)
+- [x] Kalendarz zadań.
+- [x] Dodawanie zdjęć do zadań (dokumentacja wykonania).
+- [x] Mechanizm "Przenoszenia zaległych zadań" na bieżący dzień.
+- [x] Gesty swipe do oznaczania zadań jako wykonane.
+- [x] Powiadomienia o liczbie zadań na dany dzień.
 
-- **Ієрархічна структура**: Реалізовано провідник "Лікарня -> Відділ -> PDF-документи".
-- **Розумні підказки**: Автозаповнення назв лікарень та відділів при додаванні, що запобігає дублюванню папок.
-- **Статуси**: Впроваджено статуси "W toku" (В процесі) та "Zakończony" (Завершено) з візуальними бейджами.
-- **Архів робіт**: У кожному відділі додано галерею "Archiwum" (до 15 фото) для фіксації фінального результату.
+### 📁 Archiwum Projektów i Serwis
+- [x] Struktura: Szpital > Oddział > Dokumentacja.
+- [x] Przesyłanie plików PDF z projektami.
+- [x] Galeria zdjęć z realizacji (Archiwum prac).
+- [x] Rejestr zleceń serwisowych z raportami foto i komentarzami.
 
-### 🛠 Сервіс та Обслуговування
+### 🏖️ System Urlopowy
+- [x] Składanie wniosków o urlop (wybór zakresu dat).
+- [x] Podgląd statusu wniosku (Oczekujący / Zaakceptowany / Odrzucony).
+- [x] Panel Dyrektora do akceptacji wniosków wszystkich pracowników.
 
-- **Система злецень**: Директор може створювати заявки на сервіс із вказанням дати в календарі.
-- **Фотозвіти з коментарями**: Працівники додають фото виконаних робіт з обов'язковим текстовим описом.
-- **Авто-оновлення**: Статус сервісу автоматично змінюється на "Виконано" після додавання першого звіту.
+## 🛠️ Stan Techniczny
+- [x] **Cross-platform:** Pełne wsparcie dla Web, Android oraz iOS.
+- [x] **Refaktoryzacja:** Przejście na `styled-components` w celu unifikacji designu.
+- [x] **Typizacja:** Wdrożenie TypeScript dla wszystkich kluczowych modułów.
+- [x] **Stabilność:** Rozwiązanie problemów z inicjalizacją Firebase na urządzeniach iOS.
 
-### 📋 Завдання (Tasks)
+## 🚀 Nadchodzące Funkcje (Backlog)
 
-- **Мульти-фото**: Тепер до кожного завдання можна додати до 5 фотографій.
-- **Lightbox**: Реалізовано повноекранний перегляд фото з функцією "Зберегти в галерею" (MediaLibrary).
-- **Стиснення**: Встановлено якість 0.5 для всіх фото для економії місця в Firebase Storage.
+### 📊 Statystyki i Raporty
+- [ ] Generowanie raportów PDF z wykonanych prac serwisowych.
+- [ ] Wykresy wydajności pracowników w panelu Dyrektora.
 
-### 🔔 Сповіщення та Нагадування
+### 💬 Komunikacja
+- [ ] Wewnętrzny czat dla pracowników w ramach konkretnego projektu.
+- [ ] System powiadomień push dla nowych zleceń serwisowych.
 
-- **Бейджі**: На іконці додатка тепер відображається кількість невиконаних завдань на сьогодні.
-- **Персональний графік**: У профілі користувач може сам виставити час ранкового нагадування та час "тиші".
-- **Особисті нагадування**: Створено новий розділ "Przypomnienia" — приватний планувальник із локальними звуковими сигналами.
-
-### 🧹 Системні функції
-
-- **Weekly Cleanup**: Автоматична чистка виконаних завдань та їхніх фото раз на тиждень (запускається Директором).
-- **Vacations**: Система планування відпусток через календар із підтвердженням від керівництва.
-
-## 🔜 Наступні кроки
-
-- [ ] Впровадження **голосового введення** (Speech-to-Text) для особистих нагадувань.
-- [ ] Додавання коментарів до фотозвітів у загальних проектах (за потреби).
-- [ ] Налаштування Push-сповіщень через Firebase (дистанційні).
-- [ ] Вимкнення "Dev Mode" в AuthContext для фінального релізу.
+### 🔧 Ulepszenia UX
+- [ ] Tryb offline (lokalna baza danych SQL dla zadań).
+- [ ] Wielojęzyczność (obecnie system jest w języku polskim).

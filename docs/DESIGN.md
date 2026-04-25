@@ -1,61 +1,48 @@
-# Оновлений Документ проектування: Velder-soft (Expo + Firebase)
+# Architektura Systemu i Design
 
-## 1. Загальний опис
+Dokument ten opisuje strukturę techniczną aplikacji Velder-soft oraz decyzje projektowe dotyczące interfejsu i bazy danych.
 
-Універсальний додаток (Mobile + Web) для керування проектами.
+## 🏛️ Architektura
 
-- **Працівники:** використовують телефони для перегляду PDF та завантаження фото звітів/проблем.
-- **Директор:** використовує ПК для створення проектів, завантаження PDF та контролю робіт.
+Aplikacja oparta jest na frameworku **React Native** z wykorzystaniem ekosystemu **Expo**. Dzięki temu rozwiązaniu utrzymujemy jedną bazę kodu dla trzech platform:
+1. **Web:** Renderowany za pomocą `react-native-web`.
+2. **iOS:** Natywna aplikacja (testowana przez Expo Go).
+3. **Android:** Natywna aplikacja.
 
-## 2. Технологічний стек
+### Kluczowe decyzje architektoniczne:
+- **Navigation:** Zastosowano `Stack Navigator` z biblioteki `@react-navigation/stack`. Główne ekrany są owinięte w komponent `MainLayout`, który dostarcza Sidebar (na Web) lub Bottom Tabs (na Mobile).
+- **State Management:** Wykorzystano `Context API` (AuthContext) do zarządzania stanem zalogowanego użytkownika w całej aplikacji.
+- **Data Fetching:** Wykorzystano funkcję `onSnapshot` z Firebase, co zapewnia synchronizację danych w czasie rzeczywistym bez konieczności odświeżania strony.
 
-- **Фронтенд:** React Native (Expo) + Expo Web + TypeScript.
-- **Стилізація:** NativeWind (Tailwind для React Native).
-- **Бекенд та База (BaaS):** Firebase.
-  - **Authentication:** Вхід через Email/Password.
-  - **Firestore:** Збереження даних про проекти та звіти.
-  - **Storage:** Збереження PDF-файлів та фотографій.
+## 🎨 Design i Stylizacja
 
-## 3. Структура даних (Firestore)
+### Styled Components
+Cała aplikacja korzysta z biblioteki `styled-components`. Pozwala to na:
+- **Zmienne Motywu:** Centralny plik `src/config/theme.ts` zawiera paletę kolorów, czcionki i odstępy.
+- **Responsywność:** Style dynamicznie reagują na rozmiar okna (isDesktop vs Mobile).
+- **Izolacja:** Style są powiązane bezpośrednio z komponentami, co ułatwia konserwację.
 
-### Колекція `users`
+### Paleta Kolorów (Motyw Velder)
+- **Primary:** `#008744` (Zielony Velder) - akcje, przyciski główne.
+- **Secondary:** `#005d2f` - akcenty, hover.
+- **Error:** `#d32f2f` - ostrzeżenia, usuwanie.
+- **Surface:** `#ffffff` - karty, tła sekcji.
+- **Background:** `#f5f5f5` - główne tło aplikacji.
 
-- `uid`: String
-- `name`: String
-- `email`: String
-- `role`: 'DIRECTOR' | 'EMPLOYEE'
+## 💾 Baza Danych (Firebase Firestore)
 
-### Колекція `projects`
+### Struktura Kolekcji:
+- `users`: Dokumenty użytkowników (name, email, role, isActive, settings).
+- `tasks`: Zadania (title, date, done, photos[]).
+- `projects`: Dokumentacja techniczna (title, hospital, department, pdfUrl).
+- `service_records`: Archiwum prac (photoUrl, hospital, department).
+- `services`: Zlecenia serwisowe (title, description, status, photos[]).
+- `vacations`: Wnioski urlopowe (userId, startDate, endDate, status).
+- `reminders`: Prywatne przypomnienia użytkowników.
 
-- `id`: String
-- `title`: String
-- `description`: String
-- `pdfUrl`: String
-- `createdAt`: Timestamp
-- `createdBy`: String (uid)
-
-### Колекція `service_records`
-
-- `id`: String
-- `projectId`: String (ref to projects)
-- `title`: String
-- `description`: String
-- `photos`: Array<String> (urls from Storage)
-- `type`: 'WORK_DONE' | 'PROBLEM'
-- `createdAt`: Timestamp
-- `createdBy`: String (uid)
-
-## 4. Екрани (Screens)
-
-1. **Login:** Вхід у систему.
-2. **Dashboard:** Список проектів (різний вигляд для мобілки та ПК).
-3. **Project Details:**
-   - Перегляд PDF (вбудований viewer).
-   - Список фото-звітів.
-   - Кнопка "Додати звіт/проблему" (з камерою).
-4. **Admin Panel (тільки для ПК):** Створення нових проектів та користувачів.
-
-## 5. Переваги для бюджету
-
-- **Firebase Spark Plan:** 0 грн/міс (до певних лімітів, яких вам вистачить на старті).
-- **Hosting:** Firebase Hosting (безкоштовно для веб-версії).
+### Storage (Cloud Storage):
+Pliki są zorganizowane w folderach:
+- `projects/`: Pliki PDF z dokumentacją.
+- `task_photos/`: Zdjęcia do zadań.
+- `service/`: Zdjęcia z raportów serwisowych.
+- `dept_photos/`: Zdjęcia z archiwum oddziałów.

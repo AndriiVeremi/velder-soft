@@ -22,7 +22,7 @@ import {
 import { db } from '../config/firebase';
 import { theme } from '../config/theme';
 import { User, Shield, Trash2, Mail, CheckCircle, XCircle } from 'lucide-react-native';
-import { toast } from 'react-hot-toast';
+import { notify } from '../utils/notify';
 
 interface UserData {
   id: string;
@@ -128,14 +128,6 @@ const UsersScreen = () => {
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const notify = (msg: string, type: 'success' | 'error' = 'success') => {
-    if (Platform.OS === 'web') {
-      type === 'success' ? toast.success(msg) : toast.error(msg);
-    } else {
-      Alert.alert(type === 'success' ? 'Sukces' : 'Błąd', msg);
-    }
-  };
-
   useEffect(() => {
     const q = query(collection(db, 'users'), orderBy('name', 'asc'));
 
@@ -158,9 +150,9 @@ const UsersScreen = () => {
   const toggleStatus = async (userId: string, currentStatus: boolean) => {
     try {
       await updateDoc(doc(db, 'users', userId), { isActive: !currentStatus });
-      notify(!currentStatus ? 'Konto aktywowane' : 'Konto deaktywowane');
+      notify.success(!currentStatus ? 'Konto aktywowane' : 'Konto deaktywowane');
     } catch (e) {
-      notify('Błąd aktualizacji', 'error');
+      notify.error('Błąd aktualizacji');
     }
   };
 
@@ -168,16 +160,16 @@ const UsersScreen = () => {
     const newRole = currentRole === 'DIRECTOR' ? 'EMPLOYEE' : 'DIRECTOR';
     try {
       await updateDoc(doc(db, 'users', userId), { role: newRole });
-      notify(`Zmieniono rolę na ${newRole}`);
+      notify.success(`Zmieniono rolę na ${newRole}`);
     } catch (e) {
-      notify('Błąd zmiany roli', 'error');
+      notify.error('Błąd zmiany roli');
     }
   };
 
   const deleteUser = (userId: string) => {
     const performDelete = async () => {
       await deleteDoc(doc(db, 'users', userId));
-      notify('Użytkownik usunięty');
+      notify.success('Użytkownik usunięty');
     };
 
     if (Platform.OS === 'web') {
