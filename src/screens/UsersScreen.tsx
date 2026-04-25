@@ -1,0 +1,262 @@
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text as RNText,
+  FlatList,
+  ActivityIndicator,
+  Switch,
+  TouchableOpacity,
+  Alert,
+  Platform,
+} from 'react-native';
+import styled from 'styled-components/native';
+import {
+  collection,
+  query,
+  orderBy,
+  onSnapshot,
+  doc,
+  updateDoc,
+  deleteDoc,
+} from 'firebase/firestore';
+import { db } from '../config/firebase';
+import { theme } from '../config/theme';
+import { User, Shield, Trash2, Mail, CheckCircle, XCircle } from 'lucide-react-native';
+import { toast } from 'react-hot-toast';
+
+interface UserData {
+  id: string;
+  name: string;
+  email: string;
+  role: 'DIRECTOR' | 'EMPLOYEE';
+  isActive: boolean;
+  createdAt?: any;
+}
+
+const Container = styled.View`
+  flex: 1;
+  background-color: ${(props) => props.theme.colors.background};
+`;
+
+const Header = styled.View`
+  padding: ${(props) => props.theme.spacing.lg}px;
+  background-color: ${(props) => props.theme.colors.surface};
+  border-bottom-width: 1px;
+  border-bottom-color: ${(props) => props.theme.colors.border};
+`;
+
+const Title = styled(RNText)`
+  font-size: 22px;
+  font-weight: bold;
+  color: ${(props) => props.theme.colors.text};
+`;
+
+const UserCard = styled.View`
+  background-color: ${(props) => props.theme.colors.surface};
+  padding: ${(props) => props.theme.spacing.md}px;
+  margin: ${(props) => props.theme.spacing.sm}px ${(props) => props.theme.spacing.md}px;
+  border-radius: ${(props) => props.theme.borderRadius.md}px;
+  border: 1px solid ${(props) => props.theme.colors.border};
+`;
+
+const UserMainInfo = styled.View`
+  flex-direction: row;
+  align-items: center;
+`;
+
+const Avatar = styled.View<{ active: boolean }>`
+  width: 50px;
+  height: 50px;
+  border-radius: 25px;
+  background-color: ${(props) => (props.active ? theme.colors.accent : '#f0f0f0')};
+  justify-content: center;
+  align-items: center;
+  border: 2px solid ${(props) => (props.active ? theme.colors.primary : '#ccc')};
+`;
+
+const Info = styled.View`
+  flex: 1;
+  margin-left: 15px;
+`;
+
+const UserName = styled(RNText)`
+  font-size: 16px;
+  font-weight: bold;
+  color: ${(props) => props.theme.colors.text};
+`;
+
+const UserEmail = styled(RNText)`
+  font-size: 13px;
+  color: ${(props) => props.theme.colors.textSecondary};
+  margin-top: 2px;
+`;
+
+const RoleBadge = styled.View<{ isAdmin: boolean }>`
+  background-color: ${(props) => (props.isAdmin ? '#FFF3E0' : '#E8EAF6')};
+  padding: 2px 8px;
+  border-radius: 4px;
+  align-self: flex-start;
+  margin-top: 5px;
+  flex-direction: row;
+  align-items: center;
+`;
+
+const RoleText = styled(RNText)<{ isAdmin: boolean }>`
+  font-size: 10px;
+  font-weight: bold;
+  color: ${(props) => (props.isAdmin ? '#E65100' : '#1A237E')};
+  margin-left: 4px;
+`;
+
+const Controls = styled.View`
+  flex-direction: row;
+  align-items: center;
+  border-top-width: 1px;
+  border-top-color: #f0f0f0;
+  margin-top: 12px;
+  padding-top: 10px;
+  justify-content: space-between;
+`;
+
+const StatusLabel = styled(RNText)`
+  font-size: 14px;
+  font-weight: 500;
+  color: ${(props) => props.theme.colors.text};
+`;
+
+const UsersScreen = () => {
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const notify = (msg: string, type: 'success' | 'error' = 'success') => {
+    if (Platform.OS === 'web') {
+      type === 'success' ? toast.success(msg) : toast.error(msg);
+    } else {
+      Alert.alert(type === 'success' ? 'Sukces' : 'Błąd', msg);
+    }
+  };
+
+  useEffect(() => {
+    const q = query(collection(db, 'users'), orderBy('name', 'asc'));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snap) => {
+        const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as UserData);
+        setUsers(data);
+        setLoading(false);
+      },
+      (error) => {
+        console.error(error);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  const toggleStatus = async (userId: string, currentStatus: boolean) => {
+    try {
+      await updateDoc(doc(db, 'users', userId), { isActive: !currentStatus });
+      notify(!currentStatus ? 'Konto aktywowane' : 'Konto deaktywowane');
+    } catch (e) {
+      notify('Błąd aktualizacji', 'error');
+    }
+  };
+
+  const toggleRole = async (userId: string, currentRole: string) => {
+    const newRole = currentRole === 'DIRECTOR' ? 'EMPLOYEE' : 'DIRECTOR';
+    try {
+      await updateDoc(doc(db, 'users', userId), { role: newRole });
+      notify(`Zmieniono rolę na ${newRole}`);
+    } catch (e) {
+      notify('Błąd zmiany roli', 'error');
+    }
+  };
+
+  const deleteUser = (userId: string) => {
+    const performDelete = async () => {
+      await deleteDoc(doc(db, 'users', userId));
+      notify('Użytkownik usunięty');
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Czy na pewno chcesz usunąć tego użytkownika?')) performDelete();
+    } else {
+      Alert.alert('Usuń użytkownika', 'Czy na pewno chcesz usunąć tego użytkownika?', [
+        { text: 'Anuluj', style: 'cancel' },
+        { text: 'Usuń', style: 'destructive', onPress: performDelete },
+      ]);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Container theme={theme} style={{ justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </Container>
+    );
+  }
+
+  return (
+    <Container theme={theme}>
+      <Header theme={theme}>
+        <Title theme={theme}>Pracownicy i Uprawnienia</Title>
+      </Header>
+
+      <FlatList
+        data={users}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <UserCard theme={theme}>
+            <UserMainInfo>
+              <Avatar theme={theme} active={item.isActive}>
+                <User size={24} color={item.isActive ? theme.colors.primary : '#999'} />
+              </Avatar>
+              <Info>
+                <UserName theme={theme}>{item.name}</UserName>
+                <UserEmail theme={theme}>{item.email}</UserEmail>
+                <TouchableOpacity onPress={() => toggleRole(item.id, item.role)}>
+                  <RoleBadge theme={theme} isAdmin={item.role === 'DIRECTOR'}>
+                    <Shield size={12} color={item.role === 'DIRECTOR' ? '#E65100' : '#1A237E'} />
+                    <RoleText theme={theme} isAdmin={item.role === 'DIRECTOR'}>
+                      {item.role}
+                    </RoleText>
+                  </RoleBadge>
+                </TouchableOpacity>
+              </Info>
+              <TouchableOpacity onPress={() => deleteUser(item.id)} style={{ padding: 10 }}>
+                <Trash2 size={20} color={theme.colors.error} />
+              </TouchableOpacity>
+            </UserMainInfo>
+
+            <Controls>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                {item.isActive ? (
+                  <CheckCircle size={16} color={theme.colors.success} />
+                ) : (
+                  <XCircle size={16} color={theme.colors.error} />
+                )}
+                <StatusLabel theme={theme} style={{ marginLeft: 8 }}>
+                  {item.isActive ? 'Aktywny dostęp' : 'Brak dostępu'}
+                </StatusLabel>
+              </View>
+              <Switch
+                value={item.isActive}
+                onValueChange={() => toggleStatus(item.id, item.isActive)}
+                trackColor={{ false: '#ccc', true: theme.colors.primary }}
+              />
+            </Controls>
+          </UserCard>
+        )}
+        ListEmptyComponent={
+          <RNText style={{ textAlign: 'center', marginTop: 50, color: theme.colors.textSecondary }}>
+            Brak zarejestrowanych użytkowników
+          </RNText>
+        }
+      />
+    </Container>
+  );
+};
+
+export default UsersScreen;
