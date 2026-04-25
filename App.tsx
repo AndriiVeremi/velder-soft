@@ -1,0 +1,218 @@
+import 'react-native-gesture-handler';
+import React, { useEffect } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator, StackNavigationProp } from '@react-navigation/stack';
+import { ThemeProvider } from 'styled-components/native';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { theme } from './src/config/theme';
+import { MainLayout } from './src/components/Layout';
+import { View, ActivityIndicator, Text as RNText, Platform, LogBox } from 'react-native';
+import styled from 'styled-components/native';
+import {
+  registerForPushNotificationsAsync,
+  setBadgeCount,
+  setupNotificationListeners,
+} from './src/utils/notifications';
+import { WebToaster } from './src/components/WebToaster';
+import HomeScreen from './src/screens/HomeScreen';
+import TasksScreen from './src/screens/TasksScreen';
+import DashboardScreen from './src/screens/DashboardScreen';
+import ServiceScreen from './src/screens/ServiceScreen';
+import UsersScreen from './src/screens/UsersScreen';
+import VacationsScreen from './src/screens/VacationsScreen';
+import RemindersScreen from './src/screens/RemindersScreen';
+import AnnouncementsScreen from './src/screens/AnnouncementsScreen';
+import LoginScreen from './src/screens/LoginScreen';
+import RegisterScreen from './src/screens/RegisterScreen';
+import AddProjectScreen from './src/screens/AddProjectScreen';
+import ProjectDetailsScreen from './src/screens/ProjectDetailsScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
+import PendingApprovalScreen from './src/screens/PendingApprovalScreen';
+
+LogBox.ignoreLogs(['Image: style.tintColor is deprecated', 'Blocked aria-hidden on an element']);
+
+type RootStackParamList = {
+  Home: undefined;
+  Tasks: undefined;
+  Dashboard: undefined;
+  Service: undefined;
+  Users: undefined;
+  Vacations: undefined;
+  Reminders: undefined;
+  Announcements: undefined;
+  Profile: undefined;
+  AddProject: undefined;
+  ProjectDetails: { project: unknown };
+  Login: undefined;
+  Register: undefined;
+  PendingApproval: undefined;
+};
+
+const Stack = createStackNavigator<RootStackParamList>();
+
+const CenteredContainer = styled.View`
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+  background-color: ${(props: { theme: { colors: { background: string } } }) =>
+    props.theme.colors.background};
+`;
+
+interface ScreenProps {
+  navigation: StackNavigationProp<RootStackParamList, keyof RootStackParamList>;
+}
+
+const HomeWithLayout = ({ navigation, route }: any) => (
+  <MainLayout navigation={navigation} currentRoute="Home">
+    <HomeScreen navigation={navigation} route={route} />
+  </MainLayout>
+);
+
+const TasksWithLayout = ({ navigation, route }: any) => (
+  <MainLayout navigation={navigation} currentRoute="Tasks">
+    <TasksScreen navigation={navigation} route={route} />
+  </MainLayout>
+);
+
+const DashboardWithLayout = ({ navigation, route }: any) => (
+  <MainLayout navigation={navigation} currentRoute="Dashboard">
+    <DashboardScreen navigation={navigation} route={route} />
+  </MainLayout>
+);
+
+const ServiceWithLayout = ({ navigation, route }: any) => (
+  <MainLayout navigation={navigation} currentRoute="Service">
+    <ServiceScreen navigation={navigation} route={route} />
+  </MainLayout>
+);
+
+const UsersWithLayout = ({ navigation, route }: any) => (
+  <MainLayout navigation={navigation} currentRoute="Users">
+    <UsersScreen navigation={navigation} route={route} />
+  </MainLayout>
+);
+
+const VacationsWithLayout = ({ navigation, route }: any) => (
+  <MainLayout navigation={navigation} currentRoute="Vacations">
+    <VacationsScreen navigation={navigation} route={route} />
+  </MainLayout>
+);
+
+const RemindersWithLayout = ({ navigation, route }: any) => (
+  <MainLayout navigation={navigation} currentRoute="Reminders">
+    <RemindersScreen navigation={navigation} route={route} />
+  </MainLayout>
+);
+
+const AnnouncementsWithLayout = ({ navigation, route }: any) => (
+  <MainLayout navigation={navigation} currentRoute="Announcements">
+    <AnnouncementsScreen navigation={navigation} route={route} />
+  </MainLayout>
+);
+
+const ProfileWithLayout = ({ navigation, route }: any) => (
+  <MainLayout navigation={navigation} currentRoute="Profile">
+    <ProfileScreen navigation={navigation} route={route} />
+  </MainLayout>
+);
+
+const AuthenticatedStack = () => {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: true,
+        headerStyle: { backgroundColor: theme.colors.surface },
+        headerTitleStyle: { fontWeight: 'bold' },
+      }}
+    >
+      <Stack.Screen name="Home" component={HomeWithLayout} options={{ title: 'Start' }} />
+      <Stack.Screen name="Tasks" component={TasksWithLayout} options={{ title: 'Zadania' }} />
+      <Stack.Screen
+        name="Dashboard"
+        component={DashboardWithLayout}
+        options={{ title: 'Projekty' }}
+      />
+      <Stack.Screen name="Service" component={ServiceWithLayout} options={{ title: 'Serwis' }} />
+      <Stack.Screen name="Users" component={UsersWithLayout} options={{ title: 'Pracownicy' }} />
+      <Stack.Screen
+        name="Vacations"
+        component={VacationsWithLayout}
+        options={{ title: 'Urlopy' }}
+      />
+      <Stack.Screen
+        name="Reminders"
+        component={RemindersWithLayout}
+        options={{ title: 'Przypomnienia' }}
+      />
+      <Stack.Screen
+        name="Announcements"
+        component={AnnouncementsWithLayout}
+        options={{ title: 'Ogłoszenia' }}
+      />
+      <Stack.Screen name="Profile" component={ProfileWithLayout} options={{ title: 'Profil' }} />
+      <Stack.Screen
+        name="AddProject"
+        component={AddProjectScreen}
+        options={{ title: 'Nowy Projekt' }}
+      />
+      <Stack.Screen
+        name="ProjectDetails"
+        component={ProjectDetailsScreen}
+        options={{ title: 'Szczegóły' }}
+      />
+    </Stack.Navigator>
+  );
+};
+
+const RootNavigation = () => {
+  const { user, isActive, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <CenteredContainer theme={theme}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </CenteredContainer>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Register" component={RegisterScreen} />
+      </Stack.Navigator>
+    );
+  }
+
+  if (!isActive) {
+    return (
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} />
+      </Stack.Navigator>
+    );
+  }
+
+  return <AuthenticatedStack />;
+};
+
+export default function App() {
+  useEffect(() => {
+    registerForPushNotificationsAsync();
+    setBadgeCount(0);
+    const cleanup = setupNotificationListeners();
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, []);
+
+  return (
+    <ThemeProvider theme={theme}>
+      <AuthProvider>
+        <NavigationContainer>
+          <RootNavigation />
+        </NavigationContainer>
+        <WebToaster />
+      </AuthProvider>
+    </ThemeProvider>
+  );
+}
