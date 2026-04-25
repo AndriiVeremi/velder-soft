@@ -166,7 +166,7 @@ const ProjectDetailsScreen = ({ route, navigation }: any) => {
     } else {
       setDownloading(true);
       try {
-        const fileUri = FileSystem.cacheDirectory + (project.fileName || 'dokument.pdf');
+        const fileUri = (FileSystem as any).cacheDirectory + (project.fileName || 'dokument.pdf');
         const { uri } = await FileSystem.downloadAsync(project.pdfUrl, fileUri);
         if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
         else Linking.openURL(uri);

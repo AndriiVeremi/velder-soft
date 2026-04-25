@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Timestamp } from 'firebase/firestore';
 import {
   ActivityIndicator,
   TouchableOpacity,
@@ -93,42 +94,105 @@ const SubmitButtonText = styled(RNText)`
   font-weight: bold;
 `;
 
-const AddProjectScreen = ({ navigation }: any) => {
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { DocumentPickerAsset } from 'expo-document-picker';
+
+interface Project {
+  title: string;
+  hospital: string;
+  department: string;
+  description: string;
+  pdfUrl: string;
+  pdfPath: string;
+  fileName: string;
+  status: 'IN_PROGRESS' | 'DONE';
+  createdBy: string;
+  createdAt: Timestamp | null;
+}
+
+type RootStackParamList = {
+  AddProject: undefined;
+};
+
+type Props = NativeStackScreenProps<RootStackParamList, 'AddProject'>;
+
+const SuggestionsContainer = styled.View`
+  flex-direction: row;
+  flex-wrap: wrap;
+  margin-top: 5px;
+`;
+
+const SuggestionChip = styled.TouchableOpacity`
+  background-color: ${(props) => props.theme.colors.background};
+  padding: 5px 10px;
+  border-radius: 15px;
+  margin-right: 8px;
+  margin-bottom: 8px;
+  border-width: 1px;
+  border-color: ${(props) => props.theme.colors.border};
+`;
+
+const SuggestionText = styled(RNText)`
+  font-size: 12px;
+  color: ${(props) => props.theme.colors.text};
+`;
+
+const DescriptionInput = styled(Input)`
+  height: 100px;
+`;
+
+const MaxFileSizeText = styled(RNText)`
+  font-size: 12px;
+  color: ${(props) => props.theme.colors.textSecondary};
+  margin-top: 5px;
+`;
+
+const RemoveFileButton = styled.TouchableOpacity`
+  padding: 5px;
+`;
+
+const LoadingContainer = styled.View`
+  flex-direction: row;
+  align-items: center;
+`;
+
+const LoadingSpinner = styled(ActivityIndicator)`
+  margin-right: 10px;
+`;
+
+const AddProjectScreen = ({ navigation }: Props) => {
   const [title, setTitle] = useState('');
   const [hospital, setHospital] = useState('');
   const [department, setDepartment] = useState('');
   const [description, setDescription] = useState('');
-  const [pdfFile, setPdfFile] = useState<any>(null);
+  const [pdfFile, setPdfFile] = useState<DocumentPickerAsset | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [existingHospitals, setExistingHospitals] = useState<string[]>([]);
-  const [existingDepartments, setExistingDepartments] = useState<string[]>([]);
-  const [allProjects, setAllProjects] = useState<any[]>([]);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
+
+  const existingHospitals = useMemo(() => {
+    return Array.from(new Set(allProjects.map((p) => p.hospital)))
+      .filter(Boolean)
+      .sort() as string[];
+  }, [allProjects]);
+
+  const existingDepartments = useMemo(() => {
+    if (!hospital) return [];
+    return Array.from(
+      new Set(allProjects.filter((p) => p.hospital === hospital).map((p) => p.department))
+    )
+      .filter(Boolean)
+      .sort() as string[];
+  }, [hospital, allProjects]);
 
   useEffect(() => {
     const q = query(collection(db, 'projects'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const projects: any[] = [];
-      snapshot.forEach((doc) => projects.push(doc.data()));
+      const projects: Project[] = [];
+      snapshot.forEach((doc) => projects.push(doc.data() as Project));
       setAllProjects(projects);
-
-      const hospitals = Array.from(new Set(projects.map((p) => p.hospital))).filter(
-        Boolean
-      ) as string[];
-      setExistingHospitals(hospitals.sort());
     });
     return () => unsubscribe();
   }, []);
-
-  useEffect(() => {
-    if (hospital) {
-      const depts = Array.from(
-        new Set(allProjects.filter((p) => p.hospital === hospital).map((p) => p.department))
-      ).filter(Boolean) as string[];
-      setExistingDepartments(depts.sort());
-    } else {
-      setExistingDepartments([]);
-    }
-  }, [hospital, allProjects]);
 
   const pickDocument = async () => {
     try {
@@ -197,26 +261,13 @@ const AddProjectScreen = ({ navigation }: any) => {
   const renderSuggestions = (data: string[], onSelect: (val: string) => void) => {
     if (data.length === 0) return null;
     return (
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 5 }}>
+      <SuggestionsContainer theme={theme}>
         {data.map((item, index) => (
-          <TouchableOpacity
-            key={index}
-            onPress={() => onSelect(item)}
-            style={{
-              backgroundColor: '#eee',
-              paddingHorizontal: 10,
-              paddingVertical: 5,
-              borderRadius: 15,
-              marginRight: 8,
-              marginBottom: 8,
-              borderWidth: 1,
-              borderColor: theme.colors.border,
-            }}
-          >
-            <RNText style={{ fontSize: 12, color: theme.colors.text }}>{item}</RNText>
-          </TouchableOpacity>
+          <SuggestionChip key={index} onPress={() => onSelect(item)} theme={theme}>
+            <SuggestionText theme={theme}>{item}</SuggestionText>
+          </SuggestionChip>
         ))}
-      </View>
+      </SuggestionsContainer>
     );
   };
 
@@ -229,16 +280,16 @@ const AddProjectScreen = ({ navigation }: any) => {
           placeholder="Np. Schemat instalacji tlenu"
           value={title}
           onChangeText={setTitle}
-          placeholderTextColor="#999"
+          placeholderTextColor={theme.colors.textSecondary}
         />
 
-        <Label theme={theme}>Szpital (Folder główny)</Label>
+        <Label theme={theme}>Szpital (Folder главні)</Label>
         <Input
           theme={theme}
           placeholder="Np. Szpital Uniwersytecki"
           value={hospital}
           onChangeText={setHospital}
-          placeholderTextColor="#999"
+          placeholderTextColor={theme.colors.textSecondary}
         />
         {renderSuggestions(
           existingHospitals.filter(
@@ -253,7 +304,7 @@ const AddProjectScreen = ({ navigation }: any) => {
           placeholder="Np. Kardiologia"
           value={department}
           onChangeText={setDepartment}
-          placeholderTextColor="#999"
+          placeholderTextColor={theme.colors.textSecondary}
         />
         {renderSuggestions(
           existingDepartments.filter(
@@ -263,15 +314,14 @@ const AddProjectScreen = ({ navigation }: any) => {
         )}
 
         <Label theme={theme}>Opis / Notatki</Label>
-        <Input
+        <DescriptionInput
           theme={theme}
           placeholder="Opis dokumentacji..."
           multiline
           numberOfLines={6}
           value={description}
           onChangeText={setDescription}
-          style={{ textAlignVertical: 'top', height: 100 }}
-          placeholderTextColor="#999"
+          placeholderTextColor={theme.colors.textSecondary}
         />
 
         <Label theme={theme}>Dokumentacja techniczna (PDF)</Label>
@@ -279,9 +329,7 @@ const AddProjectScreen = ({ navigation }: any) => {
           <FilePickerButton theme={theme} onPress={pickDocument}>
             <Upload size={40} color={theme.colors.primary} />
             <PickerText theme={theme}>Kliknij, aby wybrać dokumentację</PickerText>
-            <RNText style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 5 }}>
-              Maksymalny rozmiar: 10MB
-            </RNText>
+            <MaxFileSizeText theme={theme}>Maksymalny rozmiar: 10MB</MaxFileSizeText>
           </FilePickerButton>
         ) : (
           <SelectedFileCard theme={theme}>
@@ -289,18 +337,18 @@ const AddProjectScreen = ({ navigation }: any) => {
             <FileName theme={theme} numberOfLines={1}>
               {pdfFile.name}
             </FileName>
-            <TouchableOpacity onPress={() => setPdfFile(null)} style={{ padding: 5 }}>
+            <RemoveFileButton onPress={() => setPdfFile(null)}>
               <X size={20} color={theme.colors.error} />
-            </TouchableOpacity>
+            </RemoveFileButton>
           </SelectedFileCard>
         )}
 
         <SubmitButton theme={theme} onPress={handleCreateProject} disabled={uploading}>
           {uploading ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <ActivityIndicator color="white" style={{ marginRight: 10 }} />
+            <LoadingContainer>
+              <LoadingSpinner color="white" />
               <SubmitButtonText theme={theme}>Przesyłanie...</SubmitButtonText>
-            </View>
+            </LoadingContainer>
           ) : (
             <SubmitButtonText theme={theme}>Utwórz i opublikuj projekt</SubmitButtonText>
           )}

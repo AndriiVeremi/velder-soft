@@ -74,7 +74,7 @@ const LinkText = styled(RNText)`
   font-weight: 500;
 `;
 
-const LoginScreen = ({ navigation }: any) => {
+const LoginScreen = ({ navigation }: { navigation: { navigate: (screen: string) => void } }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -89,7 +89,7 @@ const LoginScreen = ({ navigation }: any) => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       notify.success('Zalogowano pomyślnie');
-    } catch (error: any) {
+    } catch (error: unknown) {
       notify.error('Nieprawidłowy e-mail lub hasło');
       console.error(error);
     } finally {

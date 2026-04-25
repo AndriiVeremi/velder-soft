@@ -188,6 +188,128 @@ const ModalContent = styled(ScrollView)`
   max-height: 95%;
 `;
 
+const LoaderContainer = styled.View`
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+`;
+
+const CardHeader = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+`;
+
+const DateText = styled(RNText)`
+  font-size: 12px;
+  margin-left: 6px;
+  color: ${(props) => props.theme.colors.primary};
+  font-weight: bold;
+`;
+
+const AddPhotoPlaceholder = styled.TouchableOpacity`
+  width: 160px;
+  height: 110px;
+  background-color: ${(props) => props.theme.colors.background};
+  border-radius: 10px;
+  justify-content: center;
+  align-items: center;
+  border-style: dashed;
+  border-width: 1px;
+  border-color: ${(props) => props.theme.colors.border};
+`;
+
+const PlaceholderText = styled(RNText)`
+  font-size: 11px;
+  color: ${(props) => props.theme.colors.textSecondary};
+  margin-top: 5px;
+`;
+
+const EmptyRecordsText = styled(RNText)`
+  text-align: center;
+  margin-top: 50px;
+  color: ${(props) => props.theme.colors.textSecondary};
+`;
+
+const ModalInner = styled.View`
+  padding: 25px;
+`;
+
+const ModalHeader = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  margin-bottom: 20px;
+`;
+
+const ModalTitleText = styled(RNText)`
+  font-size: 20px;
+  font-weight: bold;
+`;
+
+const InputLabel = styled(RNText)`
+  font-size: 12px;
+  font-weight: bold;
+  color: ${(props) => props.theme.colors.textSecondary};
+  margin-bottom: 5px;
+`;
+
+const StyledTextInput = styled.TextInput`
+  background-color: ${(props) => props.theme.colors.background};
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  border: 1px solid ${(props) => props.theme.colors.border};
+`;
+
+const TextArea = styled(StyledTextInput)`
+  height: 80px;
+`;
+
+const SubmitButton = styled.TouchableOpacity<{ success?: boolean }>`
+  background-color: ${(props) =>
+    props.success ? props.theme.colors.success : props.theme.colors.primary};
+  padding: 18px;
+  border-radius: 10px;
+  align-items: center;
+  margin-top: 20px;
+`;
+
+const SubmitButtonText = styled(RNText)`
+  color: white;
+  font-weight: bold;
+`;
+
+const PhotoModalContainer = styled.View`
+  background-color: white;
+  width: 90%;
+  border-radius: 15px;
+  padding: 20px;
+`;
+
+const PhotoPreview = styled.Image`
+  width: 100%;
+  height: 200px;
+  border-radius: 10px;
+  margin-bottom: 15px;
+`;
+
+const ActionButtons = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+`;
+
+const CancelBtn = styled.TouchableOpacity`
+  padding: 15px;
+`;
+
+const ReportBtn = styled.TouchableOpacity<{ disabled?: boolean }>`
+  background-color: ${(props) =>
+    props.disabled ? props.theme.colors.border : props.theme.colors.success};
+  padding: 15px;
+  border-radius: 8px;
+  min-width: 120px;
+  align-items: center;
+`;
+
 const ServiceScreen = () => {
   const { role } = useAuth();
   const [records, setRecords] = useState<ServiceRecord[]>([]);
@@ -284,9 +406,9 @@ const ServiceScreen = () => {
 
   if (loading)
     return (
-      <View style={{ flex: 1, justifyContent: 'center' }}>
+      <LoaderContainer>
         <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
+      </LoaderContainer>
     );
 
   return (
@@ -301,7 +423,7 @@ const ServiceScreen = () => {
         renderItem={({ item }) => (
           <ServiceCard theme={theme}>
             <CardContent theme={theme}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <CardHeader>
                 <Badge done={item.status === 'DONE'} theme={theme}>
                   {item.status === 'DONE' ? (
                     <ClipboardCheck size={14} color="white" />
@@ -312,31 +434,22 @@ const ServiceScreen = () => {
                 </Badge>
                 {role === 'DIRECTOR' && (
                   <TouchableOpacity onPress={() => deleteRecord(item.id)}>
-                    <Trash2 size={20} color="#ddd" />
+                    <Trash2 size={20} color={theme.colors.border} />
                   </TouchableOpacity>
                 )}
-              </View>
+              </CardHeader>
 
               <CardTitle theme={theme}>{item.title}</CardTitle>
               <CardDesc theme={theme}>{item.description}</CardDesc>
 
               <DateInfo>
                 <CalendarIcon size={14} color={theme.colors.primary} />
-                <RNText
-                  style={{
-                    fontSize: 12,
-                    marginLeft: 6,
-                    color: theme.colors.primary,
-                    fontWeight: 'bold',
-                  }}
-                >
-                  Termin: {item.serviceDate}
-                </RNText>
+                <DateText theme={theme}>Termin: {item.serviceDate}</DateText>
               </DateInfo>
 
               <PhotoStrip horizontal showsHorizontalScrollIndicator={false}>
-                {item.photos?.map((p, i) => (
-                  <PhotoItem key={i}>
+                {item.photos?.map((p) => (
+                  <PhotoItem key={p.path}>
                     <PhotoImg source={{ uri: p.url }} />
                     <PhotoComment theme={theme} numberOfLines={2}>
                       {p.comment || 'Bez opisu'}
@@ -344,34 +457,17 @@ const ServiceScreen = () => {
                   </PhotoItem>
                 ))}
                 {item.status === 'PENDING' && (
-                  <TouchableOpacity
-                    onPress={() => startAddPhoto(item.id)}
-                    style={{
-                      width: 160,
-                      height: 110,
-                      backgroundColor: '#f5f5f5',
-                      borderRadius: 10,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      borderStyle: 'dashed',
-                      borderWidth: 1,
-                      borderColor: '#ccc',
-                    }}
-                  >
-                    <Camera size={28} color="#999" />
-                    <RNText style={{ fontSize: 11, color: '#999', marginTop: 5 }}>
-                      Dodaj raport foto
-                    </RNText>
-                  </TouchableOpacity>
+                  <AddPhotoPlaceholder onPress={() => startAddPhoto(item.id)} theme={theme}>
+                    <Camera size={28} color={theme.colors.textSecondary} />
+                    <PlaceholderText theme={theme}>Dodaj raport foto</PlaceholderText>
+                  </AddPhotoPlaceholder>
                 )}
               </PhotoStrip>
             </CardContent>
           </ServiceCard>
         )}
         ListEmptyComponent={
-          <RNText style={{ textAlign: 'center', marginTop: 50, color: '#999' }}>
-            Brak zleceń serwisowych.
-          </RNText>
+          <EmptyRecordsText theme={theme}>Brak zleceń serwisowych.</EmptyRecordsText>
         }
       />
 
@@ -384,52 +480,34 @@ const ServiceScreen = () => {
       <Modal visible={modalVisible} transparent animationType="slide">
         <ModalOverlay>
           <ModalContent>
-            <View style={{ padding: 25 }}>
-              <View
-                style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}
-              >
-                <RNText style={{ fontSize: 20, fontWeight: 'bold' }}>Nowe zlecenie serwisu</RNText>
+            <ModalInner theme={theme}>
+              <ModalHeader theme={theme}>
+                <ModalTitleText theme={theme}>Nowe zlecenie serwisu</ModalTitleText>
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
-                  <X size={24} />
+                  <X size={24} color={theme.colors.text} />
                 </TouchableOpacity>
-              </View>
+              </ModalHeader>
 
-              <RNText style={{ fontSize: 12, fontWeight: 'bold', color: '#666', marginBottom: 5 }}>
-                URZĄDZENIE / OBIEKT
-              </RNText>
-              <TextInput
+              <InputLabel theme={theme}>URZĄDZENIE / OBIEKT</InputLabel>
+              <StyledTextInput
+                theme={theme}
                 placeholder="np. Centrala wentylacyjna"
                 value={title}
                 onChangeText={setTitle}
-                style={{
-                  backgroundColor: '#f9f9f9',
-                  padding: 12,
-                  borderRadius: 8,
-                  marginBottom: 15,
-                }}
+                placeholderTextColor={theme.colors.textSecondary}
               />
 
-              <RNText style={{ fontSize: 12, fontWeight: 'bold', color: '#666', marginBottom: 5 }}>
-                OPIS PRAC
-              </RNText>
-              <TextInput
+              <InputLabel theme={theme}>OPIS PRAC</InputLabel>
+              <TextArea
+                theme={theme}
                 placeholder="Co trzeba sprawdzić/naprawić?"
                 value={description}
                 onChangeText={setDescription}
                 multiline
-                style={{
-                  backgroundColor: '#f9f9f9',
-                  padding: 12,
-                  borderRadius: 8,
-                  marginBottom: 15,
-                  height: 80,
-                  textAlignVertical: 'top',
-                }}
+                placeholderTextColor={theme.colors.textSecondary}
               />
 
-              <RNText style={{ fontSize: 12, fontWeight: 'bold', color: '#666', marginBottom: 5 }}>
-                PLANOWANA DATA
-              </RNText>
+              <InputLabel theme={theme}>PLANOWANA DATA</InputLabel>
               <Calendar
                 onDayPress={(day) => setSelectedDate(day.dateString)}
                 markedDates={{
@@ -441,72 +519,40 @@ const ServiceScreen = () => {
                 }}
               />
 
-              <TouchableOpacity
-                onPress={handleCreate}
-                style={{
-                  backgroundColor: theme.colors.primary,
-                  padding: 18,
-                  borderRadius: 10,
-                  alignItems: 'center',
-                  marginTop: 20,
-                }}
-              >
-                <RNText style={{ color: 'white', fontWeight: 'bold' }}>WYŚLIJ DO SERWISU</RNText>
-              </TouchableOpacity>
-            </View>
+              <SubmitButton onPress={handleCreate} theme={theme}>
+                <SubmitButtonText theme={theme}>WYŚLIJ DO SERWISU</SubmitButtonText>
+              </SubmitButton>
+            </ModalInner>
           </ModalContent>
         </ModalOverlay>
       </Modal>
 
       <Modal visible={photoModalVisible} transparent animationType="slide">
         <ModalOverlay>
-          <View style={{ backgroundColor: 'white', width: '90%', borderRadius: 15, padding: 20 }}>
-            <RNText style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 15 }}>
-              Opis wykonanych prac
-            </RNText>
-            {tempPhoto && (
-              <Image
-                source={{ uri: tempPhoto }}
-                style={{ width: '100%', height: 200, borderRadius: 10, marginBottom: 15 }}
-              />
-            )}
-            <TextInput
+          <PhotoModalContainer theme={theme}>
+            <ModalTitleText theme={theme}>Opis wykonanych prac</ModalTitleText>
+            {tempPhoto && <PhotoPreview source={{ uri: tempPhoto }} theme={theme} />}
+            <TextArea
+              theme={theme}
               placeholder="Napisz co zostało zrobione..."
               value={comment}
               onChangeText={setComment}
               multiline
-              style={{
-                backgroundColor: '#f9f9f9',
-                padding: 12,
-                borderRadius: 8,
-                marginBottom: 20,
-                height: 80,
-                textAlignVertical: 'top',
-              }}
+              placeholderTextColor={theme.colors.textSecondary}
             />
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <TouchableOpacity onPress={() => setPhotoModalVisible(false)} style={{ padding: 15 }}>
-                <RNText color="#666">Anuluj</RNText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={uploadPhotoWithComment}
-                disabled={uploading}
-                style={{
-                  backgroundColor: theme.colors.success,
-                  padding: 15,
-                  borderRadius: 8,
-                  minWidth: 120,
-                  alignItems: 'center',
-                }}
-              >
+            <ActionButtons theme={theme}>
+              <CancelBtn onPress={() => setPhotoModalVisible(false)} theme={theme}>
+                <RNText style={{ color: theme.colors.textSecondary }}>Anuluj</RNText>
+              </CancelBtn>
+              <ReportBtn onPress={uploadPhotoWithComment} disabled={uploading} theme={theme}>
                 {uploading ? (
                   <ActivityIndicator color="white" />
                 ) : (
-                  <RNText style={{ color: 'white', fontWeight: 'bold' }}>WYŚLIJ RAPORT</RNText>
+                  <SubmitButtonText theme={theme}>WYŚLIJ RAPORT</SubmitButtonText>
                 )}
-              </TouchableOpacity>
-            </View>
-          </View>
+              </ReportBtn>
+            </ActionButtons>
+          </PhotoModalContainer>
         </ModalOverlay>
       </Modal>
     </Container>

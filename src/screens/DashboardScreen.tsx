@@ -1,3 +1,4 @@
+import { Timestamp } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
   FlatList,
@@ -54,7 +55,7 @@ interface Project {
   status?: 'IN_PROGRESS' | 'COMPLETED';
   pdfUrl?: string;
   pdfPath?: string;
-  createdAt?: any;
+  createdAt?: Timestamp | null;
 }
 
 interface ServiceRecord {
@@ -63,7 +64,7 @@ interface ServiceRecord {
   department: string;
   photoUrl: string;
   photoPath: string;
-  createdAt: any;
+  createdAt?: Timestamp | null;
 }
 
 const Container = styled.View`
@@ -200,7 +201,54 @@ const AddButton = styled.TouchableOpacity`
   elevation: 5;
 `;
 
-const DashboardScreen = ({ navigation }: any) => {
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+
+type RootStackParamList = {
+  Dashboard: undefined;
+  ProjectDetails: { project: Project };
+  AddProject: undefined;
+};
+
+type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
+
+const LoaderContainer = styled.View`
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+`;
+
+const CenterWrapper = styled.View`
+  align-items: center;
+  width: 100%;
+`;
+
+const ActionBtnText = styled(RNText)`
+  color: white;
+  font-weight: bold;
+  margin-left: 10px;
+`;
+
+const ProjectImage = styled.Image`
+  width: 100%;
+  height: 100%;
+`;
+
+const AbsoluteLoader = styled(ActivityIndicator)`
+  position: absolute;
+  top: 50%;
+  align-self: center;
+`;
+
+const PhotoItemContainer = styled.View`
+  width: 120px;
+  height: 120px;
+  margin-right: 10px;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: ${(props) => props.theme.colors.background};
+`;
+
+const DashboardScreen = ({ navigation }: Props) => {
   const { role } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [records, setRecords] = useState<ServiceRecord[]>([]);
@@ -296,9 +344,9 @@ const DashboardScreen = ({ navigation }: any) => {
 
   if (loading)
     return (
-      <View style={{ flex: 1, justifyContent: 'center' }}>
+      <LoaderContainer>
         <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
+      </LoaderContainer>
     );
 
   const renderContent = () => {
@@ -306,7 +354,7 @@ const DashboardScreen = ({ navigation }: any) => {
       return (
         <FlatList
           data={hospitals}
-          keyExtractor={(item) => item}
+          keyExtractor={(item) => `hosp_${item}`}
           renderItem={({ item }) => (
             <ItemCard onPress={() => setSelectedHospital(item)} theme={theme}>
               <Folder size={24} color={theme.colors.primary} />
@@ -324,10 +372,10 @@ const DashboardScreen = ({ navigation }: any) => {
       return (
         <FlatList
           data={departments}
-          keyExtractor={(item) => item}
+          keyExtractor={(item) => `dept_${item}`}
           renderItem={({ item }) => (
             <ItemCard onPress={() => setSelectedDepartment(item)} theme={theme}>
-              <Folder size={24} color="#FFA000" />
+              <Folder size={24} color={theme.colors.warning || '#FFA000'} />
               <ItemInfo>
                 <ItemTitle theme={theme}>{item}</ItemTitle>
               </ItemInfo>
@@ -341,19 +389,13 @@ const DashboardScreen = ({ navigation }: any) => {
     return (
       <View style={{ flex: 1 }}>
         <DeptActions theme={theme}>
-          <View style={{ alignItems: 'center', width: '100%' }}>
-            <ActionBtn
-              onPress={uploadPhoto}
-              theme={theme}
-              title="Można dodać maksymalnie 15 zdjęć do archiwum"
-            >
+          <CenterWrapper>
+            <ActionBtn onPress={uploadPhoto} theme={theme}>
               <Camera size={20} color="white" />
-              <RNText style={{ color: 'white', fontWeight: 'bold', marginLeft: 10 }}>
-                Dodaj do archiwum
-              </RNText>
+              <ActionBtnText theme={theme}>Dodaj do archiwum</ActionBtnText>
             </ActionBtn>
             <HintText theme={theme}>Można dodać do 15 zdjęć dokumentujących efekt prac</HintText>
-          </View>
+          </CenterWrapper>
         </DeptActions>
 
         {records.length > 0 && (
@@ -361,14 +403,14 @@ const DashboardScreen = ({ navigation }: any) => {
             <PhotoTitle theme={theme}>Archiwum prac ({records.length}/15)</PhotoTitle>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {records.map((r) => (
-                <PhotoItem key={r.id}>
-                  <Image source={{ uri: r.photoUrl }} style={{ width: '100%', height: '100%' }} />
+                <PhotoItemContainer key={r.id} theme={theme}>
+                  <ProjectImage source={{ uri: r.photoUrl }} />
                   {role === 'DIRECTOR' && (
                     <DeleteBtn onPress={() => deletePhoto(r)}>
                       <Trash2 size={12} color="white" />
                     </DeleteBtn>
                   )}
-                </PhotoItem>
+                </PhotoItemContainer>
               ))}
             </ScrollView>
           </PhotoGallery>
@@ -421,12 +463,7 @@ const DashboardScreen = ({ navigation }: any) => {
           <Plus size={30} color="white" />
         </AddButton>
       )}
-      {uploading && (
-        <ActivityIndicator
-          size="large"
-          style={{ position: 'absolute', top: '50%', alignSelf: 'center' }}
-        />
-      )}
+      {uploading && <AbsoluteLoader size="large" color={theme.colors.primary} />}
     </Container>
   );
 };

@@ -26,7 +26,7 @@ import { db, auth } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { theme } from '../config/theme';
 import { notify } from '../utils/notify';
-import { Check, X, Calendar as CalendarIcon, Clock, ShieldCheck } from 'lucide-react-native';
+import { Check, X, Calendar as CalendarIcon, Clock, ShieldCheck, Trash2 } from 'lucide-react-native';
 import { format } from 'date-fns';
 
 const Container = styled.View`

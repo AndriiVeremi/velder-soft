@@ -84,6 +84,11 @@ const RegisterScreen = ({ navigation }: any) => {
     try {
       const { user } = await createUserWithEmailAndPassword(auth, email, password);
 
+      if (!user) {
+        notify.error('Nie udało się utworzyć konta');
+        return;
+      }
+
       await setDoc(doc(db, 'users', user.uid), {
         name,
         email,

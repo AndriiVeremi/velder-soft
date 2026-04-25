@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text as RNText,
@@ -202,14 +202,40 @@ const UploadOverlay = styled.View`
   align-items: center;
 `;
 
-const HomeScreen = ({ navigation }: any) => {
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+
+type RootStackParamList = {
+  Home: undefined;
+  Tasks: undefined;
+  // add other screens as needed or use a central navigation types file
+};
+
+type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+
+const CameraIconButton = styled.TouchableOpacity`
+  padding: 5px;
+`;
+
+const EmptyTasksText = styled(RNText)`
+  color: ${(props) => props.theme.colors.textSecondary};
+  text-align: center;
+  margin-top: 10px;
+`;
+
+const ShowAllText = styled(RNText)`
+  color: ${(props) => props.theme.colors.primary};
+  font-weight: bold;
+  margin-right: 5px;
+`;
+
+const HomeScreen = ({ navigation }: Props) => {
   const { user, role } = useAuth();
-  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [selectedDate, setSelectedDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
 
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const todayStr = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
 
   useEffect(() => {
     if (role === 'DIRECTOR') {
@@ -238,7 +264,8 @@ const HomeScreen = ({ navigation }: any) => {
   }, [user, todayStr]);
 
   useEffect(() => {
-    setLoading(true);
+    let isSubscribed = true;
+    
     const q = query(collection(db, 'tasks'), where('date', '==', selectedDate));
 
     const unsubscribe = onSnapshot(
@@ -248,16 +275,21 @@ const HomeScreen = ({ navigation }: any) => {
         const sorted = tasksData.sort((a, b) =>
           (a.time || '00:00').localeCompare(b.time || '00:00')
         );
-        setTasks(sorted.slice(0, 5));
-        setLoading(false);
+        if (isSubscribed) {
+          setTasks(sorted.slice(0, 5));
+          setLoading(false);
+        }
       },
       (error) => {
         console.warn('HomeScreen error:', error);
-        setLoading(false);
+        if (isSubscribed) setLoading(false);
       }
     );
 
-    return () => unsubscribe();
+    return () => {
+      isSubscribed = false;
+      unsubscribe();
+    };
   }, [selectedDate]);
 
   const toggleTask = async (id: string, currentStatus: boolean) => {
@@ -277,6 +309,7 @@ const HomeScreen = ({ navigation }: any) => {
     try {
       const response = await fetch(result.assets[0].uri);
       const blob = await response.blob();
+      // eslint-disable-next-line react-hooks/purity
       const filename = `task_photos/${taskId}_${Date.now()}.jpg`;
       const storageRef = ref(storage, filename);
       await uploadBytes(storageRef, blob);
@@ -311,7 +344,10 @@ const HomeScreen = ({ navigation }: any) => {
             <Card theme={theme}>
               <SectionTitle theme={theme}>Kalendarz</SectionTitle>
               <Calendar
-                onDayPress={(day) => setSelectedDate(day.dateString)}
+                onDayPress={(day) => {
+                  setLoading(true);
+                  setSelectedDate(day.dateString);
+                }}
                 markedDates={{
                   [selectedDate]: { selected: true, selectedColor: theme.colors.primary },
                 }}
@@ -338,15 +374,14 @@ const HomeScreen = ({ navigation }: any) => {
                       <TaskText theme={theme} done={task.done}>
                         {task.title}
                       </TaskText>
-                      <TouchableOpacity
+                      <CameraIconButton
                         onPress={() => addPhotoToTask(task.id)}
-                        style={{ padding: 5 }}
                       >
                         <Camera
                           size={20}
                           color={task.photoUrl ? theme.colors.success : theme.colors.textSecondary}
                         />
-                      </TouchableOpacity>
+                      </CameraIconButton>
                     </TaskRow>
                     {task.time && <TaskTime theme={theme}>{task.time}</TaskTime>}
                     {task.photoUrl && <TaskImagePreview source={{ uri: task.photoUrl }} />}
@@ -354,16 +389,14 @@ const HomeScreen = ({ navigation }: any) => {
                 ))
               )}
               {tasks.length === 0 && !loading && (
-                <RNText
-                  style={{ color: theme.colors.textSecondary, textAlign: 'center', marginTop: 10 }}
-                >
+                <EmptyTasksText theme={theme}>
                   Brak zadań.
-                </RNText>
+                </EmptyTasksText>
               )}
               <ShowAllButton onPress={() => navigation.navigate('Tasks')}>
-                <RNText style={{ color: theme.colors.primary, fontWeight: 'bold', marginRight: 5 }}>
+                <ShowAllText theme={theme}>
                   Wszystkie zadania
-                </RNText>
+                </ShowAllText>
                 <ArrowRight size={18} color={theme.colors.primary} />
               </ShowAllButton>
             </Card>

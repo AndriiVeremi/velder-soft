@@ -212,6 +212,95 @@ const ViewerButton = styled.TouchableOpacity`
   align-items: center;
 `;
 
+const DateTimeText = styled(RNText)`
+  font-size: 12px;
+  color: ${(props) => props.theme.colors.textSecondary};
+`;
+
+const PhotoCountBadge = styled(RNText)`
+  font-size: 10px;
+  font-weight: bold;
+  color: ${(props) => props.theme.colors.success};
+  position: absolute;
+  top: 0;
+  right: 0;
+`;
+
+const CloseViewerButton = styled.TouchableOpacity`
+  position: absolute;
+  top: 50px;
+  right: 20px;
+  z-index: 10;
+`;
+
+const ModalScrollView = styled.ScrollView`
+  background-color: white;
+  width: 100%;
+  max-width: 600px;
+  border-radius: 15px;
+  max-height: 95%;
+`;
+
+const ModalContentContainer = styled.View`
+  padding: 25px;
+`;
+
+const ModalHeader = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  margin-bottom: 20px;
+`;
+
+const ModalTitleText = styled(RNText)`
+  font-size: 20px;
+  font-weight: bold;
+`;
+
+const InputLabel = styled(RNText)`
+  font-size: 14px;
+  font-weight: bold;
+  color: ${(props) => props.theme.colors.textSecondary};
+  margin-bottom: 8px;
+`;
+
+const StyledTextInput = styled.TextInput`
+  background-color: ${(props) => props.theme.colors.background};
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-size: 16px;
+  border: 1px solid ${(props) => props.theme.colors.border};
+`;
+
+const TextArea = styled(StyledTextInput)`
+  height: 70px;
+`;
+
+const SaveButton = styled.TouchableOpacity`
+  background-color: ${(props) => props.theme.colors.primary};
+  padding: 18px;
+  border-radius: 10px;
+  align-items: center;
+  margin-top: 20px;
+`;
+
+const SaveButtonText = styled(RNText)`
+  color: white;
+  font-weight: bold;
+`;
+
+const UploadOverlay = styled.View`
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: rgba(255, 255, 255, 0.7);
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`;
+
 const TasksScreen = () => {
   const { role, userData } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -334,7 +423,7 @@ const TasksScreen = () => {
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') return notify.error('Brak uprawnień');
-      const fileUri = FileSystem.cacheDirectory + 'task_photo.jpg';
+      const fileUri = (FileSystem as any).cacheDirectory + 'task_photo.jpg';
       const { uri } = await FileSystem.downloadAsync(viewerUrl, fileUri);
       await MediaLibrary.saveToLibraryAsync(uri);
       notify.success('Zapisano w galerii');
@@ -404,13 +493,13 @@ const TasksScreen = () => {
                         color={item.done ? theme.colors.success : theme.colors.border}
                       />
                     </TouchableOpacity>
-                    <TaskInfo onPress={() => toggleTask(item.id, item.done)}>
+                    <TaskInfo onTouchEnd={() => toggleTask(item.id, item.done)}>
                       <TaskTitle theme={theme} done={item.done}>
                         {item.title}
                       </TaskTitle>
-                      <RNText style={{ fontSize: 12, color: theme.colors.textSecondary }}>
+                      <DateTimeText theme={theme}>
                         {item.date} {item.time}
-                      </RNText>
+                      </DateTimeText>
                     </TaskInfo>
                     <ActionButtons>
                       <IconButton onPress={() => addPhoto(item)}>
@@ -423,18 +512,7 @@ const TasksScreen = () => {
                           }
                         />
                         {(item.photos?.length || 0) > 0 && (
-                          <RNText
-                            style={{
-                              fontSize: 10,
-                              fontWeight: 'bold',
-                              color: theme.colors.success,
-                              position: 'absolute',
-                              top: 0,
-                              right: 0,
-                            }}
-                          >
-                            {item.photos?.length}
-                          </RNText>
+                          <PhotoCountBadge theme={theme}>{item.photos?.length}</PhotoCountBadge>
                         )}
                       </IconButton>
                       {role === 'DIRECTOR' && (
@@ -480,9 +558,9 @@ const TasksScreen = () => {
                           </TaskImgThumb>
                         )}
 
-                        {item.photos?.map((photo, idx) => (
+                        {item.photos?.map((photo) => (
                           <TaskImgThumb
-                            key={idx}
+                            key={photo.path}
                             onPress={() => {
                               setViewerUrl(photo.url);
                               setViewerVisible(true);
@@ -518,12 +596,9 @@ const TasksScreen = () => {
 
         <Modal visible={viewerVisible} transparent animationType="fade">
           <ViewerOverlay>
-            <TouchableOpacity
-              style={{ position: 'absolute', top: 50, right: 20, zIndex: 10 }}
-              onPress={() => setViewerVisible(false)}
-            >
+            <CloseViewerButton onPress={() => setViewerVisible(false)}>
               <X size={30} color="white" />
-            </TouchableOpacity>
+            </CloseViewerButton>
             {viewerUrl && <ViewerImage source={{ uri: viewerUrl }} />}
             <ViewerActions>
               <ViewerButton onPress={downloadImage} disabled={downloading}>
@@ -544,113 +619,56 @@ const TasksScreen = () => {
 
         <Modal visible={modalVisible} transparent animationType="slide">
           <ModalOverlay>
-            <ScrollView
-              style={{
-                backgroundColor: 'white',
-                width: '100%',
-                maxWidth: 600,
-                borderRadius: 15,
-                maxHeight: '95%',
-              }}
-            >
-              <View style={{ padding: 25 }}>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    marginBottom: 20,
-                  }}
-                >
-                  <RNText style={{ fontSize: 20, fontWeight: 'bold' }}>
+            <ModalScrollView theme={theme}>
+              <ModalContentContainer theme={theme}>
+                <ModalHeader theme={theme}>
+                  <ModalTitleText theme={theme}>
                     {editingId ? 'Edytuj' : 'Nowe zadanie'}
-                  </RNText>
+                  </ModalTitleText>
                   <TouchableOpacity onPress={() => setModalVisible(false)}>
-                    <X size={24} />
+                    <X size={24} color={theme.colors.text} />
                   </TouchableOpacity>
-                </View>
-                <RNText
-                  style={{ fontSize: 14, fontWeight: 'bold', color: '#666', marginBottom: 8 }}
-                >
-                  TYTUŁ
-                </RNText>
-                <styled.TextInput
-                  style={{
-                    backgroundColor: '#f8f9fa',
-                    padding: 12,
-                    borderRadius: 8,
-                    marginBottom: 15,
-                    fontSize: 16,
-                    border: '1px solid #eee',
-                  }}
+                </ModalHeader>
+                <InputLabel theme={theme}>TYTUŁ</InputLabel>
+                <StyledTextInput
+                  theme={theme}
                   placeholder="Co зробити?"
                   value={title}
                   onChangeText={setTitle}
+                  placeholderTextColor={theme.colors.textSecondary}
                 />
-                <RNText
-                  style={{ fontSize: 14, fontWeight: 'bold', color: '#666', marginBottom: 8 }}
-                >
-                  OPIS
-                </RNText>
-                <styled.TextInput
-                  style={{
-                    backgroundColor: '#f8f9fa',
-                    padding: 12,
-                    borderRadius: 8,
-                    marginBottom: 15,
-                    fontSize: 16,
-                    border: '1px solid #eee',
-                    height: 70,
-                    textAlignVertical: 'top',
-                  }}
+                <InputLabel theme={theme}>OPIS</InputLabel>
+                <TextArea
+                  theme={theme}
                   placeholder="Szczegóły..."
                   value={description}
                   onChangeText={setDescription}
                   multiline
+                  placeholderTextColor={theme.colors.textSecondary}
                 />
-                <RNText
-                  style={{ fontSize: 14, fontWeight: 'bold', color: '#666', marginBottom: 8 }}
-                >
-                  DATA
-                </RNText>
+                <InputLabel theme={theme}>DATA</InputLabel>
                 <Calendar
                   onDayPress={(day) => setSelectedDate(day.dateString)}
                   markedDates={{
                     [selectedDate]: { selected: true, selectedColor: theme.colors.primary },
                   }}
-                />
-                <TouchableOpacity
-                  style={{
-                    backgroundColor: theme.colors.primary,
-                    padding: 18,
-                    borderRadius: 10,
-                    alignItems: 'center',
-                    marginTop: 20,
+                  theme={{
+                    todayTextColor: theme.colors.primary,
+                    selectedDayBackgroundColor: theme.colors.primary,
                   }}
-                  onPress={saveTask}
-                >
-                  <RNText style={{ color: 'white', fontWeight: 'bold' }}>ZAPISZ</RNText>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
+                />
+                <SaveButton theme={theme} onPress={saveTask}>
+                  <SaveButtonText theme={theme}>ZAPISZ</SaveButtonText>
+                </SaveButton>
+              </ModalContentContainer>
+            </ModalScrollView>
           </ModalOverlay>
         </Modal>
 
         {uploading && (
-          <View
-            style={{
-              position: 'absolute',
-              top: 0,
-              bottom: 0,
-              left: 0,
-              right: 0,
-              backgroundColor: 'rgba(255,255,255,0.7)',
-              justifyContent: 'center',
-              alignItems: 'center',
-              zIndex: 1000,
-            }}
-          >
+          <UploadOverlay theme={theme}>
             <ActivityIndicator size="large" color={theme.colors.primary} />
-          </View>
+          </UploadOverlay>
         )}
       </Container>
     </GestureHandlerRootView>

@@ -17,6 +17,11 @@ import { useAuth } from '../context/AuthContext';
 import { signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
 
+type NavigationProp = {
+  navigate: (screen: string, params?: object) => void;
+  goBack: () => void;
+};
+
 const { width } = Dimensions.get('window');
 const isDesktop = Platform.OS === 'web' && width > 768;
 
@@ -91,7 +96,21 @@ const ContentArea = styled.View`
   flex: 1;
 `;
 
-export const MainLayout = ({ children, navigation, currentRoute }: any) => {
+const Spacer = styled.View`
+  flex: 1;
+`;
+
+const LogoutNavText = styled(NavText)`
+  color: ${(props) => props.theme.colors.error};
+`;
+
+interface MainLayoutProps {
+  children: React.ReactNode;
+  navigation: NavigationProp;
+  currentRoute: string;
+}
+
+export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutProps) => {
   const { role } = useAuth();
 
   const menuItems = [
@@ -130,13 +149,11 @@ export const MainLayout = ({ children, navigation, currentRoute }: any) => {
             </NavItem>
           ))}
 
-          <View style={{ flex: 1 }} />
+          <Spacer />
 
           <NavItem theme={theme} onPress={() => signOut(auth)}>
             <LogOut size={22} color={theme.colors.error} />
-            <NavText theme={theme} style={{ color: theme.colors.error }}>
-              Wyloguj się
-            </NavText>
+            <LogoutNavText theme={theme}>Wyloguj się</LogoutNavText>
           </NavItem>
         </Sidebar>
 

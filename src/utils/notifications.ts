@@ -7,6 +7,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -40,7 +42,9 @@ export async function setBadgeCount(count: number) {
 }
 
 export async function scheduleDailyReminder(taskCount: number, startTime: string = '09:00') {
-  if (Platform.OS === 'web' || taskCount === 0) {
+  if (Platform.OS === 'web') return;
+  
+  if (taskCount === 0) {
     await Notifications.cancelAllScheduledNotificationsAsync();
     return;
   }
@@ -57,9 +61,9 @@ export async function scheduleDailyReminder(taskCount: number, startTime: string
       badge: taskCount,
     },
     trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DAILY,
       hour: hour,
       minute: minute,
-      repeats: true,
     } as Notifications.DailyTriggerInput,
   });
 }

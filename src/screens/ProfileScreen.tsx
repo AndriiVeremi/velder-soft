@@ -142,6 +142,49 @@ const LogoutButton = styled.TouchableOpacity`
   margin-top: 20px;
 `;
 
+const EditInputWrapper = styled.View`
+  align-items: center;
+  margin-bottom: 15px;
+`;
+
+const EditIconButton = styled.TouchableOpacity`
+  margin-left: 10px;
+`;
+
+const SectionTitleText = styled(RNText)`
+  font-weight: bold;
+  margin-bottom: 15px;
+  font-size: 16px;
+  color: ${(props) => props.theme.colors.text};
+`;
+
+const SectionLabel = styled(RNText)`
+  font-size: 12px;
+  color: ${(props) => props.theme.colors.textSecondary};
+`;
+
+const TimeSeparator = styled(RNText)`
+  font-size: 24px;
+  font-weight: bold;
+  margin-horizontal: 10px;
+  color: ${(props) => props.theme.colors.text};
+`;
+
+const SaveSettingsButton = styled.TouchableOpacity`
+  background-color: ${(props) => props.theme.colors.primary};
+  padding: 15px;
+  border-radius: 10px;
+  margin-top: 25px;
+  align-items: center;
+`;
+
+const LogoutButtonText = styled(RNText)`
+  color: ${(props) => props.theme.colors.error};
+  font-weight: bold;
+  margin-left: 10px;
+  font-size: 16px;
+`;
+
 const ProfileScreen = () => {
   const { user, userData, role } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
@@ -153,20 +196,26 @@ const ProfileScreen = () => {
   const [endM, setEndM] = useState(0);
 
   useEffect(() => {
-    if (userData?.name) setName(userData.name);
-    if (userData?.notificationStart) {
-      const [h, m] = userData.notificationStart.split(':');
-      setStartH(parseInt(h));
-      setStartM(parseInt(m));
-    }
-    if (userData?.notificationEnd) {
-      const [h, m] = userData.notificationEnd.split(':');
-      setEndH(parseInt(h));
-      setEndM(parseInt(m));
-    }
+    if (!userData) return;
+
+    // Use a microtask to avoid synchronous setState during render/effect phase
+    Promise.resolve().then(() => {
+      if (userData.name) setName(userData.name);
+      if (userData.notificationStart) {
+        const [h, m] = userData.notificationStart.split(':');
+        setStartH(parseInt(h));
+        setStartM(parseInt(m));
+      }
+      if (userData.notificationEnd) {
+        const [h, m] = userData.notificationEnd.split(':');
+        setEndH(parseInt(h));
+        setEndM(parseInt(m));
+      }
+    });
   }, [userData]);
 
   const saveSettings = async () => {
+    if (!user) return;
     setLoading(true);
     const start = `${startH.toString().padStart(2, '0')}:${startM.toString().padStart(2, '0')}`;
     const end = `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
@@ -236,35 +285,36 @@ const ProfileScreen = () => {
           </AvatarCircle>
 
           {isEditing ? (
-            <View style={{ alignItems: 'center', marginBottom: 15 }}>
+            <EditInputWrapper theme={theme}>
               <EditInput theme={theme} value={name} onChangeText={setName} autoFocus />
-            </View>
+            </EditInputWrapper>
           ) : (
-            <NameContainer>
-              <NameText>{userData?.name || 'Użytkownik'}</NameText>
-              <TouchableOpacity onPress={() => setIsEditing(true)} style={{ marginLeft: 10 }}>
-                <Edit2 size={16} color="#999" />
-              </TouchableOpacity>
+            <NameContainer theme={theme}>
+              <NameText theme={theme}>{userData?.name || 'Użytkownik'}</NameText>
+              <EditIconButton onPress={() => setIsEditing(true)} theme={theme}>
+                <Edit2 size={16} color={theme.colors.textSecondary} />
+              </EditIconButton>
             </NameContainer>
           )}
 
           <EmailText theme={theme}>{user?.email}</EmailText>
 
           <RoleBadge isAdmin={role === 'DIRECTOR'} theme={theme}>
-            <Shield size={14} color={role === 'DIRECTOR' ? '#E65100' : '#1A237E'} />
-            <RoleText isAdmin={role === 'DIRECTOR'}>{role}</RoleText>
+            <Shield
+              size={14}
+              color={role === 'DIRECTOR' ? theme.colors.warning : theme.colors.primary}
+            />
+            <RoleText isAdmin={role === 'DIRECTOR'} theme={theme}>
+              {role}
+            </RoleText>
           </RoleBadge>
 
           <InfoSection theme={theme}>
-            <RNText style={{ fontWeight: 'bold', marginBottom: 15, fontSize: 16 }}>
-              Ustawienia powiadomień
-            </RNText>
+            <SectionTitleText theme={theme}>Ustawienia powiadomień</SectionTitleText>
 
-            <RNText style={{ fontSize: 12, color: '#666' }}>
-              Początek pracy (Pierwszy sygnał):
-            </RNText>
-            <TimePickerContainer>
-              <TimeBlock>
+            <SectionLabel theme={theme}>Początek pracy (Pierwszy sygnał):</SectionLabel>
+            <TimePickerContainer theme={theme}>
+              <TimeBlock theme={theme}>
                 <TouchableOpacity onPress={() => adjustTime('sh', 1)}>
                   <ChevronUp size={24} color={theme.colors.primary} />
                 </TouchableOpacity>
@@ -273,8 +323,8 @@ const ProfileScreen = () => {
                   <ChevronDown size={24} color={theme.colors.primary} />
                 </TouchableOpacity>
               </TimeBlock>
-              <RNText style={{ fontSize: 24, fontWeight: 'bold', marginHorizontal: 10 }}>:</RNText>
-              <TimeBlock>
+              <TimeSeparator theme={theme}>:</TimeSeparator>
+              <TimeBlock theme={theme}>
                 <TouchableOpacity onPress={() => adjustTime('sm', 5)}>
                   <ChevronUp size={24} color={theme.colors.primary} />
                 </TouchableOpacity>
@@ -285,11 +335,11 @@ const ProfileScreen = () => {
               </TimeBlock>
             </TimePickerContainer>
 
-            <RNText style={{ fontSize: 12, color: '#666', marginTop: 20 }}>
+            <SectionLabel theme={theme} style={{ marginTop: 20 }}>
               Koniec pracy (Tryb ciszy po):
-            </RNText>
-            <TimePickerContainer>
-              <TimeBlock>
+            </SectionLabel>
+            <TimePickerContainer theme={theme}>
+              <TimeBlock theme={theme}>
                 <TouchableOpacity onPress={() => adjustTime('eh', 1)}>
                   <ChevronUp size={24} color={theme.colors.primary} />
                 </TouchableOpacity>
@@ -298,28 +348,19 @@ const ProfileScreen = () => {
                   <ChevronDown size={24} color={theme.colors.primary} />
                 </TouchableOpacity>
               </TimeBlock>
-              <RNText style={{ fontSize: 24, fontWeight: 'bold', marginHorizontal: 10 }}>:</RNText>
-              <TimeBlock>
-                <TouchableOpacity onPress={() => adjustTime('em', 5)}>
+              <TimeSeparator theme={theme}>:</TimeSeparator>
+              <TimeBlock theme={theme}>
+                <TouchableOpacity onPress={() => adjustTime('sm', 5)}>
                   <ChevronUp size={24} color={theme.colors.primary} />
                 </TouchableOpacity>
                 <TimeValue theme={theme}>{endM.toString().padStart(2, '0')}</TimeValue>
-                <TouchableOpacity onPress={() => adjustTime('em', -5)}>
+                <TouchableOpacity onPress={() => adjustTime('sm', -5)}>
                   <ChevronDown size={24} color={theme.colors.primary} />
                 </TouchableOpacity>
               </TimeBlock>
             </TimePickerContainer>
 
-            <TouchableOpacity
-              onPress={saveSettings}
-              style={{
-                backgroundColor: theme.colors.primary,
-                padding: 15,
-                borderRadius: 10,
-                marginTop: 25,
-                alignItems: 'center',
-              }}
-            >
+            <SaveSettingsButton onPress={saveSettings} theme={theme}>
               {loading ? (
                 <ActivityIndicator color="white" />
               ) : (
@@ -327,17 +368,13 @@ const ProfileScreen = () => {
                   Zapisz zmiany
                 </RNText>
               )}
-            </TouchableOpacity>
+            </SaveSettingsButton>
           </InfoSection>
         </ProfileCard>
 
         <LogoutButton theme={theme} onPress={handleLogout}>
           <LogOut size={20} color={theme.colors.error} />
-          <RNText
-            style={{ color: theme.colors.error, fontWeight: 'bold', marginLeft: 10, fontSize: 16 }}
-          >
-            Wyloguj się
-          </RNText>
+          <LogoutButtonText theme={theme}>Wyloguj się</LogoutButtonText>
         </LogoutButton>
       </Content>
     </Container>

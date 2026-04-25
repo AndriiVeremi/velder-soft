@@ -111,9 +111,91 @@ const ModalContent = styled.View`
   max-width: 500px;
 `;
 
+interface Reminder {
+  id: string;
+  userId: string;
+  title: string;
+  date: string;
+  time: string;
+  done: boolean;
+  createdAt: any;
+}
+
+const LoaderContainer = styled.View`
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+`;
+
+const EmptyText = styled(RNText)`
+  text-align: center;
+  margin-top: 50px;
+  color: ${(props) => props.theme.colors.textSecondary};
+`;
+
+const ModalOverlay = styled.View`
+  flex: 1;
+  background-color: rgba(0, 0, 0, 0.5);
+  justify-content: center;
+  align-items: center;
+`;
+
+const ModalHeader = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  margin-bottom: 20px;
+`;
+
+const InputContainer = styled.View`
+  flex-direction: row;
+  align-items: center;
+  background-color: ${(props) => props.theme.colors.background};
+  border-radius: 10px;
+  padding-horizontal: 10px;
+  border-width: 1px;
+  border-color: ${(props) => props.theme.colors.border};
+`;
+
+const ReminderInput = styled.TextInput`
+  flex: 1;
+  padding: 15px;
+  font-size: 16px;
+  color: ${(props) => props.theme.colors.text};
+`;
+
+const MicButton = styled.TouchableOpacity`
+  padding: 10px;
+`;
+
+const Label = styled(RNText)`
+  font-size: 12px;
+  font-weight: bold;
+  color: ${(props) => props.theme.colors.textSecondary};
+  margintop: 15px;
+  marginbottom: 5px;
+`;
+
+const TimeInput = styled.TextInput`
+  background-color: ${(props) => props.theme.colors.background};
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 16px;
+  border-width: 1px;
+  border-color: ${(props) => props.theme.colors.border};
+  color: ${(props) => props.theme.colors.text};
+`;
+
+const SetReminderButton = styled.TouchableOpacity`
+  background-color: ${(props) => props.theme.colors.primary};
+  padding: 18px;
+  border-radius: 10px;
+  margin-top: 25px;
+  align-items: center;
+`;
+
 const RemindersScreen = () => {
   const { user } = useAuth();
-  const [reminders, setReminders] = useState<any[]>([]);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -129,9 +211,9 @@ const RemindersScreen = () => {
     const unsubscribe = onSnapshot(
       q,
       (snap) => {
-        const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Reminder);
 
-        const sorted = data.sort((a: any, b: any) => {
+        const sorted = data.sort((a, b) => {
           if (a.date !== b.date) return a.date.localeCompare(b.date);
           return a.time.localeCompare(b.time);
         });
@@ -152,7 +234,7 @@ const RemindersScreen = () => {
     if (!title.trim()) return notify.error('Wpisz treść przypomnienia');
 
     try {
-      const docRef = await addDoc(collection(db, 'reminders'), {
+      await addDoc(collection(db, 'reminders'), {
         userId: auth.currentUser?.uid,
         title,
         date,
@@ -170,9 +252,8 @@ const RemindersScreen = () => {
           content: {
             title: 'Osobiste przypomnienie! 🔔',
             body: title,
-            sound: true,
           },
-          trigger: scheduleDate,
+          trigger: scheduleDate as unknown as Notifications.NotificationTriggerInput,
         });
       }
 
@@ -184,7 +265,7 @@ const RemindersScreen = () => {
     }
   };
 
-  const toggleDone = async (item: any) => {
+  const toggleDone = async (item: Reminder) => {
     await updateDoc(doc(db, 'reminders', item.id), { done: !item.done });
   };
 
@@ -197,9 +278,9 @@ const RemindersScreen = () => {
 
   if (loading)
     return (
-      <View style={{ flex: 1, justifyContent: 'center' }}>
+      <LoaderContainer>
         <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
+      </LoaderContainer>
     );
 
   return (
@@ -228,15 +309,11 @@ const RemindersScreen = () => {
               </ReminderTime>
             </CardContent>
             <TouchableOpacity onPress={() => deleteReminder(item.id)}>
-              <Trash2 size={20} color="#ccc" />
+              <Trash2 size={20} color={theme.colors.border} />
             </TouchableOpacity>
           </ReminderCard>
         )}
-        ListEmptyComponent={
-          <RNText style={{ textAlign: 'center', marginTop: 50, color: '#999' }}>
-            Nie masz jeszcze przypomnień.
-          </RNText>
-        }
+        ListEmptyComponent={<EmptyText theme={theme}>Nie masz jeszcze przypomnień.</EmptyText>}
       />
 
       <AddButton theme={theme} onPress={() => setModalVisible(true)}>
@@ -244,55 +321,29 @@ const RemindersScreen = () => {
       </AddButton>
 
       <Modal visible={modalVisible} transparent animationType="slide">
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
-        >
-          <ModalContent>
-            <View
-              style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}
-            >
+        <ModalOverlay>
+          <ModalContent theme={theme}>
+            <ModalHeader>
               <RNText style={{ fontSize: 18, fontWeight: 'bold' }}>Nowe przypomnienie</RNText>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} />
+                <X size={24} color={theme.colors.text} />
               </TouchableOpacity>
-            </View>
+            </ModalHeader>
 
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: '#f9f9f9',
-                borderRadius: 10,
-                paddingHorizontal: 10,
-              }}
-            >
-              <TextInput
+            <InputContainer theme={theme}>
+              <ReminderInput
+                theme={theme}
                 placeholder="O czym Ci przypomnieć?"
                 value={title}
                 onChangeText={setTitle}
-                style={{ flex: 1, padding: 15, fontSize: 16 }}
+                placeholderTextColor={theme.colors.textSecondary}
               />
-              <TouchableOpacity style={{ padding: 10 }}>
+              <MicButton>
                 <Mic size={24} color={theme.colors.primary} />
-              </TouchableOpacity>
-            </View>
+              </MicButton>
+            </InputContainer>
 
-            <RNText
-              style={{
-                fontSize: 12,
-                fontWeight: 'bold',
-                color: '#666',
-                marginTop: 15,
-                marginBottom: 5,
-              }}
-            >
-              DATA
-            </RNText>
+            <Label theme={theme}>DATA</Label>
             <Calendar
               onDayPress={(day) => setSelectedDate(day.dateString)}
               markedDates={{ [date]: { selected: true, selectedColor: theme.colors.primary } }}
@@ -302,38 +353,20 @@ const RemindersScreen = () => {
               }}
             />
 
-            <RNText
-              style={{
-                fontSize: 12,
-                fontWeight: 'bold',
-                color: '#666',
-                marginTop: 15,
-                marginBottom: 5,
-              }}
-            >
-              GODZINA (HH:MM)
-            </RNText>
-            <TextInput
+            <Label theme={theme}>GODZINA (HH:MM)</Label>
+            <TimeInput
+              theme={theme}
               value={time}
               onChangeText={setTime}
               placeholder="10:00"
-              style={{ backgroundColor: '#f9f9f9', padding: 12, borderRadius: 8, fontSize: 16 }}
+              placeholderTextColor={theme.colors.textSecondary}
             />
 
-            <TouchableOpacity
-              onPress={handleAdd}
-              style={{
-                backgroundColor: theme.colors.primary,
-                padding: 18,
-                borderRadius: 10,
-                marginTop: 25,
-                alignItems: 'center',
-              }}
-            >
+            <SetReminderButton onPress={handleAdd} theme={theme}>
               <RNText style={{ color: 'white', fontWeight: 'bold' }}>USTAW PRZYPOMNIENIE</RNText>
-            </TouchableOpacity>
+            </SetReminderButton>
           </ModalContent>
-        </View>
+        </ModalOverlay>
       </Modal>
     </Container>
   );

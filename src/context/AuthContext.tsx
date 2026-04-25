@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Timestamp } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
@@ -10,7 +11,9 @@ interface UserDocument {
   email?: string;
   role?: UserRole;
   isActive?: boolean;
-  createdAt?: any;
+  createdAt?: Timestamp | null;
+  notificationStart?: string;
+  notificationEnd?: string;
 }
 
 interface AuthContextType {

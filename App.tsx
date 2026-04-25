@@ -28,7 +28,7 @@ import PendingApprovalScreen from './src/screens/PendingApprovalScreen';
 LogBox.ignoreLogs(['Image: style.tintColor is deprecated', 'Blocked aria-hidden on an element']);
 
 // Динамічний імпорт Toaster тільки для вебу
-let Toaster: any = () => null;
+let Toaster: React.FC = () => null;
 if (Platform.OS === 'web') {
   try {
     Toaster = require('react-hot-toast').Toaster;
@@ -45,7 +45,7 @@ type RootStackParamList = {
   Reminders: undefined;
   Profile: undefined;
   AddProject: undefined;
-  ProjectDetails: { project: any };
+  ProjectDetails: { project: unknown };
   Login: undefined;
   Register: undefined;
   PendingApproval: undefined;
@@ -57,11 +57,12 @@ const CenteredContainer = styled.View`
   flex: 1;
   justify-content: center;
   align-items: center;
-  background-color: ${(props) => props.theme.colors.background};
+  background-color: ${(props: { theme: { colors: { background: string } } }) =>
+    props.theme.colors.background};
 `;
 
 interface ScreenProps {
-  navigation: StackNavigationProp<RootStackParamList, any>;
+  navigation: StackNavigationProp<RootStackParamList, keyof RootStackParamList>;
 }
 
 const HomeWithLayout = ({ navigation }: ScreenProps) => (
@@ -197,7 +198,7 @@ export default function App() {
         <NavigationContainer>
           <RootNavigation />
         </NavigationContainer>
-        {Platform.OS === 'web' && <Toaster position="top-right" />}
+        {Platform.OS === 'web' && <Toaster />}
       </AuthProvider>
     </ThemeProvider>
   );
