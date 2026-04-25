@@ -53,12 +53,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (docSnap.exists()) {
               const data = docSnap.data() as UserDocument;
 
-              setRole('DIRECTOR');
-              setIsActive(true);
+              setRole(data.role ?? 'EMPLOYEE');
+              setIsActive(data.isActive ?? false);
               setUserData(data);
             } else {
-              setRole('DIRECTOR');
-              setIsActive(true);
+              setRole('EMPLOYEE');
+              setIsActive(false);
               setUserData(null);
             }
             setLoading(false);

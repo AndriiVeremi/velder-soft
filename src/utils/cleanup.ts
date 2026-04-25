@@ -23,7 +23,7 @@ export async function runWeeklyCleanup() {
     if (systemSnap.exists()) {
       const lastCleanup = systemSnap.data().lastCleanup?.toMillis() || 0;
       if (now - lastCleanup < oneWeekMs) {
-        return; 
+        return;
       }
     }
 

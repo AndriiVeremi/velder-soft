@@ -21,17 +21,20 @@ import {
   writeBatch,
   doc,
   updateDoc,
+  orderBy,
+  limit,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import * as ImagePicker from 'expo-image-picker';
 import { db, storage } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { theme } from '../config/theme';
-import { CheckCircle2, Camera, ArrowRight } from 'lucide-react-native';
+import { CheckCircle2, Camera, ArrowRight, Megaphone } from 'lucide-react-native';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { notify } from '../utils/notify';
 import { runWeeklyCleanup } from '../utils/cleanup';
+import * as Notifications from 'expo-notifications';
 
 interface Task {
   id: string;
@@ -43,6 +46,13 @@ interface Task {
   photoUrl?: string;
   photoPath?: string;
   wasMoved?: boolean;
+}
+
+interface Announcement {
+  id: string;
+  text: string;
+  createdAt: any;
+  authorName: string;
 }
 
 const { width } = Dimensions.get('window');
@@ -202,15 +212,9 @@ const UploadOverlay = styled.View`
   align-items: center;
 `;
 
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { StackScreenProps } from '@react-navigation/stack';
 
-type RootStackParamList = {
-  Home: undefined;
-  Tasks: undefined;
-  // add other screens as needed or use a central navigation types file
-};
-
-type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+type Props = StackScreenProps<any, 'Home'>;
 
 const CameraIconButton = styled.TouchableOpacity`
   padding: 5px;
@@ -228,20 +232,60 @@ const ShowAllText = styled(RNText)`
   margin-right: 5px;
 `;
 
+const AnnouncementCard = styled.TouchableOpacity`
+  background-color: #fff4e5;
+  padding: 15px;
+  border-radius: 12px;
+  border-left-width: 5px;
+  border-left-color: #ff9800;
+  margin-bottom: 20px;
+  flex-direction: row;
+  align-items: center;
+  border-width: 1px;
+  border-color: #ffe0b2;
+`;
+
+const AnnouncementText = styled(RNText)`
+  flex: 1;
+  font-size: 14px;
+  color: #663c00;
+  font-weight: 600;
+  margin-left: 12px;
+`;
+
 const HomeScreen = ({ navigation }: Props) => {
   const { user, role } = useAuth();
   const [selectedDate, setSelectedDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [latestAnnouncement, setLatestAnnouncement] = useState<Announcement | null>(null);
 
   const todayStr = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
 
   useEffect(() => {
-    if (role === 'DIRECTOR') {
-      runWeeklyCleanup();
-    }
-  }, [role]);
+    const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'), limit(1));
+    const unsubscribe = onSnapshot(q, (snap) => {
+      if (!snap.empty) {
+        const data = { id: snap.docs[0].id, ...snap.docs[0].data() } as Announcement;
+        setLatestAnnouncement(data);
+
+        const now = Date.now();
+        const created = data.createdAt?.toMillis() || now;
+        if (now - created < 60000 && Platform.OS !== 'web') {
+          Notifications.scheduleNotificationAsync({
+            content: {
+              title: 'Wiadomość od Dyrektora! 📢',
+              body: data.text,
+              sound: true,
+            },
+            trigger: null,
+          });
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const moveOverdue = async () => {
@@ -265,7 +309,7 @@ const HomeScreen = ({ navigation }: Props) => {
 
   useEffect(() => {
     let isSubscribed = true;
-    
+
     const q = query(collection(db, 'tasks'), where('date', '==', selectedDate));
 
     const unsubscribe = onSnapshot(
@@ -328,11 +372,27 @@ const HomeScreen = ({ navigation }: Props) => {
     }
   };
 
+  useEffect(() => {
+    if (role === 'DIRECTOR') {
+      runWeeklyCleanup();
+    }
+  }, [role]);
+
   return (
     <Container theme={theme}>
       <Content theme={theme}>
         <MainWrapper theme={theme}>
           <LeftColumn theme={theme}>
+            {latestAnnouncement && (
+              <AnnouncementCard theme={theme} onPress={() => navigation.navigate('Announcements')}>
+                <Megaphone size={24} color="#ff9800" />
+                <AnnouncementText theme={theme} numberOfLines={2}>
+                  {latestAnnouncement.text}
+                </AnnouncementText>
+                <ArrowRight size={18} color="#ff9800" />
+              </AnnouncementCard>
+            )}
+
             <DateBanner theme={theme}>
               <BannerDate theme={theme}>
                 {format(new Date(selectedDate), 'd MMMM yyyy', { locale: pl })}
@@ -374,9 +434,7 @@ const HomeScreen = ({ navigation }: Props) => {
                       <TaskText theme={theme} done={task.done}>
                         {task.title}
                       </TaskText>
-                      <CameraIconButton
-                        onPress={() => addPhotoToTask(task.id)}
-                      >
+                      <CameraIconButton onPress={() => addPhotoToTask(task.id)}>
                         <Camera
                           size={20}
                           color={task.photoUrl ? theme.colors.success : theme.colors.textSecondary}
@@ -389,14 +447,10 @@ const HomeScreen = ({ navigation }: Props) => {
                 ))
               )}
               {tasks.length === 0 && !loading && (
-                <EmptyTasksText theme={theme}>
-                  Brak zadań.
-                </EmptyTasksText>
+                <EmptyTasksText theme={theme}>Brak zadań.</EmptyTasksText>
               )}
               <ShowAllButton onPress={() => navigation.navigate('Tasks')}>
-                <ShowAllText theme={theme}>
-                  Wszystkie zadania
-                </ShowAllText>
+                <ShowAllText theme={theme}>Wszystkie zadania</ShowAllText>
                 <ArrowRight size={18} color={theme.colors.primary} />
               </ShowAllButton>
             </Card>

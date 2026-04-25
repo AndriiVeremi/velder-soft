@@ -110,11 +110,9 @@ interface Project {
   createdAt: Timestamp | null;
 }
 
-type RootStackParamList = {
-  AddProject: undefined;
-};
+import { StackScreenProps } from '@react-navigation/stack';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'AddProject'>;
+type Props = StackScreenProps<any, 'AddProject'>;
 
 const SuggestionsContainer = styled.View`
   flex-direction: row;

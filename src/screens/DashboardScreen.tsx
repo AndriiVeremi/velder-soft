@@ -201,15 +201,9 @@ const AddButton = styled.TouchableOpacity`
   elevation: 5;
 `;
 
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { StackScreenProps } from '@react-navigation/stack';
 
-type RootStackParamList = {
-  Dashboard: undefined;
-  ProjectDetails: { project: Project };
-  AddProject: undefined;
-};
-
-type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
+type Props = StackScreenProps<any, 'Dashboard'>;
 
 const LoaderContainer = styled.View`
   flex: 1;
@@ -274,13 +268,19 @@ const DashboardScreen = ({ navigation }: Props) => {
       const q = query(
         collection(db, 'service_records'),
         where('hospital', '==', selectedHospital),
-        where('department', '==', selectedDepartment),
-        orderBy('createdAt', 'desc')
+        where('department', '==', selectedDepartment)
       );
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const data: ServiceRecord[] = [];
         snapshot.forEach((doc) => data.push({ id: doc.id, ...doc.data() } as ServiceRecord));
-        setRecords(data);
+
+        const sortedData = data.sort((a, b) => {
+          const timeA = a.createdAt?.toMillis() || 0;
+          const timeB = b.createdAt?.toMillis() || 0;
+          return timeB - timeA;
+        });
+
+        setRecords(sortedData);
       });
       return () => unsubscribe();
     }
@@ -324,7 +324,9 @@ const DashboardScreen = ({ navigation }: Props) => {
     try {
       await deleteObject(ref(storage, record.photoPath));
       await deleteDoc(doc(db, 'service_records', record.id));
-    } catch (e) {}
+    } catch (e) {
+      notify.error('Błąd podczas usuwania zdjęcia');
+    }
   };
 
   const goBack = () => {

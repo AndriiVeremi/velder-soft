@@ -4,21 +4,23 @@
     "slug": "velder-soft",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/VelderIcon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#008744"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.velder.soft"
     },
     "android": {
+      "package": "com.velder.soft",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/VelderIcon.png",
+        "backgroundColor": "#008744"
       },
       "edgeToEdgeEnabled": true
     },
@@ -26,6 +28,11 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
-    "plugins": []
+    "plugins": [],
+    "extra": {
+      "eas": {
+        "projectId": "60063075-7a9b-47f6-ba92-4021b7514fed"
+      }
+    }
   }
 }

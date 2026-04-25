@@ -1,9 +1,9 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { 
-  initializeAuth, 
-  getReactNativePersistence, 
+import {
+  initializeAuth,
+  getReactNativePersistence,
   browserLocalPersistence,
-  getAuth
+  getAuth,
 } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
@@ -19,22 +19,18 @@ const firebaseConfig = {
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Singleton app initialization
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Auth based on platform
 let authInstance;
 
 if (Platform.OS === 'web') {
   authInstance = getAuth(app);
 } else {
-  // Check if auth is already initialized to avoid "Auth instance already exists" error
   try {
     authInstance = initializeAuth(app, {
       persistence: getReactNativePersistence(AsyncStorage),
     });
   } catch (e) {
-    // If already initialized, get the existing instance
     authInstance = getAuth(app);
   }
 }

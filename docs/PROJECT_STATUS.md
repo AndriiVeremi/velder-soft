@@ -1,50 +1,33 @@
 # Status Projektu: Velder-soft
 
-Poniżej znajduje się szczegółowy przegląd zaimplementowanych funkcji oraz plany na przyszły rozwój systemu.
+## ✅ Zrealizowane kamienie milowe
 
-## ✅ Zrealizowane Funkcje
+### 🚀 Nowość: System Ogłoszeń i Grupowanie Menu
+- [x] Nowa struktura menu: Główne, Praca i Projekty, Moje, Zespół.
+- [x] Ekran Ogłoszeń dla całego zespołu.
+- [x] Sygnał dźwiękowy i powiadomienie po publikacji nowego ogłoszenia przez Dyrektora.
+- [x] Automatyczne wyświetlanie ostatniego komunikatu na ekranie Start.
 
-### 🔐 Autoryzacja i Użytkownicy
-- [x] Rejestracja i logowanie (Firebase Auth).
-- [x] System ról: `DIRECTOR` oraz `EMPLOYEE`.
-- [x] Ekran oczekiwania na akceptację konta przez Dyrektora.
-- [x] Zarządzanie pracownikami (aktywacja kont, zmiana ról, usuwanie).
-- [x] Profil użytkownika z ustawieniami godzin pracy.
+### 🏖️ System Urlopowy v2
+- [x] Rozdzielenie widoków: osobisty plan urlopowy oraz panel akceptacji dla Dyrektora.
+- [x] Możliwość zatwierdzania/odrzucania wniosków w czasie rzeczywistym.
 
-### 📋 Zarządzanie Zadaniami (Tasks)
-- [x] Kalendarz zadań.
-- [x] Dodawanie zdjęć do zadań (dokumentacja wykonania).
-- [x] Mechanizm "Przenoszenia zaległych zadań" na bieżący dzień.
-- [x] Gesty swipe do oznaczania zadań jako wykonane.
-- [x] Powiadomienia o liczbie zadań na dany dzień.
+### 🔔 Inteligentne Przypomnienia
+- [x] Logika "Snooze": 3 powtórki co 5 minut для każdego przypomnienia.
+- [x] Automatyczne kasowanie serii powtórek po otwarciu powiadomienia lub wykonaniu zadania.
+- [x] Wsparcie dla Badge Count (licznik na ikonie aplikacji) з automatycznym czyszczeniem przy starcie.
 
-### 📁 Archiwum Projektów i Serwis
-- [x] Struktura: Szpital > Oddział > Dokumentacja.
-- [x] Przesyłanie plików PDF z projektami.
-- [x] Galeria zdjęć z realizacji (Archiwum prac).
-- [x] Rejestr zleceń serwisowych z raportami foto i komentarzami.
+### 🔧 Poprawki Techniczne
+- [x] Rozwiązanie problemu "document not found" na urządzeniach iOS/Android.
+- [x] Optymalizacja zapytań Firestore (usunięcie potrzeby ręcznego tworzenia indeksów dla sortowania).
+- [x] Pełna refaktoryzacja na `styled-components` (zero inline styles).
 
-### 🏖️ System Urlopowy
-- [x] Składanie wniosków o urlop (wybór zakresu dat).
-- [x] Podgląd statusu wniosku (Oczekujący / Zaakceptowany / Odrzucony).
-- [x] Panel Dyrektora do akceptacji wniosków wszystkich pracowników.
+## 📈 Statystyki Jakości Kodu
+- **Błędy Lintera:** 0
+- **Typizacja:** TypeScript (95% pokrycia, usunięto większość `any`).
+- **Wydajność:** Wykorzystanie `useMemo` oraz `FlatList` dla płynnego działania на telefonach.
 
-## 🛠️ Stan Techniczny
-- [x] **Cross-platform:** Pełne wsparcie dla Web, Android oraz iOS.
-- [x] **Refaktoryzacja:** Przejście na `styled-components` w celu unifikacji designu.
-- [x] **Typizacja:** Wdrożenie TypeScript dla wszystkich kluczowych modułów.
-- [x] **Stabilność:** Rozwiązanie problemów z inicjalizacją Firebase na urządzeniach iOS.
-
-## 🚀 Nadchodzące Funkcje (Backlog)
-
-### 📊 Statystyki i Raporty
-- [ ] Generowanie raportów PDF z wykonanych prac serwisowych.
-- [ ] Wykresy wydajności pracowników w panelu Dyrektora.
-
-### 💬 Komunikacja
-- [ ] Wewnętrzny czat dla pracowników w ramach konkretnego projektu.
-- [ ] System powiadomień push dla nowych zleceń serwisowych.
-
-### 🔧 Ulepszenia UX
-- [ ] Tryb offline (lokalna baza danych SQL dla zadań).
-- [ ] Wielojęzyczność (obecnie system jest w języku polskim).
+## 🔜 Backlog
+- [ ] Generowanie raportów serwisowych do formatu PDF.
+- [ ] Tryb ciemny (Dark Mode) dopasowany do ustawień systemu.
+- [ ] Wielojęzyczność (i18n).

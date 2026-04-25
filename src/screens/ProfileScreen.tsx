@@ -11,10 +11,11 @@ import {
 import styled from 'styled-components/native';
 import { useAuth } from '../context/AuthContext';
 import { db, auth } from '../config/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { theme } from '../config/theme';
 import { notify } from '../utils/notify';
+import { scheduleDailyReminder } from '../utils/notifications';
 import {
   User,
   Mail,
@@ -185,7 +186,11 @@ const LogoutButtonText = styled(RNText)`
   font-size: 16px;
 `;
 
-const ProfileScreen = () => {
+import { StackScreenProps } from '@react-navigation/stack';
+
+type Props = StackScreenProps<any, 'Profile'>;
+
+const ProfileScreen = ({ navigation, route }: Props) => {
   const { user, userData, role } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState('');
@@ -198,7 +203,6 @@ const ProfileScreen = () => {
   useEffect(() => {
     if (!userData) return;
 
-    // Use a microtask to avoid synchronous setState during render/effect phase
     Promise.resolve().then(() => {
       if (userData.name) setName(userData.name);
       if (userData.notificationStart) {
@@ -225,6 +229,16 @@ const ProfileScreen = () => {
         notificationEnd: end,
         name: name,
       });
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      const q = query(
+        collection(db, 'tasks'),
+        where('date', '==', todayStr),
+        where('done', '==', false)
+      );
+      const snap = await getDocs(q);
+      await scheduleDailyReminder(snap.size, start);
+
       notify.success('Ustawienia zapisane');
       setIsEditing(false);
     } catch (e) {

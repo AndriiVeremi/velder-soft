@@ -40,4 +40,7 @@ yarn-error.*
 .env
 /.vscode
 .firebase/
+
+# Private docs (local only)
+docs/INSTALLATION.md
 docs/PROJECT_STATUS.md

@@ -193,7 +193,11 @@ const SetReminderButton = styled.TouchableOpacity`
   align-items: center;
 `;
 
-const RemindersScreen = () => {
+import { StackScreenProps } from '@react-navigation/stack';
+
+type Props = StackScreenProps<any, 'Reminders'>;
+
+const RemindersScreen = ({ navigation, route }: Props) => {
   const { user } = useAuth();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -233,8 +237,16 @@ const RemindersScreen = () => {
   const handleAdd = async () => {
     if (!title.trim()) return notify.error('Wpisz treść przypomnienia');
 
+    const isDuplicate = reminders.some(
+      (r) => r.title === title && r.date === date && r.time === time
+    );
+    if (isDuplicate) return notify.error('To przypomnienie już istnieje');
+
+    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    if (!timeRegex.test(time)) return notify.error('Nieprawidłowy format godziny (HH:MM)');
+
     try {
-      await addDoc(collection(db, 'reminders'), {
+      const docRef = await addDoc(collection(db, 'reminders'), {
         userId: auth.currentUser?.uid,
         title,
         date,
@@ -243,36 +255,70 @@ const RemindersScreen = () => {
         createdAt: serverTimestamp(),
       });
 
-      const [h, m] = time.split(':').map(Number);
-      const scheduleDate = new Date(date);
-      scheduleDate.setHours(h, m, 0);
+      if (Platform.OS !== 'web') {
+        try {
+          const [h, m] = time.split(':').map(Number);
+          const baseDate = new Date(date);
+          baseDate.setHours(h, m, 0);
 
-      if (scheduleDate > new Date()) {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: 'Osobiste przypomnienie! 🔔',
-            body: title,
-          },
-          trigger: scheduleDate as unknown as Notifications.NotificationTriggerInput,
-        });
+          for (let i = 0; i < 3; i++) {
+            const scheduleDate = new Date(baseDate.getTime() + i * 5 * 60000);
+            if (scheduleDate > new Date()) {
+              await Notifications.scheduleNotificationAsync({
+                identifier: `${docRef.id}_${i}`,
+                content: {
+                  title:
+                    i === 0 ? 'Osobiste przypomnienie! 🔔' : `Przypomnienie (Powtórka ${i}) 🔔`,
+                  body: title,
+                  sound: true,
+                  badge: reminders.length + 1,
+                  data: { reminderId: docRef.id },
+                },
+                trigger: scheduleDate,
+              });
+            }
+          }
+        } catch (notificationError) {
+          console.warn('Notification scheduling failed:', notificationError);
+        }
       }
 
       setModalVisible(false);
       setTitle('');
       notify.success('Przypomnienie dodane');
     } catch (e) {
-      notify.error('Błąd zapisu');
+      console.error('Firestore Add Error:', e);
+      notify.error('Błąd zapisu в базі даних');
+    }
+  };
+
+  const cancelReminderSequence = async (reminderId: string) => {
+    if (Platform.OS === 'web') return;
+    for (let i = 0; i < 3; i++) {
+      try {
+        await Notifications.cancelScheduledNotificationAsync(`${reminderId}_${i}`);
+      } catch (e) {}
     }
   };
 
   const toggleDone = async (item: Reminder) => {
-    await updateDoc(doc(db, 'reminders', item.id), { done: !item.done });
+    const newStatus = !item.done;
+    await updateDoc(doc(db, 'reminders', item.id), { done: newStatus });
+
+    if (newStatus) {
+      await cancelReminderSequence(item.id);
+    }
   };
 
   const deleteReminder = (id: string) => {
+    const performDelete = async () => {
+      await deleteDoc(doc(db, 'reminders', id));
+      await cancelReminderSequence(id);
+      notify.success('Usunięto');
+    };
     Alert.alert('Usuń', 'Czy na pewno?', [
       { text: 'Anuluj' },
-      { text: 'Usuń', onPress: async () => await deleteDoc(doc(db, 'reminders', id)) },
+      { text: 'Usuń', onPress: performDelete },
     ]);
   };
 

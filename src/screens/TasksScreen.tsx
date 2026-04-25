@@ -16,6 +16,8 @@ import styled from 'styled-components/native';
 import {
   collection,
   query,
+  where,
+  orderBy,
   onSnapshot,
   addDoc,
   serverTimestamp,
@@ -68,6 +70,13 @@ interface Task {
   photoUrl?: string;
   photoPath?: string;
   wasMoved?: boolean;
+  assignedTo: string;
+  assignedToName?: string;
+}
+
+interface UserListItem {
+  id: string;
+  name: string;
 }
 
 const Container = styled.View`
@@ -233,7 +242,9 @@ const CloseViewerButton = styled.TouchableOpacity`
   z-index: 10;
 `;
 
-const ModalScrollView = styled.ScrollView`
+const ModalScrollView = styled.ScrollView.attrs({
+  contentContainerStyle: { flexGrow: 1, paddingBottom: 40 },
+})`
   background-color: white;
   width: 100%;
   max-width: 600px;
@@ -289,6 +300,70 @@ const SaveButtonText = styled(RNText)`
   font-weight: bold;
 `;
 
+const UserChipContainer = styled.View`
+  flex-direction: row;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+`;
+
+const UserChip = styled.TouchableOpacity<{ selected: boolean }>`
+  background-color: ${(props) => (props.selected ? props.theme.colors.primary : '#f0f0f0')};
+  padding: 8px 12px;
+  border-radius: 20px;
+  margin-right: 8px;
+  margin-bottom: 8px;
+`;
+
+const UserChipText = styled(RNText)<{ selected: boolean }>`
+  color: ${(props) => (props.selected ? 'white' : props.theme.colors.text)};
+  font-size: 12px;
+  font-weight: bold;
+`;
+
+const AssignedBadge = styled.View`
+  background-color: #e0f2f1;
+  padding: 2px 8px;
+  border-radius: 4px;
+  align-self: flex-start;
+  margin-top: 5px;
+`;
+
+const AssignedText = styled(RNText)`
+  font-size: 10px;
+  color: #00796b;
+  font-weight: bold;
+`;
+
+const TimePickerContainer = styled.View`
+  flex-direction: row;
+  align-items: center;
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-radius: 12px;
+  margin-top: 10px;
+  justify-content: center;
+  border: 1px solid ${(props) => props.theme.colors.border};
+`;
+
+const TimeBlock = styled.View`
+  align-items: center;
+  width: 50px;
+`;
+
+const TimeValue = styled(RNText)`
+  font-size: 24px;
+  font-weight: bold;
+  margin: 5px 0;
+  color: ${(props) => props.theme.colors.text};
+`;
+
+const TimeSeparator = styled(RNText)`
+  font-size: 24px;
+  font-weight: bold;
+  margin-horizontal: 10px;
+  color: ${(props) => props.theme.colors.text};
+`;
+
 const UploadOverlay = styled.View`
   position: absolute;
   top: 0;
@@ -302,8 +377,9 @@ const UploadOverlay = styled.View`
 `;
 
 const TasksScreen = () => {
-  const { role, userData } = useAuth();
+  const { user, role, userData } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [users, setUsers] = useState<UserListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [viewerVisible, setViewerVisible] = useState(false);
@@ -317,46 +393,73 @@ const TasksScreen = () => {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [hour, setHour] = useState(9);
   const [minute, setMinute] = useState(0);
+  const [assignedUserId, setAssignedUserId] = useState<string>('');
 
   useEffect(() => {
+    if (role === 'DIRECTOR') {
+      const uQ = query(collection(db, 'users'), where('isActive', '==', true));
+      const unsubUsers = onSnapshot(uQ, (snap) => {
+        const uList = snap.docs.map((d) => ({ id: d.id, name: d.data().name || 'Anonim' }));
+        setUsers(uList);
+      });
+      return () => unsubUsers();
+    }
+  }, [role]);
+
+  useEffect(() => {
+    if (!user) return;
+
     const q = query(collection(db, 'tasks'));
+
     const unsubscribe = onSnapshot(
       q,
       (snap) => {
-        const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Task);
-        const sorted = data.sort((a, b) => {
-          if (a.date !== b.date) return b.date.localeCompare(a.date);
-          return (a.time || '00:00').localeCompare(b.time || '00:00');
-        });
-        setTasks(sorted);
-        setLoading(false);
-        const todayTasks = data.filter((t) => {
-          try {
-            return isToday(parseISO(t.date)) && !t.done;
-          } catch (e) {
-            return false;
-          }
-        });
-        setBadgeCount(todayTasks.length);
-        scheduleDailyReminder(todayTasks.length, userData?.notificationStart || '09:00');
+        try {
+          const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Task);
+          const sorted = data.sort((a, b) => {
+            const dateA = a.date || '';
+            const dateB = b.date || '';
+            if (dateA !== dateB) return dateB.localeCompare(dateA);
+            const timeA = a.time || '00:00';
+            const timeB = b.time || '00:00';
+            return timeA.localeCompare(timeB);
+          });
+          setTasks(sorted);
+
+          const todayStr = format(new Date(), 'yyyy-MM-dd');
+          const todayTasksCount = data.filter((t) => t.date === todayStr && !t.done).length;
+
+          setBadgeCount(todayTasksCount);
+          scheduleDailyReminder(todayTasksCount, userData?.notificationStart || '09:00');
+          setLoading(false);
+        } catch (err) {
+          console.error('Error processing tasks:', err);
+          setLoading(false);
+        }
       },
       (error) => {
-        console.error(error);
+        console.error('Firestore onSnapshot error:', error);
         setLoading(false);
       }
     );
     return () => unsubscribe();
-  }, [userData]);
+  }, [userData, role, user]);
 
   const saveTask = async () => {
     if (!title.trim()) return notify.error('Podaj tytuł');
+    if (role === 'DIRECTOR' && !assignedUserId) return notify.error('Wybierz pracownika');
+
     const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+    const selectedUser = users.find((u) => u.id === assignedUserId);
+
     const taskData = {
       title,
       description,
       date: selectedDate,
       time: timeStr,
       updatedAt: serverTimestamp(),
+      assignedTo: assignedUserId || user?.uid,
+      assignedToName: selectedUser?.name || userData?.name || 'Pracownik',
     };
     try {
       if (editingId) await updateDoc(doc(db, 'tasks', editingId), taskData);
@@ -368,6 +471,7 @@ const TasksScreen = () => {
           photos: [],
         });
       setModalVisible(false);
+      setAssignedUserId('');
       notify.success('Zapisano');
     } catch (e) {
       notify.error('Błąd zapisu');
@@ -442,7 +546,7 @@ const TasksScreen = () => {
     if (Platform.OS === 'web') {
       if (window.confirm('Usunąć?')) performDelete();
     } else {
-      Alert.alert('Usuń', 'Czy напевно?', [
+      Alert.alert('Usuń', 'Czy napewno?', [
         { text: 'Nie' },
         { text: 'Tak', onPress: performDelete },
       ]);
@@ -500,6 +604,11 @@ const TasksScreen = () => {
                       <DateTimeText theme={theme}>
                         {item.date} {item.time}
                       </DateTimeText>
+                      {role === 'DIRECTOR' && item.assignedToName && (
+                        <AssignedBadge>
+                          <AssignedText>Wykonawca: {item.assignedToName}</AssignedText>
+                        </AssignedBadge>
+                      )}
                     </TaskInfo>
                     <ActionButtons>
                       <IconButton onPress={() => addPhoto(item)}>
@@ -523,6 +632,7 @@ const TasksScreen = () => {
                               setTitle(item.title);
                               setDescription(item.description || '');
                               setSelectedDate(item.date);
+                              setAssignedUserId(item.assignedTo);
                               setModalVisible(true);
                             }}
                           >
@@ -587,6 +697,9 @@ const TasksScreen = () => {
               setEditingId(null);
               setTitle('');
               setDescription('');
+              setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
+              setHour(9);
+              setMinute(0);
               setModalVisible(true);
             }}
           >
@@ -632,11 +745,32 @@ const TasksScreen = () => {
                 <InputLabel theme={theme}>TYTUŁ</InputLabel>
                 <StyledTextInput
                   theme={theme}
-                  placeholder="Co зробити?"
+                  placeholder="Co zrobic?"
                   value={title}
                   onChangeText={setTitle}
                   placeholderTextColor={theme.colors.textSecondary}
                 />
+
+                {role === 'DIRECTOR' && (
+                  <>
+                    <InputLabel theme={theme}>PRZYPISZ DO PRACOWNIKA</InputLabel>
+                    <UserChipContainer>
+                      {users.map((u) => (
+                        <UserChip
+                          key={u.id}
+                          selected={assignedUserId === u.id}
+                          onPress={() => setAssignedUserId(u.id)}
+                          theme={theme}
+                        >
+                          <UserChipText selected={assignedUserId === u.id} theme={theme}>
+                            {u.name}
+                          </UserChipText>
+                        </UserChip>
+                      ))}
+                    </UserChipContainer>
+                  </>
+                )}
+
                 <InputLabel theme={theme}>OPIS</InputLabel>
                 <TextArea
                   theme={theme}
@@ -657,6 +791,32 @@ const TasksScreen = () => {
                     selectedDayBackgroundColor: theme.colors.primary,
                   }}
                 />
+
+                <InputLabel theme={theme} style={{ marginTop: 20 }}>
+                  GODZINA
+                </InputLabel>
+                <TimePickerContainer theme={theme}>
+                  <TimeBlock>
+                    <TouchableOpacity onPress={() => adjustTime('h', 1)}>
+                      <ChevronUp size={24} color={theme.colors.primary} />
+                    </TouchableOpacity>
+                    <TimeValue theme={theme}>{hour.toString().padStart(2, '0')}</TimeValue>
+                    <TouchableOpacity onPress={() => adjustTime('h', -1)}>
+                      <ChevronDown size={24} color={theme.colors.primary} />
+                    </TouchableOpacity>
+                  </TimeBlock>
+                  <TimeSeparator theme={theme}>:</TimeSeparator>
+                  <TimeBlock>
+                    <TouchableOpacity onPress={() => adjustTime('m', 5)}>
+                      <ChevronUp size={24} color={theme.colors.primary} />
+                    </TouchableOpacity>
+                    <TimeValue theme={theme}>{minute.toString().padStart(2, '0')}</TimeValue>
+                    <TouchableOpacity onPress={() => adjustTime('m', -5)}>
+                      <ChevronDown size={24} color={theme.colors.primary} />
+                    </TouchableOpacity>
+                  </TimeBlock>
+                </TimePickerContainer>
+
                 <SaveButton theme={theme} onPress={saveTask}>
                   <SaveButtonText theme={theme}>ZAPISZ</SaveButtonText>
                 </SaveButton>

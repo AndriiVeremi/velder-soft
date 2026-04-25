@@ -59,6 +59,7 @@ interface ServiceRecord {
   description: string;
   photos: ServicePhoto[];
   serviceDate: string;
+  serviceTime?: string;
   status: 'PENDING' | 'DONE';
   createdAt: any;
 }
@@ -297,6 +298,36 @@ const ActionButtons = styled.View`
   justify-content: space-between;
 `;
 
+const TimePickerContainer = styled.View`
+  flex-direction: row;
+  align-items: center;
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 12px;
+  margin-top: 10px;
+  justify-content: center;
+  border: 1px solid ${(props) => props.theme.colors.border};
+`;
+
+const TimeBlock = styled.View`
+  align-items: center;
+  width: 50px;
+`;
+
+const TimeValue = styled(RNText)`
+  font-size: 24px;
+  font-weight: bold;
+  margin: 5px 0;
+  color: ${(props) => props.theme.colors.text};
+`;
+
+const TimeSeparator = styled(RNText)`
+  font-size: 24px;
+  font-weight: bold;
+  margin-horizontal: 10px;
+  color: ${(props) => props.theme.colors.text};
+`;
+
 const CancelBtn = styled.TouchableOpacity`
   padding: 15px;
 `;
@@ -310,7 +341,11 @@ const ReportBtn = styled.TouchableOpacity<{ disabled?: boolean }>`
   align-items: center;
 `;
 
-const ServiceScreen = () => {
+import { StackScreenProps } from '@react-navigation/stack';
+
+type Props = StackScreenProps<any, 'Service'>;
+
+const ServiceScreen = ({ navigation, route }: Props) => {
   const { role } = useAuth();
   const [records, setRecords] = useState<ServiceRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -320,9 +355,24 @@ const ServiceScreen = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [hour, setHour] = useState(10);
+  const [minute, setMinute] = useState(0);
   const [activeRecordId, setActiveRecordId] = useState<string | null>(null);
   const [comment, setComment] = useState('');
   const [tempPhoto, setTempPhoto] = useState<string | null>(null);
+
+  const adjustTime = (type: 'h' | 'm', val: number) => {
+    if (type === 'h')
+      setHour((h) => {
+        let n = h + val;
+        return n > 23 ? 0 : n < 0 ? 23 : n;
+      });
+    else
+      setMinute((m) => {
+        let n = m + val;
+        return n > 55 ? 0 : n < 0 ? 55 : n;
+      });
+  };
 
   useEffect(() => {
     const q = query(collection(db, 'services'), orderBy('serviceDate', 'desc'));
@@ -336,11 +386,13 @@ const ServiceScreen = () => {
 
   const handleCreate = async () => {
     if (!title.trim()) return notify.error('Podaj nazwę obiektu');
+    const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
     try {
       await addDoc(collection(db, 'services'), {
         title,
         description,
         serviceDate: selectedDate,
+        serviceTime: timeStr,
         status: 'PENDING',
         photos: [],
         createdAt: serverTimestamp(),
@@ -348,6 +400,8 @@ const ServiceScreen = () => {
       setModalVisible(false);
       setTitle('');
       setDescription('');
+      setHour(10);
+      setMinute(0);
       notify.success('Zlecenie serwisowe utworzone');
     } catch (e) {
       notify.error('Błąd zapisu');
@@ -444,7 +498,9 @@ const ServiceScreen = () => {
 
               <DateInfo>
                 <CalendarIcon size={14} color={theme.colors.primary} />
-                <DateText theme={theme}>Termin: {item.serviceDate}</DateText>
+                <DateText theme={theme}>
+                  Termin: {item.serviceDate} {item.serviceTime ? `@ ${item.serviceTime}` : ''}
+                </DateText>
               </DateInfo>
 
               <PhotoStrip horizontal showsHorizontalScrollIndicator={false}>
@@ -518,6 +574,31 @@ const ServiceScreen = () => {
                   selectedDayBackgroundColor: theme.colors.primary,
                 }}
               />
+
+              <InputLabel theme={theme} style={{ marginTop: 20 }}>
+                GODZINA
+              </InputLabel>
+              <TimePickerContainer theme={theme}>
+                <TimeBlock>
+                  <TouchableOpacity onPress={() => adjustTime('h', 1)}>
+                    <ChevronUp size={24} color={theme.colors.primary} />
+                  </TouchableOpacity>
+                  <TimeValue theme={theme}>{hour.toString().padStart(2, '0')}</TimeValue>
+                  <TouchableOpacity onPress={() => adjustTime('h', -1)}>
+                    <ChevronDown size={24} color={theme.colors.primary} />
+                  </TouchableOpacity>
+                </TimeBlock>
+                <TimeSeparator theme={theme}>:</TimeSeparator>
+                <TimeBlock>
+                  <TouchableOpacity onPress={() => adjustTime('m', 5)}>
+                    <ChevronUp size={24} color={theme.colors.primary} />
+                  </TouchableOpacity>
+                  <TimeValue theme={theme}>{minute.toString().padStart(2, '0')}</TimeValue>
+                  <TouchableOpacity onPress={() => adjustTime('m', -5)}>
+                    <ChevronDown size={24} color={theme.colors.primary} />
+                  </TouchableOpacity>
+                </TimeBlock>
+              </TimePickerContainer>
 
               <SubmitButton onPress={handleCreate} theme={theme}>
                 <SubmitButtonText theme={theme}>WYŚLIJ DO SERWISU</SubmitButtonText>

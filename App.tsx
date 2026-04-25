@@ -8,10 +8,12 @@ import { theme } from './src/config/theme';
 import { MainLayout } from './src/components/Layout';
 import { View, ActivityIndicator, Text as RNText, Platform, LogBox } from 'react-native';
 import styled from 'styled-components/native';
-import { registerForPushNotificationsAsync } from './src/utils/notifications';
+import {
+  registerForPushNotificationsAsync,
+  setBadgeCount,
+  setupNotificationListeners,
+} from './src/utils/notifications';
 import { WebToaster } from './src/components/WebToaster';
-
-// Screens
 import HomeScreen from './src/screens/HomeScreen';
 import TasksScreen from './src/screens/TasksScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
@@ -19,6 +21,7 @@ import ServiceScreen from './src/screens/ServiceScreen';
 import UsersScreen from './src/screens/UsersScreen';
 import VacationsScreen from './src/screens/VacationsScreen';
 import RemindersScreen from './src/screens/RemindersScreen';
+import AnnouncementsScreen from './src/screens/AnnouncementsScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import AddProjectScreen from './src/screens/AddProjectScreen';
@@ -29,7 +32,6 @@ import PendingApprovalScreen from './src/screens/PendingApprovalScreen';
 LogBox.ignoreLogs(['Image: style.tintColor is deprecated', 'Blocked aria-hidden on an element']);
 
 type RootStackParamList = {
-
   Home: undefined;
   Tasks: undefined;
   Dashboard: undefined;
@@ -37,6 +39,7 @@ type RootStackParamList = {
   Users: undefined;
   Vacations: undefined;
   Reminders: undefined;
+  Announcements: undefined;
   Profile: undefined;
   AddProject: undefined;
   ProjectDetails: { project: unknown };
@@ -59,51 +62,57 @@ interface ScreenProps {
   navigation: StackNavigationProp<RootStackParamList, keyof RootStackParamList>;
 }
 
-const HomeWithLayout = ({ navigation }: ScreenProps) => (
+const HomeWithLayout = ({ navigation, route }: any) => (
   <MainLayout navigation={navigation} currentRoute="Home">
-    <HomeScreen navigation={navigation} />
+    <HomeScreen navigation={navigation} route={route} />
   </MainLayout>
 );
 
-const TasksWithLayout = ({ navigation }: ScreenProps) => (
+const TasksWithLayout = ({ navigation, route }: any) => (
   <MainLayout navigation={navigation} currentRoute="Tasks">
-    <TasksScreen />
+    <TasksScreen navigation={navigation} route={route} />
   </MainLayout>
 );
 
-const DashboardWithLayout = ({ navigation }: ScreenProps) => (
+const DashboardWithLayout = ({ navigation, route }: any) => (
   <MainLayout navigation={navigation} currentRoute="Dashboard">
-    <DashboardScreen navigation={navigation} />
+    <DashboardScreen navigation={navigation} route={route} />
   </MainLayout>
 );
 
-const ServiceWithLayout = ({ navigation }: ScreenProps) => (
+const ServiceWithLayout = ({ navigation, route }: any) => (
   <MainLayout navigation={navigation} currentRoute="Service">
-    <ServiceScreen />
+    <ServiceScreen navigation={navigation} route={route} />
   </MainLayout>
 );
 
-const UsersWithLayout = ({ navigation }: ScreenProps) => (
+const UsersWithLayout = ({ navigation, route }: any) => (
   <MainLayout navigation={navigation} currentRoute="Users">
-    <UsersScreen />
+    <UsersScreen navigation={navigation} route={route} />
   </MainLayout>
 );
 
-const VacationsWithLayout = ({ navigation }: ScreenProps) => (
+const VacationsWithLayout = ({ navigation, route }: any) => (
   <MainLayout navigation={navigation} currentRoute="Vacations">
-    <VacationsScreen />
+    <VacationsScreen navigation={navigation} route={route} />
   </MainLayout>
 );
 
-const RemindersWithLayout = ({ navigation }: ScreenProps) => (
+const RemindersWithLayout = ({ navigation, route }: any) => (
   <MainLayout navigation={navigation} currentRoute="Reminders">
-    <RemindersScreen />
+    <RemindersScreen navigation={navigation} route={route} />
   </MainLayout>
 );
 
-const ProfileWithLayout = ({ navigation }: ScreenProps) => (
+const AnnouncementsWithLayout = ({ navigation, route }: any) => (
+  <MainLayout navigation={navigation} currentRoute="Announcements">
+    <AnnouncementsScreen navigation={navigation} route={route} />
+  </MainLayout>
+);
+
+const ProfileWithLayout = ({ navigation, route }: any) => (
   <MainLayout navigation={navigation} currentRoute="Profile">
-    <ProfileScreen />
+    <ProfileScreen navigation={navigation} route={route} />
   </MainLayout>
 );
 
@@ -134,6 +143,11 @@ const AuthenticatedStack = () => {
         name="Reminders"
         component={RemindersWithLayout}
         options={{ title: 'Przypomnienia' }}
+      />
+      <Stack.Screen
+        name="Announcements"
+        component={AnnouncementsWithLayout}
+        options={{ title: 'Ogłoszenia' }}
       />
       <Stack.Screen name="Profile" component={ProfileWithLayout} options={{ title: 'Profil' }} />
       <Stack.Screen
@@ -184,6 +198,11 @@ const RootNavigation = () => {
 export default function App() {
   useEffect(() => {
     registerForPushNotificationsAsync();
+    setBadgeCount(0);
+    const cleanup = setupNotificationListeners();
+    return () => {
+      if (cleanup) cleanup();
+    };
   }, []);
 
   return (

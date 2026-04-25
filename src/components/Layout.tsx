@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Platform, Dimensions, TouchableOpacity, Text as RNText, Image } from 'react-native';
 import styled from 'styled-components/native';
 import {
@@ -11,6 +11,7 @@ import {
   Wrench,
   Palmtree,
   Bell,
+  Megaphone,
 } from 'lucide-react-native';
 import { theme } from '../config/theme';
 import { useAuth } from '../context/AuthContext';
@@ -22,12 +23,11 @@ type NavigationProp = {
   goBack: () => void;
 };
 
-const { width } = Dimensions.get('window');
-const isDesktop = Platform.OS === 'web' && width > 768;
+const getIsDesktop = () => Platform.OS === 'web' && Dimensions.get('window').width > 768;
 
-const RootContainer = styled.View`
+const RootContainer = styled.View<{ isDesktop: boolean }>`
   flex: 1;
-  flex-direction: ${isDesktop ? 'row' : 'column'};
+  flex-direction: ${(props) => (props.isDesktop ? 'row' : 'column')};
   background-color: ${(props) => props.theme.colors.background};
 `;
 
@@ -104,6 +104,21 @@ const LogoutNavText = styled(NavText)`
   color: ${(props) => props.theme.colors.error};
 `;
 
+const SectionHeader = styled(RNText)`
+  font-size: 11px;
+  font-weight: bold;
+  color: ${(props) => props.theme.colors.textSecondary};
+  text-transform: uppercase;
+  margin-top: 20px;
+  margin-bottom: 10px;
+  margin-left: 16px;
+  letter-spacing: 1px;
+`;
+
+const SidebarScroll = styled.ScrollView`
+  flex: 1;
+`;
+
 interface MainLayoutProps {
   children: React.ReactNode;
   navigation: NavigationProp;
@@ -112,48 +127,106 @@ interface MainLayoutProps {
 
 export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutProps) => {
   const { role } = useAuth();
+  const [isDesktop, setIsDesktop] = useState(getIsDesktop);
 
-  const menuItems = [
-    { name: 'Home', label: 'Start', icon: Home },
-    { name: 'Tasks', label: 'Zadania', icon: CheckSquare },
-    { name: 'Reminders', label: 'Przypomnienia', icon: Bell },
-    { name: 'Dashboard', label: 'Projekty', icon: LayoutGrid },
-    { name: 'Service', label: 'Serwis', icon: Wrench },
-    { name: 'Vacations', label: 'Urlopy', icon: Palmtree },
-    ...(role === 'DIRECTOR' ? [{ name: 'Users', label: 'Pracownicy', icon: Users }] : []),
-    { name: 'Profile', label: 'Profil', icon: User },
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const subscription = Dimensions.addEventListener('change', () => {
+      setIsDesktop(getIsDesktop());
+    });
+    return () => subscription.remove();
+  }, []);
+
+  const sections = [
+    {
+      title: 'Główne',
+      items: [{ name: 'Home', label: 'Start', icon: Home }],
+    },
+    {
+      title: 'Praca i Projekty',
+      items: [
+        { name: 'Tasks', label: 'Zadania', icon: CheckSquare },
+        { name: 'Dashboard', label: 'Projekty', icon: LayoutGrid },
+        { name: 'Service', label: 'Serwis', icon: Wrench },
+      ],
+    },
+    {
+      title: 'Moje',
+      items: [
+        { name: 'Reminders', label: 'Przypomnienia', icon: Bell },
+        ...(role !== 'DIRECTOR' ? [{ name: 'Vacations', label: 'Urlop', icon: Palmtree }] : []),
+        { name: 'Profile', label: 'Profil', icon: User },
+      ],
+    },
+    ...(role === 'DIRECTOR'
+      ? [
+          {
+            title: 'Zespół',
+            items: [
+              { name: 'Users', label: 'Pracownicy', icon: Users },
+              { name: 'Announcements', label: 'Ogłoszenia', icon: Megaphone },
+              {
+                name: 'Vacations',
+                label: 'Wnioski Urlopowe',
+                icon: Palmtree,
+                params: { isAdminView: true },
+              },
+            ],
+          },
+        ]
+      : []),
   ];
 
   if (isDesktop) {
     return (
-      <RootContainer theme={theme}>
+      <RootContainer theme={theme} isDesktop={true}>
         <Sidebar theme={theme}>
           <SidebarLogoContainer>
             <SidebarLogo source={require('../../assets/velder.png')} />
           </SidebarLogoContainer>
 
-          {menuItems.map((item) => (
-            <NavItem
-              key={item.name}
-              theme={theme}
-              active={currentRoute === item.name}
-              onPress={() => navigation.navigate(item.name)}
-            >
-              <item.icon
-                size={22}
-                color={currentRoute === item.name ? theme.colors.primary : theme.colors.text}
-              />
-              <NavText theme={theme} active={currentRoute === item.name}>
-                {item.label}
-              </NavText>
-            </NavItem>
-          ))}
+          <SidebarScroll showsVerticalScrollIndicator={false}>
+            {sections.map((section) => (
+              <View key={section.title} style={{ marginBottom: 10 }}>
+                <SectionHeader theme={theme}>{section.title}</SectionHeader>
+                {section.items.map((item) => (
+                  <NavItem
+                    key={item.name + (item.params ? '_admin' : '')}
+                    theme={theme}
+                    active={currentRoute === item.name}
+                    onPress={() => navigation.navigate(item.name, item.params as any)}
+                  >
+                    <item.icon
+                      size={18}
+                      color={currentRoute === item.name ? theme.colors.primary : theme.colors.text}
+                    />
+                    <NavText
+                      theme={theme}
+                      active={currentRoute === item.name}
+                      style={{ fontSize: 14 }}
+                    >
+                      {item.label}
+                    </NavText>
+                  </NavItem>
+                ))}
+              </View>
+            ))}
+          </SidebarScroll>
 
-          <Spacer />
-
-          <NavItem theme={theme} onPress={() => signOut(auth)}>
-            <LogOut size={22} color={theme.colors.error} />
-            <LogoutNavText theme={theme}>Wyloguj się</LogoutNavText>
+          <NavItem
+            theme={theme}
+            onPress={() => signOut(auth)}
+            style={{
+              marginTop: 'auto',
+              borderTopWidth: 1,
+              borderTopColor: theme.colors.border,
+              paddingTop: 15,
+            }}
+          >
+            <LogOut size={18} color={theme.colors.error} />
+            <LogoutNavText theme={theme} style={{ fontSize: 14 }}>
+              Wyloguj się
+            </LogoutNavText>
           </NavItem>
         </Sidebar>
 
@@ -162,18 +235,29 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
     );
   }
 
+  const mobileItems = [
+    { name: 'Home', label: 'Start', icon: Home },
+    { name: 'Tasks', label: 'Zadania', icon: CheckSquare },
+    { name: 'Dashboard', label: 'Projekty', icon: LayoutGrid },
+    { name: 'Reminders', label: 'Przypomnień', icon: Bell },
+    { name: 'Profile', label: 'Profil', icon: User },
+  ];
+
   return (
-    <RootContainer theme={theme}>
+    <RootContainer theme={theme} isDesktop={false}>
       <ContentArea>{children}</ContentArea>
 
       <BottomTabs theme={theme}>
-        {menuItems.map((item) => (
-          <TabItem key={item.name} onPress={() => navigation.navigate(item.name)}>
+        {mobileItems.map((item) => (
+          <TabItem
+            key={item.name + (item.params ? '_admin' : '')}
+            onPress={() => navigation.navigate(item.name, item.params as any)}
+          >
             <item.icon
-              size={24}
+              size={20}
               color={currentRoute === item.name ? theme.colors.primary : theme.colors.textSecondary}
             />
-            <TabLabel theme={theme} active={currentRoute === item.name}>
+            <TabLabel theme={theme} active={currentRoute === item.name} style={{ fontSize: 9 }}>
               {item.label}
             </TabLabel>
           </TabItem>

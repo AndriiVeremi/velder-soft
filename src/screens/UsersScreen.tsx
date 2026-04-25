@@ -124,7 +124,11 @@ const StatusLabel = styled(RNText)`
   color: ${(props) => props.theme.colors.text};
 `;
 
-const UsersScreen = () => {
+import { StackScreenProps } from '@react-navigation/stack';
+
+type Props = StackScreenProps<any, 'Users'>;
+
+const UsersScreen = ({ navigation, route }: Props) => {
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
 

@@ -39,6 +39,7 @@ module.exports = [
       'react-native/no-raw-text': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unnecessary-type-assertion': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
       'no-console': 'off',
       ...reactHooks.configs.recommended.rules,
     },
