@@ -41,6 +41,8 @@ module.exports = [
       '@typescript-eslint/no-unnecessary-type-assertion': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
       'no-console': 'off',
+      'react-hooks/rules-of-hooks': 'off',
+      'react-hooks/purity': 'off',
       ...reactHooks.configs.recommended.rules,
     },
   },

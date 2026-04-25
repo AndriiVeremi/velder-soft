@@ -11,6 +11,7 @@ import {
   Image,
   ScrollView,
   Dimensions,
+  KeyboardAvoidingView,
 } from 'react-native';
 import styled from 'styled-components/native';
 import {
@@ -732,96 +733,101 @@ const TasksScreen = () => {
 
         <Modal visible={modalVisible} transparent animationType="slide">
           <ModalOverlay>
-            <ModalScrollView theme={theme}>
-              <ModalContentContainer theme={theme}>
-                <ModalHeader theme={theme}>
-                  <ModalTitleText theme={theme}>
-                    {editingId ? 'Edytuj' : 'Nowe zadanie'}
-                  </ModalTitleText>
-                  <TouchableOpacity onPress={() => setModalVisible(false)}>
-                    <X size={24} color={theme.colors.text} />
-                  </TouchableOpacity>
-                </ModalHeader>
-                <InputLabel theme={theme}>TYTUŁ</InputLabel>
-                <StyledTextInput
-                  theme={theme}
-                  placeholder="Co zrobic?"
-                  value={title}
-                  onChangeText={setTitle}
-                  placeholderTextColor={theme.colors.textSecondary}
-                />
-
-                {role === 'DIRECTOR' && (
-                  <>
-                    <InputLabel theme={theme}>PRZYPISZ DO PRACOWNIKA</InputLabel>
-                    <UserChipContainer>
-                      {users.map((u) => (
-                        <UserChip
-                          key={u.id}
-                          selected={assignedUserId === u.id}
-                          onPress={() => setAssignedUserId(u.id)}
-                          theme={theme}
-                        >
-                          <UserChipText selected={assignedUserId === u.id} theme={theme}>
-                            {u.name}
-                          </UserChipText>
-                        </UserChip>
-                      ))}
-                    </UserChipContainer>
-                  </>
-                )}
-
-                <InputLabel theme={theme}>OPIS</InputLabel>
-                <TextArea
-                  theme={theme}
-                  placeholder="Szczegóły..."
-                  value={description}
-                  onChangeText={setDescription}
-                  multiline
-                  placeholderTextColor={theme.colors.textSecondary}
-                />
-                <InputLabel theme={theme}>DATA</InputLabel>
-                <Calendar
-                  onDayPress={(day) => setSelectedDate(day.dateString)}
-                  markedDates={{
-                    [selectedDate]: { selected: true, selectedColor: theme.colors.primary },
-                  }}
-                  theme={{
-                    todayTextColor: theme.colors.primary,
-                    selectedDayBackgroundColor: theme.colors.primary,
-                  }}
-                />
-
-                <InputLabel theme={theme} style={{ marginTop: 20 }}>
-                  GODZINA
-                </InputLabel>
-                <TimePickerContainer theme={theme}>
-                  <TimeBlock>
-                    <TouchableOpacity onPress={() => adjustTime('h', 1)}>
-                      <ChevronUp size={24} color={theme.colors.primary} />
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={{ width: '100%', alignItems: 'center' }}
+            >
+              <ModalScrollView theme={theme}>
+                <ModalContentContainer theme={theme}>
+                  <ModalHeader theme={theme}>
+                    <ModalTitleText theme={theme}>
+                      {editingId ? 'Edytuj' : 'Nowe zadanie'}
+                    </ModalTitleText>
+                    <TouchableOpacity onPress={() => setModalVisible(false)}>
+                      <X size={24} color={theme.colors.text} />
                     </TouchableOpacity>
-                    <TimeValue theme={theme}>{hour.toString().padStart(2, '0')}</TimeValue>
-                    <TouchableOpacity onPress={() => adjustTime('h', -1)}>
-                      <ChevronDown size={24} color={theme.colors.primary} />
-                    </TouchableOpacity>
-                  </TimeBlock>
-                  <TimeSeparator theme={theme}>:</TimeSeparator>
-                  <TimeBlock>
-                    <TouchableOpacity onPress={() => adjustTime('m', 5)}>
-                      <ChevronUp size={24} color={theme.colors.primary} />
-                    </TouchableOpacity>
-                    <TimeValue theme={theme}>{minute.toString().padStart(2, '0')}</TimeValue>
-                    <TouchableOpacity onPress={() => adjustTime('m', -5)}>
-                      <ChevronDown size={24} color={theme.colors.primary} />
-                    </TouchableOpacity>
-                  </TimeBlock>
-                </TimePickerContainer>
+                  </ModalHeader>
+                  <InputLabel theme={theme}>TYTUŁ</InputLabel>
+                  <StyledTextInput
+                    theme={theme}
+                    placeholder="Co zrobic?"
+                    value={title}
+                    onChangeText={setTitle}
+                    placeholderTextColor={theme.colors.textSecondary}
+                  />
 
-                <SaveButton theme={theme} onPress={saveTask}>
-                  <SaveButtonText theme={theme}>ZAPISZ</SaveButtonText>
-                </SaveButton>
-              </ModalContentContainer>
-            </ModalScrollView>
+                  {role === 'DIRECTOR' && (
+                    <>
+                      <InputLabel theme={theme}>PRZYPISZ DO PRACOWNIKA</InputLabel>
+                      <UserChipContainer>
+                        {users.map((u) => (
+                          <UserChip
+                            key={u.id}
+                            selected={assignedUserId === u.id}
+                            onPress={() => setAssignedUserId(u.id)}
+                            theme={theme}
+                          >
+                            <UserChipText selected={assignedUserId === u.id} theme={theme}>
+                              {u.name}
+                            </UserChipText>
+                          </UserChip>
+                        ))}
+                      </UserChipContainer>
+                    </>
+                  )}
+
+                  <InputLabel theme={theme}>OPIS</InputLabel>
+                  <TextArea
+                    theme={theme}
+                    placeholder="Szczegóły..."
+                    value={description}
+                    onChangeText={setDescription}
+                    multiline
+                    placeholderTextColor={theme.colors.textSecondary}
+                  />
+                  <InputLabel theme={theme}>DATA</InputLabel>
+                  <Calendar
+                    onDayPress={(day) => setSelectedDate(day.dateString)}
+                    markedDates={{
+                      [selectedDate]: { selected: true, selectedColor: theme.colors.primary },
+                    }}
+                    theme={{
+                      todayTextColor: theme.colors.primary,
+                      selectedDayBackgroundColor: theme.colors.primary,
+                    }}
+                  />
+
+                  <InputLabel theme={theme} style={{ marginTop: 20 }}>
+                    GODZINA
+                  </InputLabel>
+                  <TimePickerContainer theme={theme}>
+                    <TimeBlock>
+                      <TouchableOpacity onPress={() => adjustTime('h', 1)}>
+                        <ChevronUp size={24} color={theme.colors.primary} />
+                      </TouchableOpacity>
+                      <TimeValue theme={theme}>{hour.toString().padStart(2, '0')}</TimeValue>
+                      <TouchableOpacity onPress={() => adjustTime('h', -1)}>
+                        <ChevronDown size={24} color={theme.colors.primary} />
+                      </TouchableOpacity>
+                    </TimeBlock>
+                    <TimeSeparator theme={theme}>:</TimeSeparator>
+                    <TimeBlock>
+                      <TouchableOpacity onPress={() => adjustTime('m', 5)}>
+                        <ChevronUp size={24} color={theme.colors.primary} />
+                      </TouchableOpacity>
+                      <TimeValue theme={theme}>{minute.toString().padStart(2, '0')}</TimeValue>
+                      <TouchableOpacity onPress={() => adjustTime('m', -5)}>
+                        <ChevronDown size={24} color={theme.colors.primary} />
+                      </TouchableOpacity>
+                    </TimeBlock>
+                  </TimePickerContainer>
+
+                  <SaveButton theme={theme} onPress={saveTask}>
+                    <SaveButtonText theme={theme}>ZAPISZ</SaveButtonText>
+                  </SaveButton>
+                </ModalContentContainer>
+              </ModalScrollView>
+            </KeyboardAvoidingView>
           </ModalOverlay>
         </Modal>
 

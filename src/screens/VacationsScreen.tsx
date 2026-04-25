@@ -7,6 +7,7 @@ import {
   Text as RNText,
   Alert,
   ScrollView,
+  Platform,
 } from 'react-native';
 import styled from 'styled-components/native';
 import { Calendar } from 'react-native-calendars';
@@ -36,25 +37,21 @@ import {
   Palmtree,
 } from 'lucide-react-native';
 import { format } from 'date-fns';
-type Props = {
-  navigation?: any;
-  route?: {
-    params?: {
-      isAdminView?: boolean;
-    };
-  };
-};
+import * as Notifications from 'expo-notifications';
+import { StackScreenProps } from '@react-navigation/stack';
 
 interface VacationRequest {
   id: string;
   userId: string;
   userName: string;
-  dates: string[];
   startDate: string;
   endDate: string;
+  dates: string[];
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   createdAt: any;
 }
+
+type Props = StackScreenProps<any, 'Vacations'>;
 
 const Container = styled.View`
   flex: 1;
@@ -63,40 +60,40 @@ const Container = styled.View`
 
 const Section = styled.View`
   background-color: ${(props) => props.theme.colors.surface};
-  padding: ${(props) => props.theme.spacing.md}px;
+  padding: ${(props) => props.theme.spacing.lg}px;
   margin-bottom: 10px;
-  border-bottom-width: 1px;
-  border-bottom-color: ${(props) => props.theme.colors.border};
+  border-radius: 12px;
+  margin: 10px;
 `;
 
 const Title = styled(RNText)`
-  font-size: 18px;
+  font-size: 20px;
   font-weight: bold;
-  margin-bottom: 10px;
   color: ${(props) => props.theme.colors.text};
+  margin-bottom: 15px;
 `;
 
 const RequestCard = styled.View`
-  background-color: ${(props) => props.theme.colors.surface};
+  background-color: white;
   padding: 15px;
-  margin: 4px 15px;
-  border-radius: 12px;
-  border: 1px solid ${(props) => props.theme.colors.border};
+  margin: 5px 10px;
+  border-radius: 10px;
   flex-direction: row;
   align-items: center;
+  border: 1px solid ${(props) => props.theme.colors.border};
 `;
 
 const StatusBadge = styled.View<{ status: string }>`
-  padding: 4px 8px;
-  border-radius: 6px;
+  padding: 4px 10px;
+  border-radius: 15px;
+  margin-top: 8px;
+  align-self: flex-start;
   background-color: ${(props) =>
     props.status === 'APPROVED'
       ? props.theme.colors.success
       : props.status === 'REJECTED'
         ? props.theme.colors.error
-        : '#FFA000'};
-  margin-top: 4px;
-  align-self: flex-start;
+        : '#f0f0f0'};
 `;
 
 const BadgeText = styled(RNText)`
@@ -107,7 +104,6 @@ const BadgeText = styled(RNText)`
 
 const ActionButtons = styled.View`
   flex-direction: row;
-  margin-left: auto;
 `;
 
 const IconButton = styled.TouchableOpacity<{ color: string }>`
@@ -127,6 +123,20 @@ const ListHeader = styled.View`
 const VacationText = styled(RNText)`
   font-size: 14px;
   color: ${(props) => props.theme.colors.text};
+`;
+
+const DaysLeftBadge = styled.View`
+  background-color: #e0f2f1;
+  padding: 4px 8px;
+  border-radius: 6px;
+  margin-top: 5px;
+  align-self: flex-start;
+`;
+
+const DaysLeftText = styled(RNText)`
+  font-size: 11px;
+  color: #00796b;
+  font-weight: bold;
 `;
 
 const EmployeeName = styled(RNText)`
@@ -166,32 +176,36 @@ const CountdownLabel = styled(RNText)`
   margin-top: 5px;
 `;
 
-const VacationsScreen = ({ route }: Props) => {
+const VacationsScreen = ({ route, navigation }: Props) => {
   const { user, userData, role } = useAuth();
-  const isAdminView = route?.params?.isAdminView === true && role === 'DIRECTOR';
+  const isAdminView = (route.params as any)?.isAdminView === true && role === 'DIRECTOR';
 
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<VacationRequest[]>([]);
   const [selectedDates, setSelectedDates] = useState<any>({});
   const [submitting, setSubmitting] = useState(false);
 
+  const getDaysRemaining = (startDate: string) => {
+    const start = new Date(startDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diff = start.getTime() - today.getTime();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  };
+
   const nextVacation = useMemo(() => {
     if (isAdminView) return null;
-    const today = new Date().toISOString().split('T')[0];
+    const todayStr = new Date().toISOString().split('T')[0];
     const approvedFuture = requests
-      .filter((r) => r.status === 'APPROVED' && r.startDate >= today)
+      .filter((r) => r.status === 'APPROVED' && r.startDate >= todayStr)
       .sort((a, b) => a.startDate.localeCompare(b.startDate));
     return approvedFuture[0] || null;
   }, [requests, isAdminView]);
 
   const daysToNext = useMemo(() => {
     if (!nextVacation) return null;
-    const start = new Date(nextVacation.startDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const diffTime = start.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+    const days = getDaysRemaining(nextVacation.startDate);
+    return days;
   }, [nextVacation]);
 
   useEffect(() => {
@@ -222,37 +236,73 @@ const VacationsScreen = ({ route }: Props) => {
     return () => unsubscribe();
   }, [isAdminView]);
 
+  useEffect(() => {
+    if (isAdminView || Platform.OS === 'web') return;
+
+    const scheduleReminders = async () => {
+      const myApproved = requests.filter((r) => r.status === 'APPROVED');
+      for (const v of myApproved) {
+        const days = getDaysRemaining(v.startDate);
+        if (days > 0) {
+          if (days >= 5) {
+            const trig = new Date(new Date(v.startDate).getTime() - 5 * 24 * 60 * 60 * 1000);
+            trig.setHours(9, 0, 0);
+            await Notifications.scheduleNotificationAsync({
+              identifier: `vac_5_${v.id}`,
+              content: {
+                title: 'Urlop za 5 dni! 🏖️',
+                body: 'Przygotuj się na odpoczynek.',
+                sound: true,
+              },
+              trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: trig },
+            }).catch(() => {});
+          }
+          if (days >= 1) {
+            const trig = new Date(new Date(v.startDate).getTime() - 1 * 24 * 60 * 60 * 1000);
+            trig.setHours(9, 0, 0);
+            await Notifications.scheduleNotificationAsync({
+              identifier: `vac_1_${v.id}`,
+              content: {
+                title: 'Urlop już jutro! ☀️',
+                body: 'Pamiętaj o dokończeniu zadań.',
+                sound: true,
+              },
+              trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: trig },
+            }).catch(() => {});
+          }
+        }
+      }
+    };
+    scheduleReminders();
+  }, [requests, isAdminView]);
+
   const onDayPress = (day: any) => {
     const dateString = day.dateString;
     const newSelected = { ...selectedDates };
-
-    if (newSelected[dateString]) {
-      delete newSelected[dateString];
-    } else {
+    if (newSelected[dateString]) delete newSelected[dateString];
+    else
       newSelected[dateString] = { selected: true, color: theme.colors.primary, textColor: 'white' };
-    }
     setSelectedDates(newSelected);
   };
 
   const submitRequest = async () => {
     const dates = Object.keys(selectedDates).sort();
     if (dates.length === 0) return notify.error('Wybierz daty w kalendarzu');
-
     setSubmitting(true);
     try {
       await addDoc(collection(db, 'vacations'), {
         userId: auth.currentUser?.uid,
         userName: userData?.name || user?.email || 'Pracownik',
-        dates: dates,
+        dates,
         startDate: dates[0],
         endDate: dates[dates.length - 1],
         status: 'PENDING',
         createdAt: serverTimestamp(),
       });
       setSelectedDates({});
-      notify.success('Wniosek został wysłany');
+      notify.success('Wniosek wysłany');
     } catch (e) {
-      notify.error('Błąd wysyłania');
+      notify.error('Błąd');
     } finally {
       setSubmitting(false);
     }
@@ -263,18 +313,20 @@ const VacationsScreen = ({ route }: Props) => {
       await updateDoc(doc(db, 'vacations', id), { status });
       notify.success(status === 'APPROVED' ? 'Zatwierdzono' : 'Odrzucono');
     } catch (e) {
-      notify.error('Błąd operacji');
+      notify.error('Błąd');
     }
   };
 
   const deleteRequest = (id: string) => {
-    const performDelete = async () => {
-      await deleteDoc(doc(db, 'vacations', id));
-      notify.success('Usunięto');
-    };
     Alert.alert('Usuń', 'Czy na pewno?', [
       { text: 'Nie' },
-      { text: 'Tak', onPress: performDelete },
+      {
+        text: 'Tak',
+        onPress: async () => {
+          await deleteDoc(doc(db, 'vacations', id));
+          notify.success('Usunięto');
+        },
+      },
     ]);
   };
 
@@ -302,7 +354,6 @@ const VacationsScreen = ({ route }: Props) => {
                     </CountdownLabel>
                   </CountdownCard>
                 )}
-
                 <Section theme={theme}>
                   <Title theme={theme}>Zaplanuj swój urlop</Title>
                   <Calendar
@@ -334,7 +385,6 @@ const VacationsScreen = ({ route }: Props) => {
                 </Section>
               </>
             )}
-
             <ListHeader>
               <Title theme={theme} style={{ marginBottom: 0 }}>
                 {isAdminView ? 'Wnioski pracowników' : 'Moja historia urlopów'}
@@ -343,42 +393,49 @@ const VacationsScreen = ({ route }: Props) => {
             </ListHeader>
           </>
         }
-        renderItem={({ item }) => (
-          <RequestCard theme={theme}>
-            <View style={{ flex: 1 }}>
-              {isAdminView && <EmployeeName theme={theme}>{item.userName}</EmployeeName>}
-              <VacationText theme={theme}>
-                {item.startDate} — {item.endDate}
-              </VacationText>
-              <StatusBadge status={item.status} theme={theme}>
-                <BadgeText>{item.status}</BadgeText>
-              </StatusBadge>
-            </View>
-
-            {isAdminView && item.status === 'PENDING' ? (
-              <ActionButtons>
-                <IconButton
-                  color={theme.colors.success}
-                  onPress={() => handleAction(item.id, 'APPROVED')}
-                >
-                  <Check size={20} color="white" />
-                </IconButton>
-                <IconButton
-                  color={theme.colors.error}
-                  onPress={() => handleAction(item.id, 'REJECTED')}
-                >
-                  <X size={20} color="white" />
-                </IconButton>
-              </ActionButtons>
-            ) : (
-              !isAdminView && (
-                <TouchableOpacity onPress={() => deleteRequest(item.id)}>
-                  <Trash2 size={20} color={theme.colors.textSecondary} />
-                </TouchableOpacity>
-              )
-            )}
-          </RequestCard>
-        )}
+        renderItem={({ item }) => {
+          const dLeft = getDaysRemaining(item.startDate);
+          return (
+            <RequestCard theme={theme}>
+              <View style={{ flex: 1 }}>
+                {isAdminView && <EmployeeName theme={theme}>{item.userName}</EmployeeName>}
+                <VacationText theme={theme}>
+                  {item.startDate} — {item.endDate}
+                </VacationText>
+                {item.status === 'APPROVED' && dLeft > 0 && (
+                  <DaysLeftBadge>
+                    <DaysLeftText>Zostało: {dLeft} dni</DaysLeftText>
+                  </DaysLeftBadge>
+                )}
+                <StatusBadge status={item.status} theme={theme}>
+                  <BadgeText>{item.status}</BadgeText>
+                </StatusBadge>
+              </View>
+              {isAdminView && item.status === 'PENDING' ? (
+                <ActionButtons>
+                  <IconButton
+                    color={theme.colors.success}
+                    onPress={() => handleAction(item.id, 'APPROVED')}
+                  >
+                    <Check size={20} color="white" />
+                  </IconButton>
+                  <IconButton
+                    color={theme.colors.error}
+                    onPress={() => handleAction(item.id, 'REJECTED')}
+                  >
+                    <X size={20} color="white" />
+                  </IconButton>
+                </ActionButtons>
+              ) : (
+                !isAdminView && (
+                  <TouchableOpacity onPress={() => deleteRequest(item.id)}>
+                    <Trash2 size={20} color={theme.colors.textSecondary} />
+                  </TouchableOpacity>
+                )
+              )}
+            </RequestCard>
+          );
+        }}
         ListEmptyComponent={
           <EmptyContainer>
             <RNText style={{ color: theme.colors.textSecondary }}>

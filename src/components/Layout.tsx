@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Platform, Dimensions, TouchableOpacity, Text as RNText, Image } from 'react-native';
+import {
+  View,
+  Platform,
+  Dimensions,
+  TouchableOpacity,
+  Text as RNText,
+  Image,
+  ScrollView,
+} from 'react-native';
 import styled from 'styled-components/native';
 import {
   LayoutGrid,
@@ -12,37 +20,37 @@ import {
   Palmtree,
   Bell,
   Megaphone,
+  Menu,
+  ChevronRight,
+  X,
 } from 'lucide-react-native';
 import { theme } from '../config/theme';
 import { useAuth } from '../context/AuthContext';
 import { signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
+import { NavigationProp } from '@react-navigation/native';
 
-type NavigationProp = {
-  navigate: (screen: string, params?: object) => void;
-  goBack: () => void;
-};
+const { width } = Dimensions.get('window');
+const getIsDesktop = () => Platform.OS === 'web' && width > 768;
 
-const getIsDesktop = () => Platform.OS === 'web' && Dimensions.get('window').width > 768;
-
-const RootContainer = styled.View<{ isDesktop: boolean }>`
+const RootContainer = styled.View<{ isDesktop?: boolean }>`
   flex: 1;
   flex-direction: ${(props) => (props.isDesktop ? 'row' : 'column')};
   background-color: ${(props) => props.theme.colors.background};
 `;
 
 const Sidebar = styled.View`
-  width: 260px;
+  width: 280px;
   background-color: ${(props) => props.theme.colors.surface};
   border-right-width: 1px;
   border-right-color: ${(props) => props.theme.colors.border};
-  padding: ${(props) => props.theme.spacing.lg}px;
+  padding: 20px 0;
 `;
 
 const SidebarLogoContainer = styled.View`
+  padding: 0 20px;
+  margin-bottom: 30px;
   align-items: center;
-  margin-bottom: 40px;
-  padding: 10px 0;
 `;
 
 const SidebarLogo = styled.Image`
@@ -54,15 +62,15 @@ const SidebarLogo = styled.Image`
 const NavItem = styled.TouchableOpacity<{ active?: boolean }>`
   flex-direction: row;
   align-items: center;
-  padding: 14px 16px;
-  border-radius: ${(props) => props.theme.borderRadius.md}px;
-  background-color: ${(props) => (props.active ? theme.colors.accent : 'transparent')};
-  margin-bottom: 8px;
+  padding: 12px 20px;
+  margin: 2px 10px;
+  border-radius: 10px;
+  background-color: ${(props) => (props.active ? props.theme.colors.accent : 'transparent')};
 `;
 
 const NavText = styled(RNText)<{ active?: boolean }>`
   margin-left: 12px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: ${(props) => (props.active ? 'bold' : '500')};
   color: ${(props) => (props.active ? props.theme.colors.primary : props.theme.colors.text)};
 `;
@@ -73,15 +81,14 @@ const BottomTabs = styled.View`
   background-color: ${(props) => props.theme.colors.surface};
   border-top-width: 1px;
   border-top-color: ${(props) => props.theme.colors.border};
-  justify-content: space-around;
-  align-items: center;
   padding-bottom: ${Platform.OS === 'ios' ? 20 : 0}px;
+  elevation: 10;
 `;
 
 const TabItem = styled.TouchableOpacity`
-  align-items: center;
-  justify-content: center;
   flex: 1;
+  justify-content: center;
+  align-items: center;
 `;
 
 const TabLabel = styled(RNText)<{ active?: boolean }>`
@@ -92,11 +99,45 @@ const TabLabel = styled(RNText)<{ active?: boolean }>`
     props.active ? props.theme.colors.primary : props.theme.colors.textSecondary};
 `;
 
-const ContentArea = styled.View`
+const MoreMenuOverlay = styled.Modal``;
+
+const MoreMenuBackdrop = styled.TouchableOpacity`
   flex: 1;
+  background-color: rgba(0, 0, 0, 0.5);
+  justify-content: flex-end;
 `;
 
-const Spacer = styled.View`
+const MoreMenuContent = styled.View`
+  background-color: white;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  padding: 20px;
+  padding-bottom: ${Platform.OS === 'ios' ? 40 : 20}px;
+`;
+
+const MoreMenuTitle = styled(RNText)`
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  color: ${(props) => props.theme.colors.text};
+`;
+
+const MoreMenuItem = styled.TouchableOpacity`
+  flex-direction: row;
+  align-items: center;
+  padding: 15px 0;
+  border-bottom-width: 1px;
+  border-bottom-color: #f0f0f0;
+`;
+
+const MoreMenuText = styled(RNText)`
+  flex: 1;
+  font-size: 16px;
+  margin-left: 15px;
+  color: ${(props) => props.theme.colors.text};
+`;
+
+const ContentArea = styled.View`
   flex: 1;
 `;
 
@@ -121,12 +162,13 @@ const SidebarScroll = styled.ScrollView`
 
 interface MainLayoutProps {
   children: React.ReactNode;
-  navigation: NavigationProp;
+  navigation: NavigationProp<any>;
   currentRoute: string;
 }
 
 export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutProps) => {
   const { role } = useAuth();
+  const [moreVisible, setMoreVisible] = useState(false);
   const [isDesktop, setIsDesktop] = useState(getIsDesktop);
 
   useEffect(() => {
@@ -235,34 +277,86 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
     );
   }
 
-  const mobileItems = [
-    { name: 'Home', label: 'Start', icon: Home },
-    { name: 'Tasks', label: 'Zadania', icon: CheckSquare },
-    { name: 'Dashboard', label: 'Projekty', icon: LayoutGrid },
-    { name: 'Reminders', label: 'Przypomnień', icon: Bell },
-    { name: 'Profile', label: 'Profil', icon: User },
-  ];
+  const allMobileItems = sections.flatMap((s) => s.items);
+  const visibleItems = allMobileItems.slice(0, 4);
+  const hiddenItems = allMobileItems.slice(4);
 
   return (
     <RootContainer theme={theme} isDesktop={false}>
       <ContentArea>{children}</ContentArea>
 
       <BottomTabs theme={theme}>
-        {mobileItems.map((item) => (
+        {visibleItems.map((item) => (
           <TabItem
             key={item.name + (item.params ? '_admin' : '')}
             onPress={() => navigation.navigate(item.name, item.params as any)}
           >
             <item.icon
-              size={20}
+              size={22}
               color={currentRoute === item.name ? theme.colors.primary : theme.colors.textSecondary}
             />
-            <TabLabel theme={theme} active={currentRoute === item.name} style={{ fontSize: 9 }}>
+            <TabLabel theme={theme} active={currentRoute === item.name}>
               {item.label}
             </TabLabel>
           </TabItem>
         ))}
+        <TabItem onPress={() => setMoreVisible(true)}>
+          <Menu size={22} color={theme.colors.textSecondary} />
+          <TabLabel theme={theme}>Menu</TabLabel>
+        </TabItem>
       </BottomTabs>
+
+      <MoreMenuOverlay
+        visible={moreVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setMoreVisible(false)}
+      >
+        <MoreMenuBackdrop activeOpacity={1} onPress={() => setMoreVisible(false)}>
+          <MoreMenuContent theme={theme}>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 20,
+              }}
+            >
+              <MoreMenuTitle theme={theme}>Więcej opcji</MoreMenuTitle>
+              <TouchableOpacity onPress={() => setMoreVisible(false)}>
+                <X size={24} color={theme.colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            {hiddenItems.map((item) => (
+              <MoreMenuItem
+                key={item.name + (item.params ? '_admin' : '')}
+                onPress={() => {
+                  setMoreVisible(false);
+                  navigation.navigate(item.name, item.params as any);
+                }}
+              >
+                <item.icon size={22} color={theme.colors.primary} />
+                <MoreMenuText theme={theme}>{item.label}</MoreMenuText>
+                <ChevronRight size={18} color="#ccc" />
+              </MoreMenuItem>
+            ))}
+
+            <MoreMenuItem
+              onPress={() => {
+                setMoreVisible(false);
+                signOut(auth);
+              }}
+              style={{ borderBottomWidth: 0, marginTop: 10 }}
+            >
+              <LogOut size={22} color={theme.colors.error} />
+              <MoreMenuText theme={theme} style={{ color: theme.colors.error }}>
+                Wyloguj się
+              </MoreMenuText>
+            </MoreMenuItem>
+          </MoreMenuContent>
+        </MoreMenuBackdrop>
+      </MoreMenuOverlay>
     </RootContainer>
   );
 };

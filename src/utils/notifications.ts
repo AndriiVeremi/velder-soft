@@ -13,27 +13,37 @@ Notifications.setNotificationHandler({
 });
 
 export async function registerForPushNotificationsAsync() {
-  if (Platform.OS === 'web') return null;
-  if (Device.isDevice) {
+  if (Platform.OS === 'web') return;
+
+  try {
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#008744',
+        enableVibrate: true,
+        showBadge: true,
+        sound: 'default',
+      });
+    }
+
+    if (!Device.isDevice) return;
+
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
     if (existingStatus !== 'granted') {
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
     }
-    if (finalStatus !== 'granted') return null;
-  }
-  if (Platform.OS === 'android') {
-    Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#008744',
-      enableVibrate: true,
-      showBadge: true,
-      sound: 'default',
-    });
-  }
+
+    if (finalStatus !== 'granted') return;
+
+    try {
+      const token = await Notifications.getExpoPushTokenAsync();
+      console.log('Push Token acquired');
+    } catch (tokenErr) {}
+  } catch (err) {}
 }
 
 export async function setBadgeCount(count: number) {
@@ -90,6 +100,6 @@ export async function scheduleDailyReminder(taskCount: number, startTime: string
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
       hour: hour,
       minute: minute,
-    } as Notifications.DailyTriggerInput,
+    },
   });
 }

@@ -14,7 +14,8 @@ import { doc, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import * as Linking from 'expo-linking';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as WebBrowser from 'expo-web-browser';
 import { db, storage } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { theme } from '../config/theme';
@@ -161,17 +162,25 @@ const ProjectDetailsScreen = ({ route, navigation }: any) => {
 
   const handleOpenPdf = async () => {
     if (!project.pdfUrl) return;
+
     if (Platform.OS === 'web') {
       window.open(project.pdfUrl, '_blank');
     } else {
       setDownloading(true);
       try {
-        const fileUri = (FileSystem as any).cacheDirectory + (project.fileName || 'dokument.pdf');
+        const fileName = project.fileName || `dokument_${Date.now()}.pdf`;
+        const fileUri = FileSystem.cacheDirectory + fileName;
+
         const { uri } = await FileSystem.downloadAsync(project.pdfUrl, fileUri);
-        if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
-        else Linking.openURL(uri);
+
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: project.title,
+          UTI: 'com.adobe.pdf',
+        });
       } catch (error) {
-        notify.error('Błąd otwierania');
+        console.error(error);
+        notify.error('Nie udało się otworzyć dokumentu PDF');
       } finally {
         setDownloading(false);
       }

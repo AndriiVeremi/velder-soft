@@ -9,6 +9,7 @@ import {
   TextInput,
   Alert,
   ScrollView,
+  Platform,
 } from 'react-native';
 import styled from 'styled-components/native';
 import {
@@ -40,6 +41,7 @@ import {
 import { Calendar } from 'react-native-calendars';
 import { format } from 'date-fns';
 import * as Notifications from 'expo-notifications';
+import { SchedulableTriggerInputTypes } from 'expo-notifications';
 
 const Container = styled.View`
   flex: 1;
@@ -274,7 +276,10 @@ const RemindersScreen = ({ navigation, route }: Props) => {
                   badge: reminders.length + 1,
                   data: { reminderId: docRef.id },
                 },
-                trigger: scheduleDate,
+                trigger: {
+                  type: SchedulableTriggerInputTypes.DATE,
+                  date: scheduleDate,
+                },
               });
             }
           }

@@ -1,52 +1,46 @@
 # Dokumentacja Techniczna Velder-soft
 
-Dokument przeznaczony dla programistów i administratorów systemu.
+## 🚀 System Błyskawicznych Aktualizacji (OTA)
 
-## 🛠 Stos Technologiczny
+Dzięki usłudze **Expo Updates**, możesz aktualizować aplikację na telefonach pracowników bez konieczności tworzenia nowego pliku APK.
 
-- **Framework:** React Native (Expo SDK 54).
-- **Język:** TypeScript (Typowanie statyczne).
-- **Baza Danych:** Firebase Firestore (Baza dokumentowa NoSQL).
-- **Pliki:** Firebase Cloud Storage (PDF, JPG).
-- **Uwierzytelnianie:** Firebase Auth.
-- **Stylizacja:** `styled-components/native`.
-- **Ikony:** `lucide-react-native`.
+### Jak wysłać aktualizację:
 
-## 🏛 Architektura Aplikacji
-
-Aplikacja korzysta z modelu **BaaS** (Backend as a Service), co eliminuje potrzebę utrzymywania oddzielnego serwera API.
-
-### Nawigacja
-
-Zastosowano `@react-navigation/stack`. Główne ekrany są owinięte w komponent `MainLayout`, który dynamicznie przełącza się między Sidebar (Desktop) a Bottom Tabs (Mobile).
-
-### Logika Powiadomień (Snooze System)
-
-Przy tworzeniu przypomnienia system planuje 3 powiadomienia lokalne z unikalnymi ID: `${docId}_0`, `${docId}_1`, `${docId}_2` w odstępach 5-minutowych. Akcja użytkownika na dowolnym z nich anuluje pozostałe za pomocą `cancelScheduledNotificationAsync`.
-
-### Optymalizacja Danych
-
-- Wszystkie subskrypcje Firestore są automatycznie zamykane w `cleanup` funkcji `useEffect`.
-- Sortowanie danych odbywa się po stronie klienta (in-memory), aby uniknąć konieczności tworzenia złożonych indeksów w Firestore.
-
-## 💾 Struktura Bazy Danych
-
-- **users:** `id, name, email, role, isActive, notificationStart, notificationEnd`
-- **tasks:** `id, title, description, date, time, done, photos[]`
-- **announcements:** `id, text, authorName, createdAt`
-- **vacations:** `id, userId, userName, startDate, endDate, status`
-- **services:** `id, title, description, status, photos[], serviceDate, serviceTime`
+1. Wprowadź zmiany w kodzie.
+2. Zaktualizuj wersję w `app.json` (opcjonalnie).
+3. Uruchom komendę:
+   ```bash
+   npx eas update --branch preview --message "Opis zmian"
+   ```
+4. Pracownicy otrzymają nową wersję po ponownym uruchomieniu aplikacji.
 
 ---
 
-## 💎 Jakość Kodu i Standardy
+## 🏛 Architektura i UI
 
-W projekcie stosujemy automatyczne narzędzia do utrzymania czystości kodu:
+### Menu Mobilne (Rule 4+1)
 
-### Linting (ESLint)
+Zaimplementowano hybrydowy system nawigacji:
 
-Sprawdza błędy w logice React, React Native oraz TypeScript.
+- Pierwsze 4 elementy z definicji `sections` w `Layout.tsx` są renderowane jako stałe ikony w `BottomTabs`.
+- Pozostałe elementy są przenoszone do komponentu `MoreMenuOverlay` (Modal), który jest wywoływany przyciskiem "Menu".
 
-### Formatowanie (Prettier)
+### Obsługa PDF (Cross-platform)
 
-Dba o jednolity styl kodu (spacje, cudzysłowy itp.).
+- **Web:** Standardowe `window.open`.
+- **Mobile:** Wykorzystano `expo-file-system/legacy` do pobrania pliku do pamięci podręcznej (`cacheDirectory`), a następnie `expo-sharing` do otwarcia w systemowej przeglądarce dokumentów. Zapewnia to ominięcie restrykcji CORS w Firebase Storage.
+
+### Automatyzacja Urlopów
+
+- **Licznik (Countdown):** Obliczany dynamicznie w `useMemo`. Widoczność ograniczona do okna 5-dniowego przed datą `startDate`.
+- **Przypomnienia:** Podczas ładowania listy `APPROVED` wniosków, system lokalnie planuje powiadomienia za pomocą `Notifications.scheduleNotificationAsync` z precyzyjним wyliczeniem daty (T-5 i T-1).
+
+---
+
+## 💾 Model Danych (Firestore)
+
+- **users:** profil, role, stan aktywności.
+- **tasks:** wspólna pula zadań (płaska struktura).
+- **announcements:** komunikaty z real-time snapshot listenerem.
+- **vacations:** wnioski z metadanymi `userName` dla łatwego sortowania in-memory.
+- **services:** zlecenia z obsługą godzin (`serviceTime`).
