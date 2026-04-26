@@ -48,10 +48,16 @@ service cloud.firestore {
       allow create, update, delete: if isDirector();
     }
 
+    // Правила для АРХІВУ ФОТО (DashboardScreen)
+    match /service_records/{id} {
+      allow read, create: if isActive();
+      allow delete: if isDirector();
+    }
+
     // Правила для ЗАВДАНЬ
     match /tasks/{taskId} {
-      // Працівник може бачити свої завдання, Директор - всі.
-      allow read: if isActive() && (resource.data.assignedTo == request.auth.uid || isDirector());
+      // Працівник може бачити свої завдання та загальні (ALL), Директор - всі.
+      allow read: if isActive() && (resource.data.assignedTo == request.auth.uid || resource.data.assignedTo == 'ALL' || isDirector());
       // Тільки Директор може ставити завдання.
       allow create: if isDirector();
       // Працівник може лише позначати "виконано" та додавати фото.

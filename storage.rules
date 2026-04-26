@@ -7,9 +7,38 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    match /{allPaths=**} {
+
+
+    match /projects/{allPaths=**} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // 2. Фото звітів про проблеми
+    match /reports/{userId}/{allPaths=**} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn(); 
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // 3. Фото завдань та сервісу
+    match /task_photos/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+    
+    match /service/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+    
+    match /dept_photos/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // Базове правило для всього іншого
+    match /{allPaths=**} {
+      allow read, write: if isSignedIn();
     }
   }
 }

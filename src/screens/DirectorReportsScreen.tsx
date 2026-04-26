@@ -223,10 +223,11 @@ const DirectorReportsScreen = () => {
         performDelete();
       }
     } else {
-      Alert.alert('Usuń zgłoszenie', 'Czy na pewno chcesz trwale usunąć to zgłoszenie wraz z plikami?', [
-        { text: 'Anuluj' },
-        { text: 'Usuń', style: 'destructive', onPress: performDelete },
-      ]);
+      Alert.alert(
+        'Usuń zgłoszenie',
+        'Czy na pewno chcesz trwale usunąć to zgłoszenie wraz z plikami?',
+        [{ text: 'Anuluj' }, { text: 'Usuń', style: 'destructive', onPress: performDelete }]
+      );
     }
   };
 
@@ -273,7 +274,15 @@ const DirectorReportsScreen = () => {
             <Description theme={theme}>{item.description}</Description>
 
             {Platform.OS === 'web' ? (
-              <div style={{ display: 'flex', flexDirection: 'row', overflowX: 'auto', marginBottom: 10, gap: 10 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'row',
+                  overflowX: 'auto',
+                  marginBottom: 10,
+                  gap: 10,
+                }}
+              >
                 {item.media.map((file, idx) => (
                   <div
                     key={idx}
@@ -306,7 +315,15 @@ const DirectorReportsScreen = () => {
                     {file.type === 'image' ? (
                       <Image source={{ uri: file.url }} style={{ width: 80, height: 80 }} />
                     ) : (
-                      <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
+                      <View
+                        style={{
+                          flex: 1,
+                          backgroundColor: '#000',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          width: '100%',
+                        }}
+                      >
                         <Video size={24} color="white" />
                         <Play size={12} color="white" style={{ position: 'absolute' }} />
                       </View>
@@ -345,13 +362,12 @@ const DirectorReportsScreen = () => {
                 }}
               />
             ) : (
-              <Image 
-                source={{ uri: selectedMedia.url }} 
-                style={{ width: '100%', height: '80%', resizeMode: 'contain' }} 
+              <Image
+                source={{ uri: selectedMedia.url }}
+                style={{ width: '100%', height: '80%', resizeMode: 'contain' }}
               />
             )
           ) : (
-
             <View style={{ width: '100%', height: '80%' }}>
               {Platform.OS === 'web' ? (
                 <video

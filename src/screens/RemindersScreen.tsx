@@ -274,8 +274,7 @@ const RemindersScreen = ({ navigation, route }: Props) => {
               await Notifications.scheduleNotificationAsync({
                 identifier: `${docRef.id}_${i}`,
                 content: {
-                  title:
-                    i === 0 ? 'Ważne przypomnienie! 🔔' : `Przypomnienie (Powtórka ${i}/4) 🔔`,
+                  title: i === 0 ? 'Ważne przypomnienie! 🔔' : `Przypomnienie (Powtórka ${i}/4) 🔔`,
                   body: title,
                   sound: true,
                   badge: reminders.length + 1,

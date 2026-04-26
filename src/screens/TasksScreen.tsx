@@ -635,7 +635,9 @@ const TasksScreen = () => {
                       </DateTimeText>
                       {role === 'DIRECTOR' && item.assignedToName && (
                         <AssignedBadge theme={theme}>
-                          <AssignedText theme={theme}>Wykonawca: {item.assignedToName}</AssignedText>
+                          <AssignedText theme={theme}>
+                            Wykonawca: {item.assignedToName}
+                          </AssignedText>
                         </AssignedBadge>
                       )}
                     </TaskInfo>
