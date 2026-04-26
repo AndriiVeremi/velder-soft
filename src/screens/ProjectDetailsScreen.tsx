@@ -13,12 +13,10 @@ import styled from 'styled-components/native';
 import { doc, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import * as Linking from 'expo-linking';
-import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system/legacy';
 import * as WebBrowser from 'expo-web-browser';
 import { db, storage } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
-import { theme } from '../config/theme';
+import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
 import { FileText, ExternalLink, CheckCircle, Clock, Trash2 } from 'lucide-react-native';
 
@@ -64,8 +62,8 @@ const Section = styled.View`
   margin-bottom: ${(props) => props.theme.spacing.md}px;
   ${isDesktop &&
   `
-    border-radius: ${theme.borderRadius.lg}px;
-    margin: ${theme.spacing.md}px;
+    border-radius: 12px;
+    margin: 16px;
     max-width: 1000px;
     align-self: center;
     width: 100%;
@@ -106,6 +104,7 @@ const PdfButtonText = styled(RNText)`
 const ProjectDetailsScreen = ({ route, navigation }: any) => {
   const { project: initialProject } = route.params;
   const { role } = useAuth();
+  const { theme } = useAppTheme();
   const [project, setProject] = useState(initialProject);
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -164,20 +163,15 @@ const ProjectDetailsScreen = ({ route, navigation }: any) => {
     if (!project.pdfUrl) return;
 
     if (Platform.OS === 'web') {
-      window.open(project.pdfUrl, '_blank');
+      if (project.pdfUrl.startsWith('https://') || project.pdfUrl.startsWith('http://')) {
+        window.open(project.pdfUrl, '_blank');
+      } else {
+        notify.error('Nieprawidłowy adres URL dokumentu');
+      }
     } else {
       setDownloading(true);
       try {
-        const fileName = project.fileName || `dokument_${Date.now()}.pdf`;
-        const fileUri = FileSystem.cacheDirectory + fileName;
-
-        const { uri } = await FileSystem.downloadAsync(project.pdfUrl, fileUri);
-
-        await Sharing.shareAsync(uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: project.title,
-          UTI: 'com.adobe.pdf',
-        });
+        await WebBrowser.openBrowserAsync(project.pdfUrl);
       } catch (error) {
         console.error(error);
         notify.error('Nie udało się otworzyć dokumentu PDF');

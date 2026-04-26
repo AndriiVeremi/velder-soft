@@ -23,8 +23,10 @@ import {
   Menu,
   ChevronRight,
   X,
+  AlertTriangle,
+  Inbox,
 } from 'lucide-react-native';
-import { theme } from '../config/theme';
+import { useAppTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
@@ -108,10 +110,12 @@ const MoreMenuBackdrop = styled.TouchableOpacity`
 `;
 
 const MoreMenuContent = styled.View`
-  background-color: white;
+  background-color: ${(props) => props.theme.colors.surface};
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
   padding: 20px;
+  border-top-width: 1px;
+  border-top-color: ${(props) => props.theme.colors.border};
 `;
 
 const MoreMenuTitle = styled(RNText)`
@@ -126,7 +130,7 @@ const MoreMenuItem = styled.TouchableOpacity`
   align-items: center;
   padding: 15px 0;
   border-bottom-width: 1px;
-  border-bottom-color: #f0f0f0;
+  border-bottom-color: ${(props) => props.theme.colors.border};
 `;
 
 const MoreMenuText = styled(RNText)`
@@ -167,6 +171,7 @@ interface MainLayoutProps {
 
 export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutProps) => {
   const { role } = useAuth();
+  const { theme } = useAppTheme();
   const [moreVisible, setMoreVisible] = useState(false);
   const [isDesktop, setIsDesktop] = useState(getIsDesktop);
   const insets = useSafeAreaInsets();
@@ -190,6 +195,9 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
         { name: 'Tasks', label: 'Zadania', icon: CheckSquare },
         { name: 'Dashboard', label: 'Projekty', icon: LayoutGrid },
         { name: 'Service', label: 'Serwis', icon: Wrench },
+        ...(role !== 'DIRECTOR'
+          ? [{ name: 'ReportProblem', label: 'Zgłoś problem', icon: AlertTriangle }]
+          : []),
       ],
     },
     {
@@ -207,6 +215,7 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
             items: [
               { name: 'Users', label: 'Pracownicy', icon: Users },
               { name: 'Announcements', label: 'Ogłoszenia', icon: Megaphone },
+              { name: 'DirectorReports', label: 'Zgłoszenia', icon: Inbox },
               {
                 name: 'Vacations',
                 label: 'Wnioski Urlopowe',

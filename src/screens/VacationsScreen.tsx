@@ -25,7 +25,7 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
-import { theme } from '../config/theme';
+import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
 import {
   Check,
@@ -74,7 +74,7 @@ const Title = styled(RNText)`
 `;
 
 const RequestCard = styled.View`
-  background-color: white;
+  background-color: ${(props) => props.theme.colors.surface};
   padding: 15px;
   margin: 5px 10px;
   border-radius: 10px;
@@ -93,7 +93,7 @@ const StatusBadge = styled.View<{ status: string }>`
       ? props.theme.colors.success
       : props.status === 'REJECTED'
         ? props.theme.colors.error
-        : '#f0f0f0'};
+        : props.theme.colors.border};
 `;
 
 const BadgeText = styled(RNText)`
@@ -126,7 +126,7 @@ const VacationText = styled(RNText)`
 `;
 
 const DaysLeftBadge = styled.View`
-  background-color: #e0f2f1;
+  background-color: ${(props) => props.theme.colors.accent};
   padding: 4px 8px;
   border-radius: 6px;
   margin-top: 5px;
@@ -135,7 +135,7 @@ const DaysLeftBadge = styled.View`
 
 const DaysLeftText = styled(RNText)`
   font-size: 11px;
-  color: #00796b;
+  color: ${(props) => props.theme.colors.primary};
   font-weight: bold;
 `;
 
@@ -178,6 +178,7 @@ const CountdownLabel = styled(RNText)`
 
 const VacationsScreen = ({ route, navigation }: Props) => {
   const { user, userData, role } = useAuth();
+  const { theme } = useAppTheme();
   const isAdminView = (route.params as any)?.isAdminView === true && role === 'DIRECTOR';
 
   const [loading, setLoading] = useState(true);
@@ -360,9 +361,23 @@ const VacationsScreen = ({ route, navigation }: Props) => {
                     onDayPress={onDayPress}
                     markedDates={selectedDates}
                     theme={{
-                      todayTextColor: theme.colors.primary,
+                      backgroundColor: theme.colors.surface,
+                      calendarBackground: theme.colors.surface,
+                      textSectionTitleColor: theme.colors.textSecondary,
                       selectedDayBackgroundColor: theme.colors.primary,
+                      selectedDayTextColor: '#ffffff',
+                      todayTextColor: theme.colors.primary,
+                      dayTextColor: theme.colors.text,
+                      textDisabledColor: theme.colors.border,
+                      dotColor: theme.colors.primary,
+                      selectedDotColor: '#ffffff',
                       arrowColor: theme.colors.primary,
+                      disabledArrowColor: theme.colors.border,
+                      monthTextColor: theme.colors.text,
+                      indicatorColor: theme.colors.primary,
+                      textDayFontWeight: '400',
+                      textMonthFontWeight: 'bold',
+                      textDayHeaderFontWeight: '400',
                     }}
                   />
                   <TouchableOpacity

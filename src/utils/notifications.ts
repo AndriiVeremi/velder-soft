@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true, // Залишаємо для сумісності, але додаємо нові:
+    shouldShowAlert: true,
     shouldShowBanner: true,
     shouldShowList: true,
     shouldPlaySound: true,
@@ -43,8 +43,12 @@ export async function registerForPushNotificationsAsync() {
     try {
       const token = await Notifications.getExpoPushTokenAsync();
       console.log('Push Token acquired');
-    } catch (tokenErr) {}
-  } catch (err) {}
+    } catch (tokenErr) {
+      console.warn('Failed to get push token:', tokenErr);
+    }
+  } catch (err) {
+    console.warn('Registration for push notifications failed:', err);
+  }
 }
 
 export async function setBadgeCount(count: number) {

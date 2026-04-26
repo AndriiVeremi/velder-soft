@@ -44,7 +44,16 @@ System dynamicznie wykrywa typ urządzenia:
 
 ### Bezpieczeństwo Danych
 
-Dostęp do danych jest chroniony przez **Firebase Security Rules**. Tylko zalogowani i aktywni pracownicy mogą odczytywać dokumentację. Uprawnienia administracyjne (Rola: `DIRECTOR`) są weryfikowane na poziomie kodu oraz bazy danych przed wykonaniem operacji krytycznych (usuwanie, edycja).
+System stosuje wielowarstwową architekturę bezpieczeństwa:
+
+- **Server-side Security Rules:** Dostęp do bazy Firestore i Storage jest kontrolowany przez rygorystyczne reguły serwerowe. Uniemożliwia to nieautoryzowaną modyfikację danych (np. zmianę roli użytkownika lub usunięcie cudzych plików) nawet przy obejściu interfejsu klienta.
+- **Walidacja URL (XSS Protection):** Wszystkie zewnętrzne linki (np. do plików PDF) przechodzą proces walidacji protokołu (`https://`), co eliminuje ryzyko ataków typu Cross-Site Scripting.
+- **Rola DIRECTOR:** Uprawnienia administracyjne są weryfikowane bezpośrednio na serwerze Firebase przed każdą operacją zapisu.
+
+### Mechanizmy Automatyzacji i Zarządzania Miejscem
+
+- **Auto-Cleanup (Zgłoszenia):** Aplikacja posiada wbudowaną logikę "klient-serwer" do usuwania przeterminowanych danych. Zgłoszenia problemów wraz z załącznikami (zdjęcia/wideo) są automatycznie usuwane z bazy i magazynu po upływie 7 dni od utworzenia.
+- **Zadania Ogólne:** System wspiera zadania przypisane do grupy `ALL`. Są one widoczne dla wszystkich aktywnych pracowników, co optymalizuje proces przydzielania prac niewymagających konkretnego wykonawcy.
 
 ---
 

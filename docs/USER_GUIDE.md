@@ -17,7 +17,8 @@ Niniejszy przewodnik pomoże Ci szybko zapoznać się z funkcjami aplikacji Veld
 Dla Twojej wygody menu na dole ekranu zawiera najważniejsze funkcje:
 
 - **Start:** Ekran główny z najważniejszymi komunikatami i kalendarzem zadań.
-- **Zadania:** Pełna lista prac do wykonania na dany dzień.
+- **Zadania:** Pełna lista prac do wykonania. Zobaczysz tu swoje zadania oraz zadania "Ogólne", które może wykonać każdy wolny pracownik.
+- **Zgłoś problem:** Szybkie wysyłanie raportów o usterkach (zdjęcia + wideo) bezpośrednio do Dyrektora.
 - **Projekty:** Dokumentacja techniczna i zdjęcia z obiektów.
 - **Serwis:** Zlecenia napraw i konserwacji.
 - **Menu (Więcej):** Kliknij tutaj, aby znaleźć swój profil, wnioski urlopowe i osobiste przypomnienia.
@@ -38,6 +39,12 @@ Dla Twojej wygody menu na dole ekranu zawiera najważniejsze funkcje:
 - **PDF:** Kliknij "Otwórz dokument", a Twój telefon otworzy go w bezpiecznym podglądzie.
 - **Galeria:** Możesz przeglądać zdjęcia z poprzednich etapów prac lub dodać własne, aby udokumentować postęp.
 
+### ⚠️ Zgłaszanie Problemów
+
+- Jeśli napotkasz awarię lub brak materiałów, skorzystaj z funkcji **"Zgłoś problem"**.
+- Możesz dołączyć do **5 zdjęć lub krótkich filmów wideo**.
+- Twoje zgłoszenie trafi bezpośrednio do Dyrektora. Pamiętaj, że zgłoszenia są automatycznie usuwane z systemu po 7 dniach.
+
 ### 🔧 Serwis i Konserwacja
 
 - Sprawdzaj planowane terminy przeglądów urządzeń.
@@ -49,10 +56,11 @@ Dla Twojej wygody menu na dole ekranu zawiera najważniejsze funkcje:
 
 Jeśli pełnisz rolę Dyrektora, masz dodatkowe uprawnienia:
 
-1.  **Tworzenie Zadań:** Użyj przycisku `+` w sekcji Zadania. Możesz przypisać zadanie do konkretnego pracownika.
-2.  **Ogłoszenia:** W zakładce "Ogłoszenia" możesz wysłać wiadomość do wszystkich. Pracownicy usłyszą sygnał powiadomienia na swoich telefonach.
-3.  **Akceptacja Urlopów:** W sekcji "Wnioski Urlopowe" zatwierdzasz (✅) lub odrzucasz (❌) prośby o wolne.
-4.  **Użytkownicy:** Zarządzaj listą pracowników, aktywuj nowe konta lub usuwaj te nieaktywne.
+1.  **Tworzenie Zadań:** Użyj przycisku `+` w sekcji Zadania. Możesz przypisać zadanie do konkretnego pracownika lub zostawić je jako "Wszyscy (Ogólne)".
+2.  **Zgłoszenia:** W zakładce "Zgłoszenia" (ikona skrzynki) znajdziesz raporty od pracowników o usterkach. Możesz tam przeglądać zdjęcia i filmy.
+3.  **Ogłoszenia:** W zakładce "Ogłoszenia" możesz wysłać wiadomość do wszystkich. Pracownicy usłyszą sygnał powiadomienia na swoich telefonach.
+4.  **Akceptacja Urlopów:** W sekcji "Wnioski Urlopowe" zatwierdzasz (✅) lub odrzucasz (❌) prośby o wolne.
+5.  **Użytkownicy:** Zarządzaj listą pracowników, aktywuj nowe konta lub usuwaj te nieaktywne.
 
 ---
 

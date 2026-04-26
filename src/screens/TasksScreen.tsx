@@ -33,9 +33,8 @@ import * as FileSystem from 'expo-file-system';
 import { Calendar } from 'react-native-calendars';
 import { db, storage } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
-import { theme } from '../config/theme';
+import { useAppTheme } from '../context/ThemeContext';
 import {
-  CheckCircle2,
   Plus,
   X,
   Trash2,
@@ -47,6 +46,8 @@ import {
   Edit2,
   Download,
   Eye,
+  Circle,
+  CheckCircle2,
 } from 'lucide-react-native';
 import { format, isToday, parseISO } from 'date-fns';
 import { notify } from '../utils/notify';
@@ -101,8 +102,14 @@ const Title = styled(RNText)`
 const TaskCard = styled.View`
   background-color: ${(props) => props.theme.colors.surface};
   margin: ${(props) => props.theme.spacing.sm}px ${(props) => props.theme.spacing.md}px;
-  border-radius: ${(props) => props.theme.borderRadius.md}px;
-  border: 1px solid ${(props) => props.theme.colors.border};
+  border-radius: ${(props) => props.theme.borderRadius.lg}px;
+  border-width: 1px;
+  border-color: ${(props) => props.theme.colors.border};
+  shadow-color: #000;
+  shadow-offset: 0px 2px;
+  shadow-opacity: 0.1;
+  shadow-radius: 4px;
+  elevation: 3;
   overflow: hidden;
 `;
 
@@ -110,7 +117,7 @@ const TaskMainRow = styled.View`
   flex-direction: row;
   padding: ${(props) => props.theme.spacing.md}px;
   align-items: center;
-  background-color: white;
+  background-color: ${(props) => props.theme.colors.surface};
 `;
 
 const TaskInfo = styled.View`
@@ -138,13 +145,14 @@ const LeftAction = styled.View`
 const TaskDescriptionText = styled(RNText)`
   font-size: 14px;
   color: ${(props) => props.theme.colors.textSecondary};
-  margin-top: 4px;
+  margin-top: 6px;
+  line-height: 18px;
 `;
 
 const TaskDetailsContainer = styled.View`
   padding: 15px;
   border-top-width: 1px;
-  border-top-color: #f0f0f0;
+  border-top-color: ${(props) => props.theme.colors.border};
 `;
 
 const PhotosScrollView = styled.ScrollView`
@@ -158,7 +166,7 @@ const TaskImgThumb = styled.TouchableOpacity`
   margin-right: 8px;
   border-radius: 8px;
   overflow: hidden;
-  background-color: #f0f0f0;
+  background-color: ${(props) => props.theme.colors.border};
 `;
 
 const ActionButtons = styled.View`
@@ -246,7 +254,7 @@ const CloseViewerButton = styled.TouchableOpacity`
 const ModalScrollView = styled.ScrollView.attrs({
   contentContainerStyle: { flexGrow: 1, paddingBottom: 40 },
 })`
-  background-color: white;
+  background-color: ${(props) => props.theme.colors.surface};
   width: 100%;
   max-width: 600px;
   border-radius: 15px;
@@ -266,6 +274,7 @@ const ModalHeader = styled.View`
 const ModalTitleText = styled(RNText)`
   font-size: 20px;
   font-weight: bold;
+  color: ${(props) => props.theme.colors.text};
 `;
 
 const InputLabel = styled(RNText)`
@@ -282,6 +291,7 @@ const StyledTextInput = styled.TextInput`
   margin-bottom: 15px;
   font-size: 16px;
   border: 1px solid ${(props) => props.theme.colors.border};
+  color: ${(props) => props.theme.colors.text};
 `;
 
 const TextArea = styled(StyledTextInput)`
@@ -308,11 +318,15 @@ const UserChipContainer = styled.View`
 `;
 
 const UserChip = styled.TouchableOpacity<{ selected: boolean }>`
-  background-color: ${(props) => (props.selected ? props.theme.colors.primary : '#f0f0f0')};
+  background-color: ${(props) =>
+    props.selected ? props.theme.colors.primary : props.theme.colors.background};
   padding: 8px 12px;
   border-radius: 20px;
   margin-right: 8px;
   margin-bottom: 8px;
+  border-width: 1px;
+  border-color: ${(props) =>
+    props.selected ? props.theme.colors.primary : props.theme.colors.border};
 `;
 
 const UserChipText = styled(RNText)<{ selected: boolean }>`
@@ -322,7 +336,7 @@ const UserChipText = styled(RNText)<{ selected: boolean }>`
 `;
 
 const AssignedBadge = styled.View`
-  background-color: #e0f2f1;
+  background-color: ${(props) => props.theme.colors.accent};
   padding: 2px 8px;
   border-radius: 4px;
   align-self: flex-start;
@@ -331,14 +345,14 @@ const AssignedBadge = styled.View`
 
 const AssignedText = styled(RNText)`
   font-size: 10px;
-  color: #00796b;
+  color: ${(props) => props.theme.colors.primary};
   font-weight: bold;
 `;
 
 const TimePickerContainer = styled.View`
   flex-direction: row;
   align-items: center;
-  background-color: #f8f9fa;
+  background-color: ${(props) => props.theme.colors.background};
   padding: 20px;
   border-radius: 12px;
   margin-top: 10px;
@@ -371,7 +385,7 @@ const UploadOverlay = styled.View`
   bottom: 0;
   left: 0;
   right: 0;
-  background-color: rgba(255, 255, 255, 0.7);
+  background-color: rgba(0, 0, 0, 0.7);
   justify-content: center;
   align-items: center;
   z-index: 1000;
@@ -379,6 +393,7 @@ const UploadOverlay = styled.View`
 
 const TasksScreen = () => {
   const { user, role, userData } = useAuth();
+  const { theme } = useAppTheme();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -400,7 +415,9 @@ const TasksScreen = () => {
     if (role === 'DIRECTOR') {
       const uQ = query(collection(db, 'users'), where('isActive', '==', true));
       const unsubUsers = onSnapshot(uQ, (snap) => {
-        const uList = snap.docs.map((d) => ({ id: d.id, name: d.data().name || 'Anonim' }));
+        const uList = snap.docs
+          .filter((d) => d.data().role !== 'DIRECTOR')
+          .map((d) => ({ id: d.id, name: d.data().name || 'Anonim' }));
         setUsers(uList);
       });
       return () => unsubUsers();
@@ -408,7 +425,7 @@ const TasksScreen = () => {
   }, [role]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?.uid) return;
 
     const q = query(collection(db, 'tasks'));
 
@@ -417,7 +434,13 @@ const TasksScreen = () => {
       (snap) => {
         try {
           const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Task);
-          const sorted = data.sort((a, b) => {
+
+          const filtered = data.filter((t) => {
+            if (role === 'DIRECTOR') return true;
+            return t.assignedTo === user?.uid || t.assignedTo === 'ALL';
+          });
+
+          const sorted = filtered.sort((a, b) => {
             const dateA = a.date || '';
             const dateB = b.date || '';
             if (dateA !== dateB) return dateB.localeCompare(dateA);
@@ -428,7 +451,7 @@ const TasksScreen = () => {
           setTasks(sorted);
 
           const todayStr = format(new Date(), 'yyyy-MM-dd');
-          const todayTasksCount = data.filter((t) => t.date === todayStr && !t.done).length;
+          const todayTasksCount = filtered.filter((t) => t.date === todayStr && !t.done).length;
 
           setBadgeCount(todayTasksCount);
           scheduleDailyReminder(todayTasksCount, userData?.notificationStart || '09:00');
@@ -444,11 +467,10 @@ const TasksScreen = () => {
       }
     );
     return () => unsubscribe();
-  }, [userData, role, user]);
+  }, [user?.uid, role, userData?.notificationStart]);
 
   const saveTask = async () => {
     if (!title.trim()) return notify.error('Podaj tytuł');
-    if (role === 'DIRECTOR' && !assignedUserId) return notify.error('Wybierz pracownika');
 
     const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
     const selectedUser = users.find((u) => u.id === assignedUserId);
@@ -459,8 +481,8 @@ const TasksScreen = () => {
       date: selectedDate,
       time: timeStr,
       updatedAt: serverTimestamp(),
-      assignedTo: assignedUserId || user?.uid,
-      assignedToName: selectedUser?.name || userData?.name || 'Pracownik',
+      assignedTo: assignedUserId || 'ALL',
+      assignedToName: selectedUser?.name || 'Wszyscy',
     };
     try {
       if (editingId) await updateDoc(doc(db, 'tasks', editingId), taskData);
@@ -480,8 +502,13 @@ const TasksScreen = () => {
   };
 
   const toggleTask = async (id: string, currentStatus: boolean) => {
-    await updateDoc(doc(db, 'tasks', id), { done: !currentStatus });
-    if (!currentStatus) notify.success('Gotowe!');
+    try {
+      await updateDoc(doc(db, 'tasks', id), { done: !currentStatus });
+      if (!currentStatus) notify.success('Gotowe!');
+    } catch (e) {
+      console.error('Error toggling task:', e);
+      notify.error('Błąd aktualizacji zadania');
+    }
   };
 
   const addPhoto = async (task: Task) => {
@@ -593,10 +620,11 @@ const TasksScreen = () => {
                 <TaskCard theme={theme}>
                   <TaskMainRow theme={theme}>
                     <TouchableOpacity onPress={() => toggleTask(item.id, item.done)}>
-                      <CheckCircle2
-                        size={24}
-                        color={item.done ? theme.colors.success : theme.colors.border}
-                      />
+                      {item.done ? (
+                        <CheckCircle2 size={24} color={theme.colors.success} />
+                      ) : (
+                        <Circle size={24} color={theme.colors.primary} />
+                      )}
                     </TouchableOpacity>
                     <TaskInfo onTouchEnd={() => toggleTask(item.id, item.done)}>
                       <TaskTitle theme={theme} done={item.done}>
@@ -606,8 +634,8 @@ const TasksScreen = () => {
                         {item.date} {item.time}
                       </DateTimeText>
                       {role === 'DIRECTOR' && item.assignedToName && (
-                        <AssignedBadge>
-                          <AssignedText>Wykonawca: {item.assignedToName}</AssignedText>
+                        <AssignedBadge theme={theme}>
+                          <AssignedText theme={theme}>Wykonawca: {item.assignedToName}</AssignedText>
                         </AssignedBadge>
                       )}
                     </TaskInfo>
@@ -618,7 +646,7 @@ const TasksScreen = () => {
                           color={
                             (item.photos?.length || 0) > 0
                               ? theme.colors.success
-                              : theme.colors.textSecondary
+                              : theme.colors.primary
                           }
                         />
                         {(item.photos?.length || 0) > 0 && (
@@ -737,7 +765,7 @@ const TasksScreen = () => {
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               style={{ width: '100%', alignItems: 'center' }}
             >
-              <ModalScrollView theme={theme}>
+              <ModalScrollView theme={theme} indicatorStyle={theme.isDark ? 'white' : 'black'}>
                 <ModalContentContainer theme={theme}>
                   <ModalHeader theme={theme}>
                     <ModalTitleText theme={theme}>
@@ -750,16 +778,28 @@ const TasksScreen = () => {
                   <InputLabel theme={theme}>TYTUŁ</InputLabel>
                   <StyledTextInput
                     theme={theme}
-                    placeholder="Co zrobic?"
+                    placeholder="Co zrobić?"
+                    placeholderTextColor={theme.colors.textSecondary}
                     value={title}
                     onChangeText={setTitle}
-                    placeholderTextColor={theme.colors.textSecondary}
                   />
 
                   {role === 'DIRECTOR' && (
                     <>
                       <InputLabel theme={theme}>PRZYPISZ DO PRACOWNIKA</InputLabel>
                       <UserChipContainer>
+                        <UserChip
+                          selected={!assignedUserId || assignedUserId === 'ALL'}
+                          onPress={() => setAssignedUserId('ALL')}
+                          theme={theme}
+                        >
+                          <UserChipText
+                            selected={!assignedUserId || assignedUserId === 'ALL'}
+                            theme={theme}
+                          >
+                            Wszyscy (Ogólne)
+                          </UserChipText>
+                        </UserChip>
                         {users.map((u) => (
                           <UserChip
                             key={u.id}
@@ -780,10 +820,10 @@ const TasksScreen = () => {
                   <TextArea
                     theme={theme}
                     placeholder="Szczegóły..."
+                    placeholderTextColor={theme.colors.textSecondary}
                     value={description}
                     onChangeText={setDescription}
                     multiline
-                    placeholderTextColor={theme.colors.textSecondary}
                   />
                   <InputLabel theme={theme}>DATA</InputLabel>
                   <Calendar
@@ -792,8 +832,23 @@ const TasksScreen = () => {
                       [selectedDate]: { selected: true, selectedColor: theme.colors.primary },
                     }}
                     theme={{
-                      todayTextColor: theme.colors.primary,
+                      backgroundColor: theme.colors.surface,
+                      calendarBackground: theme.colors.surface,
+                      textSectionTitleColor: theme.colors.textSecondary,
                       selectedDayBackgroundColor: theme.colors.primary,
+                      selectedDayTextColor: '#ffffff',
+                      todayTextColor: theme.colors.primary,
+                      dayTextColor: theme.colors.text,
+                      textDisabledColor: theme.colors.border,
+                      dotColor: theme.colors.primary,
+                      selectedDotColor: '#ffffff',
+                      arrowColor: theme.colors.primary,
+                      disabledArrowColor: theme.colors.border,
+                      monthTextColor: theme.colors.text,
+                      indicatorColor: theme.colors.primary,
+                      textDayFontWeight: '400',
+                      textMonthFontWeight: 'bold',
+                      textDayHeaderFontWeight: '400',
                     }}
                   />
 

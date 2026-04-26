@@ -22,10 +22,11 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
-import { theme } from '../config/theme';
+import { useAppTheme } from '../context/ThemeContext';
 import { Megaphone, Trash2, Send, Bell } from 'lucide-react-native';
 import { format } from 'date-fns';
 import { notify } from '../utils/notify';
+import { StackScreenProps } from '@react-navigation/stack';
 
 interface Announcement {
   id: string;
@@ -54,7 +55,7 @@ const Title = styled(RNText)`
 `;
 
 const InputCard = styled.View`
-  background-color: white;
+  background-color: ${(props) => props.theme.colors.surface};
   margin: 15px;
   padding: 15px;
   border-radius: 12px;
@@ -63,13 +64,14 @@ const InputCard = styled.View`
 `;
 
 const StyledInput = styled.TextInput`
-  background-color: #f8f9fa;
+  background-color: ${(props) => props.theme.colors.background};
   padding: 15px;
   border-radius: 10px;
   min-height: 100px;
   text-align-vertical: top;
   font-size: 16px;
   margin-bottom: 15px;
+  color: ${(props) => props.theme.colors.text};
 `;
 
 const PostButton = styled.TouchableOpacity`
@@ -89,12 +91,14 @@ const PostButtonText = styled(RNText)`
 `;
 
 const AnnouncementCard = styled.View`
-  background-color: white;
+  background-color: ${(props) => props.theme.colors.surface};
   margin: 8px 15px;
   padding: 15px;
   border-radius: 12px;
   border-left-width: 5px;
   border-left-color: #ff9800;
+  border-width: 1px;
+  border-color: ${(props) => props.theme.colors.border};
   elevation: 2;
 `;
 
@@ -124,12 +128,11 @@ const EmptyText = styled(RNText)`
   color: ${(props) => props.theme.colors.textSecondary};
 `;
 
-import { StackScreenProps } from '@react-navigation/stack';
-
 type Props = StackScreenProps<any, 'Announcements'>;
 
 const AnnouncementsScreen = ({ navigation, route }: Props) => {
   const { user, userData, role } = useAuth();
+  const { theme } = useAppTheme();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
@@ -206,6 +209,7 @@ const AnnouncementsScreen = ({ navigation, route }: Props) => {
               <AuthorText>Nowe ogłoszenie do zespołu</AuthorText>
               <StyledInput
                 placeholder="Wpisz ważną informację dla wszystkich pracowników..."
+                placeholderTextColor={theme.colors.textSecondary}
                 value={text}
                 onChangeText={setText}
                 multiline

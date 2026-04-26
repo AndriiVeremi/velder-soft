@@ -14,9 +14,11 @@ import * as DocumentPicker from 'expo-document-picker';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, addDoc, serverTimestamp, query, onSnapshot } from 'firebase/firestore';
 import { db, storage, auth } from '../config/firebase';
-import { theme } from '../config/theme';
+import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
 import { FileText, Upload, X } from 'lucide-react-native';
+import { StackScreenProps } from '@react-navigation/stack';
+import { DocumentPickerAsset } from 'expo-document-picker';
 
 const Container = styled(ScrollView)`
   flex: 1;
@@ -95,9 +97,6 @@ const SubmitButtonText = styled(RNText)`
   font-weight: bold;
 `;
 
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { DocumentPickerAsset } from 'expo-document-picker';
-
 interface Project {
   title: string;
   hospital: string;
@@ -110,8 +109,6 @@ interface Project {
   createdBy: string;
   createdAt: Timestamp | null;
 }
-
-import { StackScreenProps } from '@react-navigation/stack';
 
 type Props = StackScreenProps<any, 'AddProject'>;
 
@@ -160,6 +157,7 @@ const LoadingSpinner = styled(ActivityIndicator)`
 `;
 
 const AddProjectScreen = ({ navigation }: Props) => {
+  const { theme } = useAppTheme();
   const [title, setTitle] = useState('');
   const [hospital, setHospital] = useState('');
   const [department, setDepartment] = useState('');

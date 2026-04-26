@@ -8,15 +8,18 @@ import {
   Platform,
   ScrollView,
   KeyboardAvoidingView,
+  Switch,
 } from 'react-native';
 import styled from 'styled-components/native';
 import { useAuth } from '../context/AuthContext';
 import { db, auth } from '../config/firebase';
 import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
-import { theme } from '../config/theme';
+import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
 import { scheduleDailyReminder } from '../utils/notifications';
+import { format } from 'date-fns';
+import { StackScreenProps } from '@react-navigation/stack';
 import {
   User,
   Mail,
@@ -70,6 +73,7 @@ const NameContainer = styled.View`
 const NameText = styled(RNText)`
   font-size: 22px;
   font-weight: bold;
+  color: ${(props) => props.theme.colors.text};
 `;
 
 const EmailText = styled(RNText)`
@@ -79,7 +83,14 @@ const EmailText = styled(RNText)`
 `;
 
 const RoleBadge = styled.View<{ isAdmin: boolean }>`
-  background-color: ${(props) => (props.isAdmin ? '#FFF3E0' : '#E8EAF6')};
+  background-color: ${(props) =>
+    props.isAdmin
+      ? props.theme.isDark
+        ? '#4d2c00'
+        : '#FFF3E0'
+      : props.theme.isDark
+        ? '#1a1f3d'
+        : '#E8EAF6'};
   padding: 6px 16px;
   border-radius: 20px;
   flex-direction: row;
@@ -90,14 +101,21 @@ const RoleBadge = styled.View<{ isAdmin: boolean }>`
 const RoleText = styled(RNText)<{ isAdmin: boolean }>`
   font-size: 12px;
   font-weight: bold;
-  color: ${(props) => (props.isAdmin ? '#E65100' : '#1A237E')};
+  color: ${(props) =>
+    props.isAdmin
+      ? props.theme.isDark
+        ? '#ffa726'
+        : '#E65100'
+      : props.theme.isDark
+        ? '#90caf9'
+        : '#1A237E'};
   margin-left: 8px;
 `;
 
 const InfoSection = styled.View`
   width: 100%;
   border-top-width: 1px;
-  border-top-color: #f0f0f0;
+  border-top-color: ${(props) => props.theme.colors.border};
   padding-top: 20px;
 `;
 
@@ -108,17 +126,18 @@ const EditInput = styled.TextInput`
   border-bottom-color: ${(props) => props.theme.colors.primary};
   text-align: center;
   min-width: 200px;
+  color: ${(props) => props.theme.colors.text};
 `;
 
 const TimePickerContainer = styled.View`
   flex-direction: row;
   align-items: center;
-  background-color: #f8f9fa;
+  background-color: ${(props) => props.theme.colors.background};
   padding: 15px;
   border-radius: 12px;
   margin-top: 10px;
   justify-content: center;
-  border: 1px solid #eee;
+  border: 1px solid ${(props) => props.theme.colors.border};
 `;
 
 const TimeBlock = styled.View`
@@ -137,7 +156,7 @@ const LogoutButton = styled.TouchableOpacity`
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  background-color: #fff;
+  background-color: ${(props) => props.theme.colors.surface};
   border: 1px solid ${(props) => props.theme.colors.error};
   padding: 15px;
   border-radius: 8px;
@@ -187,12 +206,11 @@ const LogoutButtonText = styled(RNText)`
   font-size: 16px;
 `;
 
-import { StackScreenProps } from '@react-navigation/stack';
-
 type Props = StackScreenProps<any, 'Profile'>;
 
 const ProfileScreen = ({ navigation, route }: Props) => {
   const { user, userData, role } = useAuth();
+  const { theme, isDark, toggleTheme } = useAppTheme();
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
@@ -203,7 +221,6 @@ const ProfileScreen = ({ navigation, route }: Props) => {
 
   useEffect(() => {
     if (!userData) return;
-
     Promise.resolve().then(() => {
       if (userData.name) setName(userData.name);
       if (userData.notificationStart) {
@@ -231,7 +248,7 @@ const ProfileScreen = ({ navigation, route }: Props) => {
         name: name,
       });
 
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
       const q = query(
         collection(db, 'tasks'),
         where('date', '==', todayStr),
@@ -391,6 +408,49 @@ const ProfileScreen = ({ navigation, route }: Props) => {
               </SaveSettingsButton>
             </InfoSection>
           </ProfileCard>
+
+          <View
+            style={{
+              backgroundColor: theme.colors.surface,
+              borderRadius: theme.borderRadius.lg,
+              padding: theme.spacing.lg,
+              marginTop: theme.spacing.md,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: theme.colors.accent,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <RNText style={{ fontSize: 18 }}>{isDark ? '🌙' : '☀️'}</RNText>
+              </View>
+              <View>
+                <RNText style={{ fontWeight: '600', color: theme.colors.text, fontSize: 15 }}>
+                  {isDark ? 'Tryb ciemny' : 'Tryb jasny'}
+                </RNText>
+                <RNText style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
+                  {isDark ? 'Przełącz na jasny' : 'Przełącz na ciemny'}
+                </RNText>
+              </View>
+            </View>
+            <Switch
+              value={isDark}
+              onValueChange={toggleTheme}
+              trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+              thumbColor={isDark ? theme.colors.surface : '#f4f3f4'}
+            />
+          </View>
 
           <LogoutButton theme={theme} onPress={handleLogout}>
             <LogOut size={20} color={theme.colors.error} />

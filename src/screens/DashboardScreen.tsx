@@ -30,7 +30,7 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage
 import * as ImagePicker from 'expo-image-picker';
 import { db, storage, auth } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
-import { theme } from '../config/theme';
+import { useAppTheme } from '../context/ThemeContext';
 import {
   Plus,
   ChevronRight,
@@ -43,6 +43,7 @@ import {
   Trash2,
 } from 'lucide-react-native';
 import { notify } from '../utils/notify';
+import { StackScreenProps } from '@react-navigation/stack';
 
 const { width } = Dimensions.get('window');
 
@@ -201,8 +202,6 @@ const AddButton = styled.TouchableOpacity`
   elevation: 5;
 `;
 
-import { StackScreenProps } from '@react-navigation/stack';
-
 type Props = StackScreenProps<any, 'Dashboard'>;
 
 const LoaderContainer = styled.View`
@@ -244,6 +243,7 @@ const PhotoItemContainer = styled.View`
 
 const DashboardScreen = ({ navigation }: Props) => {
   const { role } = useAuth();
+  const { theme } = useAppTheme();
   const [projects, setProjects] = useState<Project[]>([]);
   const [records, setRecords] = useState<ServiceRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -254,12 +254,19 @@ const DashboardScreen = ({ navigation }: Props) => {
 
   useEffect(() => {
     const q = query(collection(db, 'projects'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data: Project[] = [];
-      snapshot.forEach((doc) => data.push({ id: doc.id, ...doc.data() } as Project));
-      setProjects(data);
-      setLoading(false);
-    });
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const data: Project[] = [];
+        snapshot.forEach((doc) => data.push({ id: doc.id, ...doc.data() } as Project));
+        setProjects(data);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Error fetching projects:', error);
+        setLoading(false);
+      }
+    );
     return () => unsubscribe();
   }, []);
 

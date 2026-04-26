@@ -12,7 +12,7 @@ import {
 import styled from 'styled-components/native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../config/firebase';
-import { theme } from '../config/theme';
+import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
 
 const Container = styled(KeyboardAvoidingView)`
@@ -82,6 +82,7 @@ const LinkText = styled(RNText)`
 `;
 
 const LoginScreen = ({ navigation }: { navigation: { navigate: (screen: string) => void } }) => {
+  const { theme } = useAppTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);

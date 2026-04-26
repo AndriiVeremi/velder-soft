@@ -1,0 +1,94 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Допоміжна функція для перевірки, чи залогінений юзер
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Допоміжна функція для перевірки ролі Директора
+    function isDirector() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'DIRECTOR';
+    }
+    
+    // Перевірка, чи активований юзер
+    function isActive() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isActive == true;
+    }
+
+    // Правила для колекції КОРИСТУВАЧІВ
+    match /users/{userId} {
+      // Дозволити читати свій профіль будь-якому залогіненому юзеру
+      // Дозволити читати всі профілі лише Директору
+      allow read: if isSignedIn() && (request.auth.uid == userId || isDirector());
+      
+      // Створення профілю (при реєстрації) дозволено всім залогіненим, 
+      // АЛЕ поле role МАЄ БУТИ 'EMPLOYEE', а isActive МАЄ БУТИ false.
+      allow create: if isSignedIn() && 
+                    request.resource.data.role == 'EMPLOYEE' && 
+                    request.resource.data.isActive == false;
+      
+      // Оновлення: Тільки Директор може міняти ролі та статус.
+      // Користувач може оновлювати лише деякі свої поля (наприклад, ім'я або налаштування часу)
+      allow update: if isSignedIn() && (
+        isDirector() || 
+        (request.auth.uid == userId && 
+         request.resource.data.role == resource.data.role && 
+         request.resource.data.isActive == resource.data.isActive)
+      );
+      
+      allow delete: if isDirector();
+    }
+
+    // Правила для ПРОЄКТІВ
+    match /projects/{projectId} {
+      allow read: if isActive();
+      allow create, update, delete: if isDirector();
+    }
+
+    // Правила для ЗАВДАНЬ
+    match /tasks/{taskId} {
+      // Працівник може бачити свої завдання, Директор - всі.
+      allow read: if isActive() && (resource.data.assignedTo == request.auth.uid || isDirector());
+      // Тільки Директор може ставити завдання.
+      allow create: if isDirector();
+      // Працівник може лише позначати "виконано" та додавати фото.
+      allow update: if isActive() && (
+        isDirector() || 
+        (request.auth.uid == resource.data.assignedTo && 
+         request.resource.data.title == resource.data.title)
+      );
+      allow delete: if isDirector();
+    }
+
+    // Правила для ОГОЛОШЕНЬ
+    match /announcements/{id} {
+      allow read: if isActive();
+      allow write: if isDirector();
+    }
+
+    // Правила для ВІДПУСТОК
+    match /vacations/{id} {
+      allow read: if isActive();
+      // Створювати може будь-який активний юзер за себе
+      allow create: if isActive() && request.resource.data.userId == request.auth.uid;
+      // Оновлювати статус може лише Директор
+      allow update: if isDirector();
+      allow delete: if isDirector() || (isActive() && resource.data.userId == request.auth.uid && resource.data.status == 'PENDING');
+    }
+
+    // Правила для НАГАДУВАНЬ
+    match /reminders/{id} {
+      allow read, write: if isSignedIn() && (request.auth.uid == resource.data.userId || request.auth.uid == request.resource.data.userId);
+    }
+
+    // Правила для ЗВІТІВ ПРО ПРОБЛЕМИ
+    match /reports/{id} {
+      allow read: if isDirector();
+      allow create: if isActive() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isDirector();
+    }
+  }
+}

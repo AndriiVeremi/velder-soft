@@ -12,7 +12,7 @@ import styled from 'styled-components/native';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
-import { theme } from '../config/theme';
+import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
 
 const Container = styled(KeyboardAvoidingView)`
@@ -80,6 +80,7 @@ const LinkText = styled(RNText)`
 `;
 
 const RegisterScreen = ({ navigation }: any) => {
+  const { theme } = useAppTheme();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

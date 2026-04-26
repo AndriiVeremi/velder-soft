@@ -27,7 +27,7 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
-import { theme } from '../config/theme';
+import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
 import {
   Bell,
@@ -83,6 +83,7 @@ const CardContent = styled.View`
 const ReminderTitle = styled(RNText)<{ done: boolean }>`
   font-size: 16px;
   font-weight: bold;
+  color: ${(props) => (props.done ? props.theme.colors.textSecondary : props.theme.colors.text)};
   text-decoration: ${(props) => (props.done ? 'line-through' : 'none')};
 `;
 
@@ -106,12 +107,14 @@ const AddButton = styled.TouchableOpacity`
 `;
 
 const ModalContent = styled.View`
-  background-color: white;
+  background-color: ${(props) => props.theme.colors.surface};
   padding: 25px;
   border-radius: 20px;
   width: 95%;
   max-width: 500px;
   max-height: 90%;
+  border-width: 1px;
+  border-color: ${(props) => props.theme.colors.border};
 `;
 
 interface Reminder {
@@ -202,6 +205,7 @@ type Props = StackScreenProps<any, 'Reminders'>;
 
 const RemindersScreen = ({ navigation, route }: Props) => {
   const { user } = useAuth();
+  const { theme } = useAppTheme();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -264,20 +268,18 @@ const RemindersScreen = ({ navigation, route }: Props) => {
           const [year, month, day] = date.split('-').map(Number);
           const baseDate = new Date(year, month - 1, day, h, m, 0);
 
-          for (let i = 0; i < 3; i++) {
-            const scheduleDate = new Date(baseDate.getTime() + i * 5 * 60000);
+          for (let i = 0; i < 5; i++) {
+            const scheduleDate = new Date(baseDate.getTime() + i * 1 * 60000); // 1-хвилинний інтервал
             if (scheduleDate > new Date()) {
               await Notifications.scheduleNotificationAsync({
                 identifier: `${docRef.id}_${i}`,
                 content: {
                   title:
-                    i === 0 ? 'Osobiste przypomnienie! 🔔' : `Przypomnienie (Powtórka ${i}) 🔔`,
+                    i === 0 ? 'Ważne przypomnienie! 🔔' : `Przypomnienie (Powtórka ${i}/4) 🔔`,
                   body: title,
                   sound: true,
                   badge: reminders.length + 1,
                   data: { reminderId: docRef.id },
-                  priority: Notifications.AndroidNotificationPriority.MAX,
-                  vibrationPattern: [0, 250, 250, 250],
                 },
                 trigger: {
                   type: SchedulableTriggerInputTypes.DATE,
@@ -303,10 +305,12 @@ const RemindersScreen = ({ navigation, route }: Props) => {
 
   const cancelReminderSequence = async (reminderId: string) => {
     if (Platform.OS === 'web') return;
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 5; i++) {
       try {
         await Notifications.cancelScheduledNotificationAsync(`${reminderId}_${i}`);
-      } catch (e) {}
+      } catch (e) {
+        console.warn('Failed to cancel notification:', e);
+      }
     }
   };
 
@@ -393,7 +397,9 @@ const RemindersScreen = ({ navigation, route }: Props) => {
                 contentContainerStyle={{ flexGrow: 1 }}
               >
                 <ModalHeader>
-                  <RNText style={{ fontSize: 18, fontWeight: 'bold' }}>Nowe przypomnienie</RNText>
+                  <RNText style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>
+                    Nowe przypomnienie
+                  </RNText>
                   <TouchableOpacity onPress={() => setModalVisible(false)}>
                     <X size={24} color={theme.colors.text} />
                   </TouchableOpacity>
@@ -408,14 +414,28 @@ const RemindersScreen = ({ navigation, route }: Props) => {
                     placeholderTextColor={theme.colors.textSecondary}
                   />
                 </InputContainer>
-
                 <Label theme={theme}>DATA</Label>
                 <Calendar
                   onDayPress={(day) => setSelectedDate(day.dateString)}
                   markedDates={{ [date]: { selected: true, selectedColor: theme.colors.primary } }}
                   theme={{
-                    todayTextColor: theme.colors.primary,
+                    backgroundColor: theme.colors.surface,
+                    calendarBackground: theme.colors.surface,
+                    textSectionTitleColor: theme.colors.textSecondary,
                     selectedDayBackgroundColor: theme.colors.primary,
+                    selectedDayTextColor: '#ffffff',
+                    todayTextColor: theme.colors.primary,
+                    dayTextColor: theme.colors.text,
+                    textDisabledColor: theme.colors.border,
+                    dotColor: theme.colors.primary,
+                    selectedDotColor: '#ffffff',
+                    arrowColor: theme.colors.primary,
+                    disabledArrowColor: theme.colors.border,
+                    monthTextColor: theme.colors.text,
+                    indicatorColor: theme.colors.primary,
+                    textDayFontWeight: '400',
+                    textMonthFontWeight: 'bold',
+                    textDayHeaderFontWeight: '400',
                   }}
                 />
 
