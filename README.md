@@ -1,43 +1,67 @@
-# Velder-soft
+# Velder-soft 🏥🏗️
 
-**Velder-soft** to nowoczesny, zintegrowany system zarządzania operacyjnego zaprojektowany specjalnie dla potrzeb firmy **Velder**. Aplikacja stanowi centralny hub informacyjny, umożliwiający płynną koordynację projektów inżynieryjnych, serwisowych oraz efektywne zarządzanie zasobami ludzkimi w czasie rzeczywistym.
-
-## 🚀 O systemie
-
-System został stworzony z myślą o mobilności i niezawodności. Dzięki architekturze opartej na chmurze (Firebase) oraz technologii React Native, Velder-soft zapewnia błyskawiczny dostęp do danych technicznych i harmonogramów zarówno z poziomu komputera w biurze, jak i smartfona bezpośrednio na obiekcie.
-
-### Kluczowe filary aplikacji:
-
-- **Zarządzanie Projektami:** Pełna baza dokumentacji technicznej PDF oraz wizualne archiwum realizacji z podziałem na jednostki medyczne i oddziały.
-- **Koordynacja Zadań:** Inteligentny system planowania prac z funkcją automatycznego przenoszenia zaległych zadań i powiadomieniami dźwiękowymi.
-- **Serwis i Konserwacja:** Cyfrowy rejestr zleceń serwisowych z możliwością generowania raportów fotograficznych i komentarzy technicznych.
-- **Zarządzanie Zespołem:** Przejrzysty system kontroli uprawnień (Dyrektor / Pracownik), komunikaty błyskawiczne (Ogłoszenia) oraz zautomatyzowany obieg wniosków urlopowych.
-- **Personalizacja:** Indywidualne profile użytkowników z osobistym systemem przypomnień i ustawieniami czasu pracy.
+**Velder-soft** to dedykowany, zaawansowany system ekosystemowy stworzony dla lidera branży instalacji medycznych – firmy **Velder**. Aplikacja integruje procesy inżynieryjne, logistyczne i personalne, umożliwiając efektywne zarządzanie krytyczną infrastrukturą gazów medycznych w czasie rzeczywistym.
 
 ---
 
-## 📱 Dostępność Platformowa
+## 🏢 O Firmie Velder
 
-Velder-soft jest rozwiązaniem typu **Cross-Platform**, co gwarantuje spójność danych na każdym urządzeniu:
+**Velder** to marka z ponad **35-letnim doświadczeniem** na polskim rynku. Jako lider w swojej dziedzinie, firma specjalizuje się w dostarczaniu kompleksowych rozwiązań z zakresu systemów gazów medycznych, wspierając bezpieczeństwo pacjentów oraz standardy opieki zdrowotnej w setkach placówek medycznych.
 
-1.  **Panel Webowy:** Przeznaczony do zaawansowanego zarządzania i przeglądania dokumentacji na dużych ekranach.
-2.  **Aplikacja Mobilna (Android):** Natywna wydajność i pełny dostęp do aparatu oraz powiadomień systemowych.
-3.  **Aplikacja Mobilna (iOS):** Pełne wsparcie dla urządzeń iPhone z integracją powiadomień push.
+### Specjalizacja i Misja
 
----
+Głównym celem działalności jest budowanie i utrzymanie sieci gazów medycznych (tlen, azot, podtlenek azotu, powietrze medyczne). Misją Velder jest dostarczanie niezawodnego sprzętu oraz najwyższej jakości usług montażowych i serwisowych dla szpitali, klinik oraz ośrodków rehabilitacyjnych.
 
-## 📁 Przewodnik po Dokumentacji
+### Kluczowe Obszary Działania:
 
-Zależnie od Twoich potrzeb, zapoznaj się z odpowiednim opracowaniem:
+- **Projektowanie:** Tworzenie indywidualnych schematów instalacji dostosowanych do specyfiki budynków szpitalnych.
+- **Montaż i Instalacja:** Profesjonalne wdrażanie stacji rozdzielczych, punktów poboru gazów, zaworów oraz przepływomierzy.
+- **Serwis i Konserwacja:** Regularne przeglądy techniczne zapewniające bezawaryjną pracę systemów ratujących życie.
+- **Edukacja:** Szkolenia personelu medycznego w zakresie bezpiecznej obsługi urządzeń gazowych.
 
-### 📖 Dla Użytkownika Końcowego
-
-- **[Instrukcja Obsługi (USER_GUIDE)](docs/USER_GUIDE.md)** — Szczegółowy przewodnik po funkcjach: jak zarządzać zadaniami, dodawać raporty serwisowe i planować urlopy.
-
-### ⚙️ Informacje Techniczne
-
-- **[Dokumentacja Techniczna (TECHNICAL)](docs/TECHNICAL.md)** — Opis architektury systemu, stosu technologicznego oraz procedur aktualizacji oprogramowania (OTA).
+🌐 **Dowiedz się więcej:** [velder.pl](https://velder.pl/)
 
 ---
 
-© 2026 Velder-soft. Wszystkie prawa zastrzeżone.
+## 🚀 Możliwości Systemu Velder-soft
+
+Aplikacja została zaprojektowana, aby przenieść 35 lat doświadczenia firmy w erę cyfrową:
+
+- **Cyfrowe Archiwum Projektów:** Natychmiastowy dostęp do dokumentacji PDF i wizualnej historii prac na każdym oddziale.
+- **Inteligentny Monitoring Zadań:** Dynamiczne przydzielanie prac, system "Zadań Ogólnych" oraz automatyczna synchronizacja harmonogramów.
+- **Raportowanie Incydentów:** System "Zgłoś problem" z obsługą foto/wideo, umożliwiający błyskawiczną reakцію Dyrekcji na usterki.
+- **System Powiadomień Push:** Natywne sygnały o nowych komunikatach, zmianach w zadaniach oraz statusach wniosków urlopowych.
+- **Optymalizacja Operacyjna:** Automatyczne czyszczenie przeterminowanych danych i inteligentne serie przypomnień dla pracowników.
+
+---
+
+## 💻 Technologia i Rozwój
+
+System wykorzystuje najnowocześniejszy stos technologiczny, gwarantujący stabilność i skalowalność:
+
+- **Frontend:** React Native (Cross-platform: Android, iOS, Web).
+- **Backend:** Google Firebase (Real-time DB, Storage, Cloud Messaging).
+- **Security:** Rygorystyczne reguły serwerowe (Rules) oraz walidacja XSS.
+
+---
+
+## 👨‍💻 Autor Systemu
+
+Aplikacja **Velder-soft** została zaprojektowana i opracowana przez:
+
+### **Andrii Veremii (D@shuk)**
+
+Software Engineer specjalizujący się w rozwiązaniach mobilnych i chmurowych.
+
+🔗 **Kontakt:** [Profil LinkedIn](https://www.linkedin.com/in/andriiveremii/)
+
+---
+
+## 📁 Dokumentacja Dodatkowa
+
+- 📖 **[Instrukcja Obsługi (USER_GUIDE)](docs/USER_GUIDE.md)** — Przewodnik dla pracowników i dyrekcji.
+- ⚙️ **[Dokumentacja Techniczna (TECHNICAL)](docs/TECHNICAL.md)** — Detale implementacji, procedury deploymentu i bezpieczeństwa.
+
+---
+
+© 2026 Velder-soft. System wspierający inżynierię i serwis medyczny.

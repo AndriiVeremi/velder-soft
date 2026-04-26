@@ -41,13 +41,20 @@ export async function registerForPushNotificationsAsync() {
     if (finalStatus !== 'granted') return;
 
     try {
-      const token = await Notifications.getExpoPushTokenAsync();
-      console.log('Push Token acquired');
+      const token = (
+        await Notifications.getExpoPushTokenAsync({
+          projectId: '60063075-7a9b-47f6-ba92-4021b7514fed', // Ваш ID з app.json
+        })
+      ).data;
+      console.log('Push Token acquired:', token);
+      return token;
     } catch (tokenErr) {
       console.warn('Failed to get push token:', tokenErr);
+      return null;
     }
   } catch (err) {
     console.warn('Registration for push notifications failed:', err);
+    return null;
   }
 }
 
@@ -78,6 +85,32 @@ export function setupNotificationListeners() {
   });
 
   return () => subscription.remove();
+}
+
+export async function sendPushNotification(tokens: string[], title: string, body: string) {
+  if (tokens.length === 0) return;
+
+  const messages = tokens.map((token) => ({
+    to: token,
+    sound: 'default',
+    title: title,
+    body: body,
+    priority: 'high',
+  }));
+
+  try {
+    await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Accept-encoding': 'gzip, deflate',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(messages),
+    });
+  } catch (error) {
+    console.error('Error sending push notification:', error);
+  }
 }
 
 export async function scheduleDailyReminder(taskCount: number, startTime: string = '09:00') {

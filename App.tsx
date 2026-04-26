@@ -30,6 +30,7 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import PendingApprovalScreen from './src/screens/PendingApprovalScreen';
 import ReportProblemScreen from './src/screens/ReportProblemScreen';
 import DirectorReportsScreen from './src/screens/DirectorReportsScreen';
+import AboutCompanyScreen from './src/screens/AboutCompanyScreen';
 
 LogBox.ignoreLogs(['Image: style.tintColor is deprecated', 'Blocked aria-hidden on an element']);
 
@@ -50,6 +51,7 @@ type RootStackParamList = {
   PendingApproval: undefined;
   ReportProblem: undefined;
   DirectorReports: undefined;
+  About: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -141,6 +143,11 @@ const AuthenticatedStack = () => {
         name="DirectorReports"
         component={withLayout(DirectorReportsScreen, 'DirectorReports')}
         options={{ title: 'Zgłoszenia' }}
+      />
+      <Stack.Screen
+        name="About"
+        component={withLayout(AboutCompanyScreen, 'About')}
+        options={{ title: 'O firmie' }}
       />
       <Stack.Screen
         name="AddProject"

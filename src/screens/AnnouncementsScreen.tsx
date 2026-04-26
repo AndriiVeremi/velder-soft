@@ -19,6 +19,8 @@ import {
   serverTimestamp,
   deleteDoc,
   doc,
+  getDocs,
+  where,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
@@ -27,6 +29,7 @@ import { Megaphone, Trash2, Send, Bell } from 'lucide-react-native';
 import { format } from 'date-fns';
 import { notify } from '../utils/notify';
 import { StackScreenProps } from '@react-navigation/stack';
+import { sendPushNotification } from '../utils/notifications';
 
 interface Announcement {
   id: string;
@@ -158,6 +161,30 @@ const AnnouncementsScreen = ({ navigation, route }: Props) => {
         createdBy: user?.uid,
         authorName: userData?.name || 'Dyrektor',
       });
+
+      try {
+        const usersSnap = await getDocs(
+          query(collection(db, 'users'), where('isActive', '==', true))
+        );
+        const tokens: string[] = [];
+        usersSnap.forEach((docSnap) => {
+          const u = docSnap.data();
+          if (u.pushToken && docSnap.id !== user?.uid) {
+            tokens.push(u.pushToken);
+          }
+        });
+
+        if (tokens.length > 0) {
+          await sendPushNotification(
+            tokens,
+            'Nowe ogłoszenie! 📢',
+            text.length > 50 ? `${text.substring(0, 50)}...` : text
+          );
+        }
+      } catch (pushErr) {
+        console.warn('Failed to send push notifications:', pushErr);
+      }
+
       setText('');
       notify.success('Ogłoszenie opublikowane');
     } catch (e) {

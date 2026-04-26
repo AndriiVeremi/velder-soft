@@ -12,13 +12,14 @@ import {
 import styled from 'styled-components/native';
 import * as ImagePicker from 'expo-image-picker';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
 import { db, storage, auth } from '../config/firebase';
 import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
 import { Camera, Video, X, Send, Trash2, Image as ImageIcon } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { StackScreenProps } from '@react-navigation/stack';
+import { sendPushNotification } from '../utils/notifications';
 
 const Container = styled.ScrollView`
   flex: 1;
@@ -225,6 +226,27 @@ const ReportProblemScreen = ({ navigation }: Props) => {
         media: uploadedMedia,
         createdAt: serverTimestamp(),
       });
+
+      try {
+        const directorsSnap = await getDocs(
+          query(collection(db, 'users'), where('role', '==', 'DIRECTOR'))
+        );
+        const tokens: string[] = [];
+        directorsSnap.forEach((d) => {
+          const data = d.data();
+          if (data.pushToken) tokens.push(data.pushToken);
+        });
+
+        if (tokens.length > 0) {
+          await sendPushNotification(
+            tokens,
+            'Nowe zgłoszenie problemu! ⚠️',
+            `${userData?.name || 'Pracownik'}: ${description.substring(0, 50)}${description.length > 50 ? '...' : ''}`
+          );
+        }
+      } catch (pushErr) {
+        console.warn('Failed to notify director:', pushErr);
+      }
 
       notify.success('Zgłoszenie zostało wysłane');
       navigation.goBack();

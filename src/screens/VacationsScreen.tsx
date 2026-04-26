@@ -22,6 +22,7 @@ import {
   doc,
   deleteDoc,
   Timestamp,
+  getDocs,
 } from 'firebase/firestore';
 import { db, auth } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
@@ -39,6 +40,7 @@ import {
 import { format } from 'date-fns';
 import * as Notifications from 'expo-notifications';
 import { StackScreenProps } from '@react-navigation/stack';
+import { sendPushNotification } from '../utils/notifications';
 
 interface VacationRequest {
   id: string;
@@ -300,6 +302,28 @@ const VacationsScreen = ({ route, navigation }: Props) => {
         status: 'PENDING',
         createdAt: serverTimestamp(),
       });
+
+      try {
+        const directorsSnap = await getDocs(
+          query(collection(db, 'users'), where('role', '==', 'DIRECTOR'))
+        );
+        const tokens: string[] = [];
+        directorsSnap.forEach((d) => {
+          const data = d.data();
+          if (data.pushToken) tokens.push(data.pushToken);
+        });
+
+        if (tokens.length > 0) {
+          await sendPushNotification(
+            tokens,
+            'Nowy wniosek o urlop! 🏖️',
+            `${userData?.name || 'Pracownik'} prosi o wolne: ${dates[0]} — ${dates[dates.length - 1]}`
+          );
+        }
+      } catch (pushErr) {
+        console.warn('Failed to notify director about vacation:', pushErr);
+      }
+
       setSelectedDates({});
       notify.success('Wniosek wysłany');
     } catch (e) {
@@ -312,6 +336,30 @@ const VacationsScreen = ({ route, navigation }: Props) => {
   const handleAction = async (id: string, status: 'APPROVED' | 'REJECTED') => {
     try {
       await updateDoc(doc(db, 'vacations', id), { status });
+
+      try {
+        const request = requests.find((r) => r.id === id);
+        if (request) {
+          const userSnap = await getDocs(
+            query(collection(db, 'users'), where('__name__', '==', request.userId))
+          );
+          if (!userSnap.empty) {
+            const userData = userSnap.docs[0].data();
+            if (userData.pushToken) {
+              await sendPushNotification(
+                [userData.pushToken],
+                status === 'APPROVED' ? 'Urlop zatwierdzony! ✅' : 'Wniosek odrzucony ❌',
+                status === 'APPROVED'
+                  ? `Twój urlop (${request.startDate}) został zaakceptowany.`
+                  : `Twój wniosek o urlop (${request.startDate}) nie został przyjęty.`
+              );
+            }
+          }
+        }
+      } catch (pushErr) {
+        console.warn('Failed to notify employee about vacation status:', pushErr);
+      }
+
       notify.success(status === 'APPROVED' ? 'Zatwierdzono' : 'Odrzucono');
     } catch (e) {
       notify.error('Błąd');

@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Timestamp } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
+import { registerForPushNotificationsAsync } from '../utils/notifications';
+import { Platform } from 'react-native';
 
 export type UserRole = 'DIRECTOR' | 'EMPLOYEE';
 
@@ -14,6 +16,7 @@ interface UserDocument {
   createdAt?: Timestamp | null;
   notificationStart?: string;
   notificationEnd?: string;
+  pushToken?: string;
 }
 
 interface AuthContextType {
@@ -45,6 +48,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
+
+        if (Platform.OS !== 'web') {
+          registerForPushNotificationsAsync().then((token) => {
+            if (token) {
+              updateDoc(doc(db, 'users', firebaseUser.uid), { pushToken: token }).catch((err) =>
+                console.warn('Failed to save push token:', err)
+              );
+            }
+          });
+        }
 
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         unsubscribeUserDoc = onSnapshot(

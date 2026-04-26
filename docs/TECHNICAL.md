@@ -4,82 +4,54 @@ Niniejszy dokument zawiera szczegółowe informacje na temat struktury techniczn
 
 ## 🛠 Stos Technologiczny
 
-Aplikacja została zbudowana w oparciu o najnowocześniejsze technologie JavaScript, zapewniające wysoką wydajność i łatwość skalowania.
-
-### Core Frontend
-
-- **Framework:** React Native (Expo SDK 54) – umożliwia współdzielenie 95% kodu między wersją Web a aplikacjami natywnymi.
-- **Język:** TypeScript – zapewnia silne typowanie, co minimalizuje błędy w fazie produkcji.
-- **Nawigacja:** `@react-navigation/stack` – stabilny system przejść między ekranami.
-- **Stylizacja:** `styled-components/native` – architektura CSS-in-JS dla pełnej izolacji stylów i wsparcia motywów (Theming).
-
-### Backend as a Service (Firebase)
-
-- **Firebase Auth:** Bezpieczny system uwierzytelniania użytkowników (Email/Password).
-- **Cloud Firestore:** NoSQL-owa baza danych działająca w czasie rzeczywistym (Real-time syncing).
-- **Cloud Storage:** Przechowywanie dokumentacji technicznej (PDF) oraz zdjęć z obiektów (JPG).
-- **Hosting:** Firebase Hosting dla stabilnej wersji przeglądarkowej.
-
-### Narzędzia i Biblioteki
-
-- **Powiadomienia:** `expo-notifications` – obsługa lokalnych alertów oraz systemowych powiadomień Push.
-- **Ikony:** `lucide-react-native` – zestaw lekkich, wektorowych ikon.
-- **Data/Czas:** `date-fns` – nowoczesna biblioteka do manipulacji czasem.
-- **Media:** `expo-image-picker`, `expo-media-library` – integracja z aparatem i galerią telefonu.
-
----
+- **Frontend:** React Native (Expo SDK 51/52)
+- **Język:** TypeScript (ścisła typizacja)
+- **Backend:** Firebase (Firestore, Auth, Storage)
+- **Stylizacja:** styled-components/native
+- **Ikony:** lucide-react-native
+- **Powiadomienia:** expo-notifications + Expo Push API
 
 ## 🏛 Architektura Systemu
 
-### Synchronizacja Real-time
+### Bezpieczeństwo i Walidacja
 
-Aplikacja wykorzystuje mechanizm `onSnapshot` z Firebase SDK. Każda zmiana w bazie danych (np. nowe zadanie dodane przez Dyrektora) jest natychmiastowo odzwierciedlana na urządzeniach wszystkich pracowników bez konieczności odświeżania aplikacji.
+System stosuje wielowarstwową ochronę:
 
-### Hybrydowy Interfejs (Web/Mobile)
+- **Server-side Security Rules:** Dostęp do Firestore i Storage jest blokowany na poziomie serwera. Role (DIRECTOR/EMPLOYEE) są weryfikowane przy każdej operacji zapisu/odczytu.
+- **XSS Protection:** Walidacja protokołów URL (`https://`) dla zewnętrznych dokumentów PDF.
+- **Data Privacy:** Pracownicy mają dostęp tylko do swoich zadań, wniosków i ogólnych zasobów firmy.
 
-System dynamicznie wykrywa typ urządzenia:
+### System Powiadomień Push
 
-- **Desktop:** Renderuje stały Sidebar z podziałem na sekcje logiczne.
-- **Mobile:** Przełącza się na system "Rule 4+1" (cztery główne ikony + modalne menu "Więcej"), optymalizując przestrzeń roboczą.
+- **Token Management:** Przy każdym logowaniu aplikacja automatycznie rejestruje `pushToken` urządzenia w profilu użytkownika.
+- **Automatyzacja:**
+  - Nowe ogłoszenie -> Push do wszystkich pracowników.
+  - Nowe zgłoszenie problemu/urlopu -> Push do wszystkich osób z rolą DIRECTOR.
+  - Decyzja urlopowa -> Push do konkretnego pracownika.
 
-### Bezpieczeństwo Danych
+### Zarządzanie Zadaniami i Zasobami
 
-System stosuje wielowarstwową architekturę bezpieczeństwa:
+- **Zadania Ogólne (`ALL`):** Wsparcie dla zadań niewymagających konkretnego wykonawcy, widocznych dla całego zespołu.
+- **Auto-Cleanup:** Mechanizm automatycznego usuwania zgłoszeń problemów (Firestore + Storage) po upływie 7 dni od utworzenia w celu optymalizacji kosztów utrzymania.
 
-- **Server-side Security Rules:** Dostęp do bazy Firestore i Storage jest kontrolowany przez rygorystyczne reguły serwerowe. Uniemożliwia to nieautoryzowaną modyfikację danych (np. zmianę roli użytkownika lub usunięcie cudzych plików) nawet przy obejściu interfejsu klienta.
-- **Walidacja URL (XSS Protection):** Wszystkie zewnętrzne linki (np. do plików PDF) przechodzą proces walidacji protokołu (`https://`), co eliminuje ryzyko ataków typu Cross-Site Scripting.
-- **Rola DIRECTOR:** Uprawnienia administracyjne są weryfikowane bezpośrednio na serwerze Firebase przed każdą operacją zapisu.
+### Adaptacyjność i UI (Cross-platform)
 
-### Mechanizmy Automatyzacji i Zarządzania Miejscem
-
-- **Auto-Cleanup (Zgłoszenia):** Aplikacja posiada wbudowaną logikę "klient-serwer" do usuwania przeterminowanych danych. Zgłoszenia problemów wraz z załącznikami (zdjęcia/wideo) są automatycznie usuwane z bazy i magazynu po upływie 7 dni od utworzenia.
-- **Zadania Ogólne:** System wspiera zadania przypisane do grupy `ALL`. Są one widoczne dla wszystkich aktywnych pracowników, co optymalizuje proces przydzielania prac niewymagających konkretnego wykonawcy.
-
----
+- **Android Fixes:** Pełne wsparcie dla trybu "Edge-to-Edge", obsługa systemowych przycisków nawigacyjnych oraz inteligentne unikanie klawiatury (`KeyboardAvoidingView`).
+- **Web/Safari:** Specjalne poprawki renderowania obrazów (CORS Fix, `backgroundImage`) oraz elastyczne układy dla przeglądarek mobilnych.
+- **Dark Mode:** Systemowa obsługa ciemnego motywu z dynamiczną paletą barw zapewniającą kontrast i profesjonalny wygląd.
 
 ## 🚀 Deployment i Aktualizacje
 
 ### System OTA (Over-The-Air)
 
-Aplikacja posiada wbudowaną usługę `expo-updates`. Pozwala ona na przesyłanie poprawek kodu bezpośrednio na telefony użytkowników z pominięciem sklepów App Store / Google Play.
+Aktualizacje kodu JS są przesyłane natychmiastowo przez kanał `preview`.
 
-- **Komenda aktualizacji:** `npx eas update --branch preview`
+- **Komenda:** `npx eas update --branch preview`
 
 ### Budowa plików natywnych (EAS Build)
 
-Zbiórka plików instalacyjnych odbywa się w odizolowanym środowisku chmurowym Expo:
-
-- **Android (APK):** `npx eas-cli build -p android --profile preview`
-- **Web (Deploy):** `npm run deploy:web`
-
-### Standardy Jakości
-
-Projekt utrzymuje wysoką jakość kodu poprzez:
-
-- **Linting:** Rygorystyczne reguły ESLint eliminujące nieużywane zmienne i błędy typowania.
-- **Formatting:** Automatyczne formatowanie kodu za pomocą Prettier.
-- **Keyboard Handling:** Użycie `KeyboardAvoidingView` oraz `softwareKeyboardLayoutMode: "resize"` dla poprawnego działania formularzy na Androidzie.
+- **Android (APK):** Konfiguracja profilu `preview` generuje bezpośredni plik instalacyjny APK z obsługą kanałów aktualizacji.
 
 ---
 
-© 2026 Velder IT Department.
+© 2026 Velder IT Department. Opracowane przez: Andrii Veremii (D@shuk).

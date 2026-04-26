@@ -25,13 +25,15 @@ import {
   X,
   AlertTriangle,
   Inbox,
+  Info,
 } from 'lucide-react-native';
 import { useAppTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { signOut } from 'firebase/auth';
-import { auth } from '../config/firebase';
+import { auth, db } from '../config/firebase';
 import { NavigationProp } from '@react-navigation/native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 
 const { width } = Dimensions.get('window');
 const getIsDesktop = () => Platform.OS === 'web' && width > 768;
@@ -91,6 +93,23 @@ const TabItem = styled.TouchableOpacity`
   flex: 1;
   justify-content: center;
   align-items: center;
+`;
+
+const IconContainer = styled.View`
+  position: relative;
+`;
+
+const BadgeDot = styled.View`
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background-color: ${(props) => props.theme.colors.error};
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  border-width: 1.5px;
+  border-color: ${(props) => props.theme.colors.surface};
+  z-index: 10;
 `;
 
 const TabLabel = styled(RNText)<{ active?: boolean }>`
@@ -170,11 +189,87 @@ interface MainLayoutProps {
 }
 
 export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutProps) => {
-  const { role } = useAuth();
+  const { user, role } = useAuth();
   const { theme } = useAppTheme();
   const [moreVisible, setMoreVisible] = useState(false);
   const [isDesktop, setIsDesktop] = useState(getIsDesktop);
   const insets = useSafeAreaInsets();
+
+  // Стан для бейджів
+  const [badges, setBadges] = useState({
+    reports: 0,
+    vacations: 0,
+    announcements: 0,
+    tasks: 0,
+    service: 0,
+    pendingUsers: 0,
+  });
+
+  useEffect(() => {
+    if (!user) return;
+
+    const unsubscribes: (() => void)[] = [];
+
+    // 1. Для Директора: Звіти про проблеми
+    if (role === 'DIRECTOR') {
+      const q = query(collection(db, 'reports'));
+      unsubscribes.push(
+        onSnapshot(q, (snap) => {
+          setBadges((prev) => ({ ...prev, reports: snap.size }));
+        })
+      );
+
+      // 2. Для Директора: Заяви на відпустку (PENDING)
+      const vQ = query(collection(db, 'vacations'), where('status', '==', 'PENDING'));
+      unsubscribes.push(
+        onSnapshot(vQ, (snap) => {
+          setBadges((prev) => ({ ...prev, vacations: snap.size }));
+        })
+      );
+
+      // 3. Для Директора: Користувачі, що чекають активації
+      const uQ_pending = query(collection(db, 'users'), where('isActive', '==', false));
+      unsubscribes.push(
+        onSnapshot(uQ_pending, (snap) => {
+          setBadges((prev) => ({ ...prev, pendingUsers: snap.size }));
+        })
+      );
+    }
+
+    // 4. Оголошення (якщо є сьогодні)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const aQ = query(collection(db, 'announcements'), where('createdAt', '>=', today));
+    unsubscribes.push(
+      onSnapshot(aQ, (snap) => {
+        setBadges((prev) => ({ ...prev, announcements: snap.size }));
+      })
+    );
+
+    // 5. Завдання (тільки персональні для працівника)
+    if (role === 'EMPLOYEE') {
+      const tQ = query(
+        collection(db, 'tasks'),
+        where('assignedTo', '==', user.uid),
+        where('done', '==', false)
+      );
+      unsubscribes.push(
+        onSnapshot(tQ, (snap) => {
+          setBadges((prev) => ({ ...prev, tasks: snap.size }));
+        })
+      );
+    }
+
+    // 6. Сервіс (Загальний для всіх - тільки PENDING)
+    const sQ = query(collection(db, 'services'), where('status', '==', 'PENDING'));
+    unsubscribes.push(
+      onSnapshot(sQ, (snap) => {
+        setBadges((prev) => ({ ...prev, service: snap.size }));
+      })
+    );
+
+    return () => unsubscribes.forEach((unsub) => unsub());
+  }, [user, role]);
 
   useEffect(() => {
     if (Platform.OS !== 'web') return;
@@ -192,9 +287,9 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
     {
       title: 'Praca i Projekty',
       items: [
-        { name: 'Tasks', label: 'Zadania', icon: CheckSquare },
+        { name: 'Tasks', label: 'Zadania', icon: CheckSquare, badge: badges.tasks },
         { name: 'Dashboard', label: 'Projekty', icon: LayoutGrid },
-        { name: 'Service', label: 'Serwis', icon: Wrench },
+        { name: 'Service', label: 'Serwis', icon: Wrench, badge: badges.service },
         ...(role !== 'DIRECTOR'
           ? [{ name: 'ReportProblem', label: 'Zgłoś problem', icon: AlertTriangle }]
           : []),
@@ -206,6 +301,7 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
         { name: 'Reminders', label: 'Przypomnienia', icon: Bell },
         ...(role !== 'DIRECTOR' ? [{ name: 'Vacations', label: 'Urlop', icon: Palmtree }] : []),
         { name: 'Profile', label: 'Profil', icon: User },
+        { name: 'About', label: 'O firmie', icon: Info },
       ],
     },
     ...(role === 'DIRECTOR'
@@ -213,14 +309,20 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
           {
             title: 'Zespół',
             items: [
-              { name: 'Users', label: 'Pracownicy', icon: Users },
-              { name: 'Announcements', label: 'Ogłoszenia', icon: Megaphone },
-              { name: 'DirectorReports', label: 'Zgłoszenia', icon: Inbox },
+              { name: 'Users', label: 'Pracownicy', icon: Users, badge: badges.pendingUsers },
+              {
+                name: 'Announcements',
+                label: 'Ogłoszenia',
+                icon: Megaphone,
+                badge: badges.announcements,
+              },
+              { name: 'DirectorReports', label: 'Zgłoszenia', icon: Inbox, badge: badges.reports },
               {
                 name: 'Vacations',
                 label: 'Wnioski Urlopowe',
                 icon: Palmtree,
                 params: { isAdminView: true },
+                badge: badges.vacations,
               },
             ],
           },
@@ -247,10 +349,15 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
                     active={currentRoute === item.name}
                     onPress={() => navigation.navigate(item.name, item.params as any)}
                   >
-                    <item.icon
-                      size={18}
-                      color={currentRoute === item.name ? theme.colors.primary : theme.colors.text}
-                    />
+                    <IconContainer>
+                      <item.icon
+                        size={18}
+                        color={
+                          currentRoute === item.name ? theme.colors.primary : theme.colors.text
+                        }
+                      />
+                      {(item as any).badge > 0 && <BadgeDot theme={theme} />}
+                    </IconContainer>
                     <NavText
                       theme={theme}
                       active={currentRoute === item.name}
@@ -301,19 +408,25 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
               key={item.name + (item.params ? '_admin' : '')}
               onPress={() => navigation.navigate(item.name, item.params as any)}
             >
-              <item.icon
-                size={22}
-                color={
-                  currentRoute === item.name ? theme.colors.primary : theme.colors.textSecondary
-                }
-              />
+              <IconContainer>
+                <item.icon
+                  size={22}
+                  color={
+                    currentRoute === item.name ? theme.colors.primary : theme.colors.textSecondary
+                  }
+                />
+                {(item as any).badge > 0 && <BadgeDot theme={theme} />}
+              </IconContainer>
               <TabLabel theme={theme} active={currentRoute === item.name}>
                 {item.label}
               </TabLabel>
             </TabItem>
           ))}
           <TabItem onPress={() => setMoreVisible(true)}>
-            <Menu size={22} color={theme.colors.textSecondary} />
+            <IconContainer>
+              <Menu size={22} color={theme.colors.textSecondary} />
+              {hiddenItems.some((item: any) => item.badge > 0) && <BadgeDot theme={theme} />}
+            </IconContainer>
             <TabLabel theme={theme}>Menu</TabLabel>
           </TabItem>
         </BottomTabs>
@@ -353,7 +466,10 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
                     navigation.navigate(item.name, item.params as any);
                   }}
                 >
-                  <item.icon size={22} color={theme.colors.primary} />
+                  <IconContainer>
+                    <item.icon size={22} color={theme.colors.primary} />
+                    {(item as any).badge > 0 && <BadgeDot theme={theme} />}
+                  </IconContainer>
                   <MoreMenuText theme={theme}>{item.label}</MoreMenuText>
                   <ChevronRight size={18} color="#ccc" />
                 </MoreMenuItem>
