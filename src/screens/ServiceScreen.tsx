@@ -30,7 +30,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Calendar } from 'react-native-calendars';
 import { db, storage, auth } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
-import { theme } from '../config/theme';
+import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
 import {
   Wrench,
@@ -44,6 +44,7 @@ import {
   ChevronDown,
 } from 'lucide-react-native';
 import { format } from 'date-fns';
+import { StackScreenProps } from '@react-navigation/stack';
 
 const { width } = Dimensions.get('window');
 
@@ -114,10 +115,10 @@ const PhotoStrip = styled.ScrollView`
 const PhotoItem = styled.View`
   width: 160px;
   margin-right: 12px;
-  background-color: #f9f9f9;
+  background-color: ${(props) => props.theme.colors.background};
   border-radius: 10px;
   padding: 5px;
-  border: 1px solid #eee;
+  border: 1px solid ${(props) => props.theme.colors.border};
 `;
 
 const PhotoImg = styled.Image`
@@ -154,7 +155,7 @@ const DateInfo = styled.View`
   flex-direction: row;
   align-items: center;
   margin-top: 12px;
-  background-color: #f0f7ff;
+  background-color: ${(props) => props.theme.colors.accent};
   padding: 6px 12px;
   border-radius: 6px;
   align-self: flex-start;
@@ -182,7 +183,7 @@ const ModalOverlay = styled.View`
 `;
 
 const ModalContent = styled(ScrollView)`
-  background-color: white;
+  background-color: ${(props) => props.theme.colors.surface};
   width: 100%;
   max-width: 600px;
   border-radius: 15px;
@@ -244,6 +245,7 @@ const ModalHeader = styled.View`
 const ModalTitleText = styled(RNText)`
   font-size: 20px;
   font-weight: bold;
+  color: ${(props) => props.theme.colors.text};
 `;
 
 const InputLabel = styled(RNText)`
@@ -259,6 +261,7 @@ const StyledTextInput = styled.TextInput`
   border-radius: 8px;
   margin-bottom: 15px;
   border: 1px solid ${(props) => props.theme.colors.border};
+  color: ${(props) => props.theme.colors.text};
 `;
 
 const TextArea = styled(StyledTextInput)`
@@ -280,10 +283,11 @@ const SubmitButtonText = styled(RNText)`
 `;
 
 const PhotoModalContainer = styled.View`
-  background-color: white;
+  background-color: ${(props) => props.theme.colors.surface};
   width: 90%;
   border-radius: 15px;
   padding: 20px;
+  border: 1px solid ${(props) => props.theme.colors.border};
 `;
 
 const PhotoPreview = styled.Image`
@@ -301,7 +305,7 @@ const ActionButtons = styled.View`
 const TimePickerContainer = styled.View`
   flex-direction: row;
   align-items: center;
-  background-color: #f8f9fa;
+  background-color: ${(props) => props.theme.colors.background};
   padding: 15px;
   border-radius: 12px;
   margin-top: 10px;
@@ -341,12 +345,11 @@ const ReportBtn = styled.TouchableOpacity<{ disabled?: boolean }>`
   align-items: center;
 `;
 
-import { StackScreenProps } from '@react-navigation/stack';
-
 type Props = StackScreenProps<any, 'Service'>;
 
 const ServiceScreen = ({ navigation, route }: Props) => {
   const { role } = useAuth();
+  const { theme } = useAppTheme();
   const [records, setRecords] = useState<ServiceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -570,8 +573,23 @@ const ServiceScreen = ({ navigation, route }: Props) => {
                   [selectedDate]: { selected: true, selectedColor: theme.colors.primary },
                 }}
                 theme={{
-                  todayTextColor: theme.colors.primary,
+                  backgroundColor: theme.colors.surface,
+                  calendarBackground: theme.colors.surface,
+                  textSectionTitleColor: theme.colors.textSecondary,
                   selectedDayBackgroundColor: theme.colors.primary,
+                  selectedDayTextColor: '#ffffff',
+                  todayTextColor: theme.colors.primary,
+                  dayTextColor: theme.colors.text,
+                  textDisabledColor: theme.colors.border,
+                  dotColor: theme.colors.primary,
+                  selectedDotColor: '#ffffff',
+                  arrowColor: theme.colors.primary,
+                  disabledArrowColor: theme.colors.border,
+                  monthTextColor: theme.colors.text,
+                  indicatorColor: theme.colors.primary,
+                  textDayFontWeight: '400',
+                  textMonthFontWeight: 'bold',
+                  textDayHeaderFontWeight: '400',
                 }}
               />
 

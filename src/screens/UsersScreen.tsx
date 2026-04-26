@@ -20,9 +20,10 @@ import {
   deleteDoc,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { theme } from '../config/theme';
+import { useAppTheme } from '../context/ThemeContext';
 import { User, Shield, Trash2, Mail, CheckCircle, XCircle } from 'lucide-react-native';
 import { notify } from '../utils/notify';
+import { StackScreenProps } from '@react-navigation/stack';
 
 interface UserData {
   id: string;
@@ -68,10 +69,12 @@ const Avatar = styled.View<{ active: boolean }>`
   width: 50px;
   height: 50px;
   border-radius: 25px;
-  background-color: ${(props) => (props.active ? theme.colors.accent : '#f0f0f0')};
+  background-color: ${(props) =>
+    props.active ? props.theme.colors.accent : props.theme.colors.border};
   justify-content: center;
   align-items: center;
-  border: 2px solid ${(props) => (props.active ? theme.colors.primary : '#ccc')};
+  border: 2px solid
+    ${(props) => (props.active ? props.theme.colors.primary : props.theme.colors.border)};
 `;
 
 const Info = styled.View`
@@ -92,7 +95,14 @@ const UserEmail = styled(RNText)`
 `;
 
 const RoleBadge = styled.View<{ isAdmin: boolean }>`
-  background-color: ${(props) => (props.isAdmin ? '#FFF3E0' : '#E8EAF6')};
+  background-color: ${(props) =>
+    props.isAdmin
+      ? props.theme.isDark
+        ? '#4d2c00'
+        : '#FFF3E0'
+      : props.theme.isDark
+        ? '#1a1f3d'
+        : '#E8EAF6'};
   padding: 2px 8px;
   border-radius: 4px;
   align-self: flex-start;
@@ -104,7 +114,14 @@ const RoleBadge = styled.View<{ isAdmin: boolean }>`
 const RoleText = styled(RNText)<{ isAdmin: boolean }>`
   font-size: 10px;
   font-weight: bold;
-  color: ${(props) => (props.isAdmin ? '#E65100' : '#1A237E')};
+  color: ${(props) =>
+    props.isAdmin
+      ? props.theme.isDark
+        ? '#ffa726'
+        : '#E65100'
+      : props.theme.isDark
+        ? '#90caf9'
+        : '#1A237E'};
   margin-left: 4px;
 `;
 
@@ -112,10 +129,10 @@ const Controls = styled.View`
   flex-direction: row;
   align-items: center;
   border-top-width: 1px;
-  border-top-color: #f0f0f0;
-  margin-top: 12px;
+  border-top-color: ${(props) => props.theme.colors.border};
+  margin-top: 15px;
   padding-top: 10px;
-  justify-content: space-between;
+  justify-content: space-around;
 `;
 
 const StatusLabel = styled(RNText)`
@@ -124,11 +141,10 @@ const StatusLabel = styled(RNText)`
   color: ${(props) => props.theme.colors.text};
 `;
 
-import { StackScreenProps } from '@react-navigation/stack';
-
 type Props = StackScreenProps<any, 'Users'>;
 
 const UsersScreen = ({ navigation, route }: Props) => {
+  const { theme } = useAppTheme();
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -207,14 +223,28 @@ const UsersScreen = ({ navigation, route }: Props) => {
           <UserCard theme={theme}>
             <UserMainInfo>
               <Avatar theme={theme} active={item.isActive}>
-                <User size={24} color={item.isActive ? theme.colors.primary : '#999'} />
+                <User
+                  size={24}
+                  color={item.isActive ? theme.colors.primary : theme.colors.textSecondary}
+                />
               </Avatar>
               <Info>
                 <UserName theme={theme}>{item.name}</UserName>
                 <UserEmail theme={theme}>{item.email}</UserEmail>
                 <TouchableOpacity onPress={() => toggleRole(item.id, item.role)}>
                   <RoleBadge theme={theme} isAdmin={item.role === 'DIRECTOR'}>
-                    <Shield size={12} color={item.role === 'DIRECTOR' ? '#E65100' : '#1A237E'} />
+                    <Shield
+                      size={12}
+                      color={
+                        item.role === 'DIRECTOR'
+                          ? theme.isDark
+                            ? '#ffa726'
+                            : '#E65100'
+                          : theme.isDark
+                            ? '#90caf9'
+                            : '#1A237E'
+                      }
+                    />
                     <RoleText theme={theme} isAdmin={item.role === 'DIRECTOR'}>
                       {item.role}
                     </RoleText>
@@ -226,7 +256,7 @@ const UsersScreen = ({ navigation, route }: Props) => {
               </TouchableOpacity>
             </UserMainInfo>
 
-            <Controls>
+            <Controls theme={theme}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 {item.isActive ? (
                   <CheckCircle size={16} color={theme.colors.success} />
@@ -240,7 +270,7 @@ const UsersScreen = ({ navigation, route }: Props) => {
               <Switch
                 value={item.isActive}
                 onValueChange={() => toggleStatus(item.id, item.isActive)}
-                trackColor={{ false: '#ccc', true: theme.colors.primary }}
+                trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
               />
             </Controls>
           </UserCard>

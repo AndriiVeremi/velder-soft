@@ -10,6 +10,7 @@ import {
   Alert,
   ScrollView,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import styled from 'styled-components/native';
 import {
@@ -26,7 +27,7 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
-import { theme } from '../config/theme';
+import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
 import {
   Bell,
@@ -35,7 +36,6 @@ import {
   Trash2,
   Clock,
   Calendar as CalendarIcon,
-  Mic,
   CheckCircle2,
 } from 'lucide-react-native';
 import { Calendar } from 'react-native-calendars';
@@ -83,6 +83,7 @@ const CardContent = styled.View`
 const ReminderTitle = styled(RNText)<{ done: boolean }>`
   font-size: 16px;
   font-weight: bold;
+  color: ${(props) => (props.done ? props.theme.colors.textSecondary : props.theme.colors.text)};
   text-decoration: ${(props) => (props.done ? 'line-through' : 'none')};
 `;
 
@@ -106,11 +107,14 @@ const AddButton = styled.TouchableOpacity`
 `;
 
 const ModalContent = styled.View`
-  background-color: white;
+  background-color: ${(props) => props.theme.colors.surface};
   padding: 25px;
   border-radius: 20px;
-  width: 90%;
+  width: 95%;
   max-width: 500px;
+  max-height: 90%;
+  border-width: 1px;
+  border-color: ${(props) => props.theme.colors.border};
 `;
 
 interface Reminder {
@@ -156,6 +160,7 @@ const InputContainer = styled.View`
   padding-horizontal: 10px;
   border-width: 1px;
   border-color: ${(props) => props.theme.colors.border};
+  margin-bottom: 20px;
 `;
 
 const ReminderInput = styled.TextInput`
@@ -165,16 +170,14 @@ const ReminderInput = styled.TextInput`
   color: ${(props) => props.theme.colors.text};
 `;
 
-const MicButton = styled.TouchableOpacity`
-  padding: 10px;
-`;
-
 const Label = styled(RNText)`
   font-size: 12px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.textSecondary};
-  margintop: 15px;
-  marginbottom: 5px;
+  margin-top: 25px;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 `;
 
 const TimeInput = styled.TextInput`
@@ -185,6 +188,7 @@ const TimeInput = styled.TextInput`
   border-width: 1px;
   border-color: ${(props) => props.theme.colors.border};
   color: ${(props) => props.theme.colors.text};
+  margin-bottom: 10px;
 `;
 
 const SetReminderButton = styled.TouchableOpacity`
@@ -201,6 +205,7 @@ type Props = StackScreenProps<any, 'Reminders'>;
 
 const RemindersScreen = ({ navigation, route }: Props) => {
   const { user } = useAuth();
+  const { theme } = useAppTheme();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -260,17 +265,17 @@ const RemindersScreen = ({ navigation, route }: Props) => {
       if (Platform.OS !== 'web') {
         try {
           const [h, m] = time.split(':').map(Number);
-          const baseDate = new Date(date);
-          baseDate.setHours(h, m, 0);
+          const [year, month, day] = date.split('-').map(Number);
+          const baseDate = new Date(year, month - 1, day, h, m, 0);
 
-          for (let i = 0; i < 3; i++) {
-            const scheduleDate = new Date(baseDate.getTime() + i * 5 * 60000);
+          for (let i = 0; i < 5; i++) {
+            const scheduleDate = new Date(baseDate.getTime() + i * 1 * 60000); // 1-хвилинний інтервал
             if (scheduleDate > new Date()) {
               await Notifications.scheduleNotificationAsync({
                 identifier: `${docRef.id}_${i}`,
                 content: {
                   title:
-                    i === 0 ? 'Osobiste przypomnienie! 🔔' : `Przypomnienie (Powtórka ${i}) 🔔`,
+                    i === 0 ? 'Ważne przypomnienie! 🔔' : `Przypomnienie (Powtórka ${i}/4) 🔔`,
                   body: title,
                   sound: true,
                   badge: reminders.length + 1,
@@ -279,6 +284,7 @@ const RemindersScreen = ({ navigation, route }: Props) => {
                 trigger: {
                   type: SchedulableTriggerInputTypes.DATE,
                   date: scheduleDate,
+                  channelId: 'default',
                 },
               });
             }
@@ -299,10 +305,12 @@ const RemindersScreen = ({ navigation, route }: Props) => {
 
   const cancelReminderSequence = async (reminderId: string) => {
     if (Platform.OS === 'web') return;
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 5; i++) {
       try {
         await Notifications.cancelScheduledNotificationAsync(`${reminderId}_${i}`);
-      } catch (e) {}
+      } catch (e) {
+        console.warn('Failed to cancel notification:', e);
+      }
     }
   };
 
@@ -373,50 +381,81 @@ const RemindersScreen = ({ navigation, route }: Props) => {
 
       <Modal visible={modalVisible} transparent animationType="slide">
         <ModalOverlay>
-          <ModalContent theme={theme}>
-            <ModalHeader>
-              <RNText style={{ fontSize: 18, fontWeight: 'bold' }}>Nowe przypomnienie</RNText>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color={theme.colors.text} />
-              </TouchableOpacity>
-            </ModalHeader>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+            style={{
+              width: '100%',
+              flex: 1,
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          >
+            <ModalContent theme={theme}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ flexGrow: 1 }}
+              >
+                <ModalHeader>
+                  <RNText style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>
+                    Nowe przypomnienie
+                  </RNText>
+                  <TouchableOpacity onPress={() => setModalVisible(false)}>
+                    <X size={24} color={theme.colors.text} />
+                  </TouchableOpacity>
+                </ModalHeader>
 
-            <InputContainer theme={theme}>
-              <ReminderInput
-                theme={theme}
-                placeholder="O czym Ci przypomnieć?"
-                value={title}
-                onChangeText={setTitle}
-                placeholderTextColor={theme.colors.textSecondary}
-              />
-              <MicButton>
-                <Mic size={24} color={theme.colors.primary} />
-              </MicButton>
-            </InputContainer>
+                <InputContainer theme={theme}>
+                  <ReminderInput
+                    theme={theme}
+                    placeholder="O czym Ci przypomnieć?"
+                    value={title}
+                    onChangeText={setTitle}
+                    placeholderTextColor={theme.colors.textSecondary}
+                  />
+                </InputContainer>
+                <Label theme={theme}>DATA</Label>
+                <Calendar
+                  onDayPress={(day) => setSelectedDate(day.dateString)}
+                  markedDates={{ [date]: { selected: true, selectedColor: theme.colors.primary } }}
+                  theme={{
+                    backgroundColor: theme.colors.surface,
+                    calendarBackground: theme.colors.surface,
+                    textSectionTitleColor: theme.colors.textSecondary,
+                    selectedDayBackgroundColor: theme.colors.primary,
+                    selectedDayTextColor: '#ffffff',
+                    todayTextColor: theme.colors.primary,
+                    dayTextColor: theme.colors.text,
+                    textDisabledColor: theme.colors.border,
+                    dotColor: theme.colors.primary,
+                    selectedDotColor: '#ffffff',
+                    arrowColor: theme.colors.primary,
+                    disabledArrowColor: theme.colors.border,
+                    monthTextColor: theme.colors.text,
+                    indicatorColor: theme.colors.primary,
+                    textDayFontWeight: '400',
+                    textMonthFontWeight: 'bold',
+                    textDayHeaderFontWeight: '400',
+                  }}
+                />
 
-            <Label theme={theme}>DATA</Label>
-            <Calendar
-              onDayPress={(day) => setSelectedDate(day.dateString)}
-              markedDates={{ [date]: { selected: true, selectedColor: theme.colors.primary } }}
-              theme={{
-                todayTextColor: theme.colors.primary,
-                selectedDayBackgroundColor: theme.colors.primary,
-              }}
-            />
+                <Label theme={theme}>GODZINA (HH:MM)</Label>
+                <TimeInput
+                  theme={theme}
+                  value={time}
+                  onChangeText={setTime}
+                  placeholder="10:00"
+                  placeholderTextColor={theme.colors.textSecondary}
+                />
 
-            <Label theme={theme}>GODZINA (HH:MM)</Label>
-            <TimeInput
-              theme={theme}
-              value={time}
-              onChangeText={setTime}
-              placeholder="10:00"
-              placeholderTextColor={theme.colors.textSecondary}
-            />
-
-            <SetReminderButton onPress={handleAdd} theme={theme}>
-              <RNText style={{ color: 'white', fontWeight: 'bold' }}>USTAW PRZYPOMNIENIE</RNText>
-            </SetReminderButton>
-          </ModalContent>
+                <SetReminderButton onPress={handleAdd} theme={theme}>
+                  <RNText style={{ color: 'white', fontWeight: 'bold' }}>
+                    USTAW PRZYPOMNIENIE
+                  </RNText>
+                </SetReminderButton>
+              </ScrollView>
+            </ModalContent>
+          </KeyboardAvoidingView>
         </ModalOverlay>
       </Modal>
     </Container>

@@ -2,6 +2,7 @@ import 'styled-components/native';
 
 declare module 'styled-components/native' {
   export interface DefaultTheme {
+    isDark: boolean;
     colors: {
       primary: string;
       secondary: string;
@@ -13,6 +14,7 @@ declare module 'styled-components/native' {
       accent: string;
       error: string;
       success: string;
+      warning: string;
     };
     spacing: {
       xs: number;
@@ -25,6 +27,7 @@ declare module 'styled-components/native' {
       sm: number;
       md: number;
       lg: number;
+      xl: number;
     };
   }
 }

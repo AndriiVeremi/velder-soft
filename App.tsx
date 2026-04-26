@@ -2,12 +2,12 @@ import 'react-native-gesture-handler';
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator, StackNavigationProp } from '@react-navigation/stack';
-import { ThemeProvider } from 'styled-components/native';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
-import { theme } from './src/config/theme';
+import { AppThemeProvider, useAppTheme } from './src/context/ThemeContext';
 import { MainLayout } from './src/components/Layout';
 import { View, ActivityIndicator, Text as RNText, Platform, LogBox } from 'react-native';
 import styled from 'styled-components/native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   registerForPushNotificationsAsync,
   setBadgeCount,
@@ -28,6 +28,8 @@ import AddProjectScreen from './src/screens/AddProjectScreen';
 import ProjectDetailsScreen from './src/screens/ProjectDetailsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import PendingApprovalScreen from './src/screens/PendingApprovalScreen';
+import ReportProblemScreen from './src/screens/ReportProblemScreen';
+import DirectorReportsScreen from './src/screens/DirectorReportsScreen';
 
 LogBox.ignoreLogs(['Image: style.tintColor is deprecated', 'Blocked aria-hidden on an element']);
 
@@ -46,6 +48,8 @@ type RootStackParamList = {
   Login: undefined;
   Register: undefined;
   PendingApproval: undefined;
+  ReportProblem: undefined;
+  DirectorReports: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -54,102 +58,90 @@ const CenteredContainer = styled.View`
   flex: 1;
   justify-content: center;
   align-items: center;
-  background-color: ${(props: { theme: { colors: { background: string } } }) =>
-    props.theme.colors.background};
+  background-color: ${(props) => props.theme.colors.background};
 `;
 
-interface ScreenProps {
-  navigation: StackNavigationProp<RootStackParamList, keyof RootStackParamList>;
-}
+type RouteKey = keyof RootStackParamList;
 
-const HomeWithLayout = ({ navigation, route }: any) => (
-  <MainLayout navigation={navigation} currentRoute="Home">
-    <HomeScreen navigation={navigation} route={route} />
-  </MainLayout>
-);
-
-const TasksWithLayout = ({ navigation, route }: any) => (
-  <MainLayout navigation={navigation} currentRoute="Tasks">
-    <TasksScreen navigation={navigation} route={route} />
-  </MainLayout>
-);
-
-const DashboardWithLayout = ({ navigation, route }: any) => (
-  <MainLayout navigation={navigation} currentRoute="Dashboard">
-    <DashboardScreen navigation={navigation} route={route} />
-  </MainLayout>
-);
-
-const ServiceWithLayout = ({ navigation, route }: any) => (
-  <MainLayout navigation={navigation} currentRoute="Service">
-    <ServiceScreen navigation={navigation} route={route} />
-  </MainLayout>
-);
-
-const UsersWithLayout = ({ navigation, route }: any) => (
-  <MainLayout navigation={navigation} currentRoute="Users">
-    <UsersScreen navigation={navigation} route={route} />
-  </MainLayout>
-);
-
-const VacationsWithLayout = ({ navigation, route }: any) => (
-  <MainLayout navigation={navigation} currentRoute="Vacations">
-    <VacationsScreen navigation={navigation} route={route} />
-  </MainLayout>
-);
-
-const RemindersWithLayout = ({ navigation, route }: any) => (
-  <MainLayout navigation={navigation} currentRoute="Reminders">
-    <RemindersScreen navigation={navigation} route={route} />
-  </MainLayout>
-);
-
-const AnnouncementsWithLayout = ({ navigation, route }: any) => (
-  <MainLayout navigation={navigation} currentRoute="Announcements">
-    <AnnouncementsScreen navigation={navigation} route={route} />
-  </MainLayout>
-);
-
-const ProfileWithLayout = ({ navigation, route }: any) => (
-  <MainLayout navigation={navigation} currentRoute="Profile">
-    <ProfileScreen navigation={navigation} route={route} />
-  </MainLayout>
-);
+const withLayout =
+  (Screen: React.ComponentType<any>, routeName: RouteKey) =>
+  ({
+    navigation,
+    route,
+  }: {
+    navigation: StackNavigationProp<RootStackParamList, RouteKey>;
+    route: any;
+  }) => (
+    <MainLayout navigation={navigation} currentRoute={routeName}>
+      <Screen navigation={navigation} route={route} />
+    </MainLayout>
+  );
 
 const AuthenticatedStack = () => {
+  const { theme } = useAppTheme();
   return (
     <Stack.Navigator
       screenOptions={{
         headerShown: true,
         headerStyle: { backgroundColor: theme.colors.surface },
-        headerTitleStyle: { fontWeight: 'bold' },
+        headerTitleStyle: { fontWeight: 'bold', color: theme.colors.text },
       }}
     >
-      <Stack.Screen name="Home" component={HomeWithLayout} options={{ title: 'Start' }} />
-      <Stack.Screen name="Tasks" component={TasksWithLayout} options={{ title: 'Zadania' }} />
+      <Stack.Screen
+        name="Home"
+        component={withLayout(HomeScreen, 'Home')}
+        options={{ title: 'Start' }}
+      />
+      <Stack.Screen
+        name="Tasks"
+        component={withLayout(TasksScreen, 'Tasks')}
+        options={{ title: 'Zadania' }}
+      />
       <Stack.Screen
         name="Dashboard"
-        component={DashboardWithLayout}
+        component={withLayout(DashboardScreen, 'Dashboard')}
         options={{ title: 'Projekty' }}
       />
-      <Stack.Screen name="Service" component={ServiceWithLayout} options={{ title: 'Serwis' }} />
-      <Stack.Screen name="Users" component={UsersWithLayout} options={{ title: 'Pracownicy' }} />
+      <Stack.Screen
+        name="Service"
+        component={withLayout(ServiceScreen, 'Service')}
+        options={{ title: 'Serwis' }}
+      />
+      <Stack.Screen
+        name="Users"
+        component={withLayout(UsersScreen, 'Users')}
+        options={{ title: 'Pracownicy' }}
+      />
       <Stack.Screen
         name="Vacations"
-        component={VacationsWithLayout}
+        component={withLayout(VacationsScreen, 'Vacations')}
         options={{ title: 'Urlopy' }}
       />
       <Stack.Screen
         name="Reminders"
-        component={RemindersWithLayout}
+        component={withLayout(RemindersScreen, 'Reminders')}
         options={{ title: 'Przypomnienia' }}
       />
       <Stack.Screen
         name="Announcements"
-        component={AnnouncementsWithLayout}
+        component={withLayout(AnnouncementsScreen, 'Announcements')}
         options={{ title: 'Ogłoszenia' }}
       />
-      <Stack.Screen name="Profile" component={ProfileWithLayout} options={{ title: 'Profil' }} />
+      <Stack.Screen
+        name="Profile"
+        component={withLayout(ProfileScreen, 'Profile')}
+        options={{ title: 'Profil' }}
+      />
+      <Stack.Screen
+        name="ReportProblem"
+        component={withLayout(ReportProblemScreen, 'ReportProblem')}
+        options={{ title: 'Zgłoś problem' }}
+      />
+      <Stack.Screen
+        name="DirectorReports"
+        component={withLayout(DirectorReportsScreen, 'DirectorReports')}
+        options={{ title: 'Zgłoszenia' }}
+      />
       <Stack.Screen
         name="AddProject"
         component={AddProjectScreen}
@@ -166,10 +158,11 @@ const AuthenticatedStack = () => {
 
 const RootNavigation = () => {
   const { user, isActive, loading } = useAuth();
+  const { theme } = useAppTheme();
 
   if (loading) {
     return (
-      <CenteredContainer theme={theme}>
+      <CenteredContainer>
         <ActivityIndicator size="large" color={theme.colors.primary} />
       </CenteredContainer>
     );
@@ -206,13 +199,15 @@ export default function App() {
   }, []);
 
   return (
-    <ThemeProvider theme={theme}>
-      <AuthProvider>
-        <NavigationContainer>
-          <RootNavigation />
-        </NavigationContainer>
-        <WebToaster />
-      </AuthProvider>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <AppThemeProvider>
+        <AuthProvider>
+          <NavigationContainer>
+            <RootNavigation />
+          </NavigationContainer>
+          <WebToaster />
+        </AuthProvider>
+      </AppThemeProvider>
+    </SafeAreaProvider>
   );
 }

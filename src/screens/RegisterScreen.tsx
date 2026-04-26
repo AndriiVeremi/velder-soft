@@ -6,20 +6,27 @@ import {
   Text as RNText,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import styled from 'styled-components/native';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
-import { theme } from '../config/theme';
+import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
 
 const Container = styled(KeyboardAvoidingView)`
   flex: 1;
   background-color: ${(props) => props.theme.colors.background};
-  justify-content: center;
-  padding: ${(props) => props.theme.spacing.lg}px;
 `;
+
+const ScrollContainer = styled.ScrollView.attrs({
+  contentContainerStyle: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 20,
+  },
+})``;
 
 const Card = styled.View`
   background-color: ${(props) => props.theme.colors.surface};
@@ -28,6 +35,10 @@ const Card = styled.View`
   max-width: 400px;
   width: 100%;
   align-self: center;
+  shadow-color: #000;
+  shadow-opacity: 0.1;
+  shadow-radius: 15px;
+  elevation: 5;
 `;
 
 const Title = styled(RNText)`
@@ -69,6 +80,7 @@ const LinkText = styled(RNText)`
 `;
 
 const RegisterScreen = ({ navigation }: any) => {
+  const { theme } = useAppTheme();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -107,36 +119,42 @@ const RegisterScreen = ({ navigation }: any) => {
   };
 
   return (
-    <Container behavior={Platform.OS === 'ios' ? 'padding' : 'height'} theme={theme}>
-      <Card theme={theme}>
-        <Title theme={theme}>Rejestracja</Title>
-        <Input theme={theme} placeholder="Imię i Nazwisko" value={name} onChangeText={setName} />
-        <Input
-          theme={theme}
-          placeholder="E-mail"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-        />
-        <Input
-          theme={theme}
-          placeholder="Hasło"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-        <Button theme={theme} onPress={handleRegister} disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <ButtonText theme={theme}>Zarejestruj się</ButtonText>
-          )}
-        </Button>
+    <Container
+      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+      theme={theme}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 50}
+    >
+      <ScrollContainer>
+        <Card theme={theme}>
+          <Title theme={theme}>Rejestracja</Title>
+          <Input theme={theme} placeholder="Imię i Nazwisko" value={name} onChangeText={setName} />
+          <Input
+            theme={theme}
+            placeholder="E-mail"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+          />
+          <Input
+            theme={theme}
+            placeholder="Hasło"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+          <Button theme={theme} onPress={handleRegister} disabled={loading}>
+            {loading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <ButtonText theme={theme}>Zarejestruj się</ButtonText>
+            )}
+          </Button>
 
-        <SecondaryButton onPress={() => navigation.goBack()}>
-          <LinkText theme={theme}>Masz już konto? Zaloguj się</LinkText>
-        </SecondaryButton>
-      </Card>
+          <SecondaryButton onPress={() => navigation.goBack()}>
+            <LinkText theme={theme}>Masz już konto? Zaloguj się</LinkText>
+          </SecondaryButton>
+        </Card>
+      </ScrollContainer>
     </Container>
   );
 };

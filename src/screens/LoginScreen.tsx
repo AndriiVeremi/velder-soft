@@ -7,19 +7,26 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  ScrollView,
 } from 'react-native';
 import styled from 'styled-components/native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../config/firebase';
-import { theme } from '../config/theme';
+import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
 
 const Container = styled(KeyboardAvoidingView)`
   flex: 1;
   background-color: ${(props) => props.theme.colors.background};
-  justify-content: center;
-  padding: ${(props) => props.theme.spacing.lg}px;
 `;
+
+const ScrollContainer = styled.ScrollView.attrs({
+  contentContainerStyle: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 20,
+  },
+})``;
 
 const Card = styled.View`
   background-color: ${(props) => props.theme.colors.surface};
@@ -75,6 +82,7 @@ const LinkText = styled(RNText)`
 `;
 
 const LoginScreen = ({ navigation }: { navigation: { navigate: (screen: string) => void } }) => {
+  const { theme } = useAppTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -98,41 +106,50 @@ const LoginScreen = ({ navigation }: { navigation: { navigate: (screen: string) 
   };
 
   return (
-    <Container behavior={Platform.OS === 'ios' ? 'padding' : 'height'} theme={theme}>
-      <Card theme={theme}>
-        <LogoContainer>
-          <Logo source={require('../../assets/velder.png')} />
-        </LogoContainer>
+    <Container
+      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+      theme={theme}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 50}
+    >
+      <ScrollContainer>
+        <Card theme={theme}>
+          <LogoContainer>
+            <Logo source={require('../../assets/velder.png')} />
+          </LogoContainer>
 
-        <Input
-          theme={theme}
-          placeholder="E-mail"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          placeholderTextColor="#999"
-        />
-        <Input
-          theme={theme}
-          placeholder="Hasło"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          placeholderTextColor="#999"
-        />
-        <Button theme={theme} onPress={handleLogin} disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <ButtonText theme={theme}>Zaloguj się</ButtonText>
-          )}
-        </Button>
+          <Input
+            theme={theme}
+            placeholder="E-mail"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            placeholderTextColor="#999"
+          />
+          <Input
+            theme={theme}
+            placeholder="Hasło"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            placeholderTextColor="#999"
+          />
+          <Button theme={theme} onPress={handleLogin} disabled={loading}>
+            {loading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <ButtonText theme={theme}>Zaloguj się</ButtonText>
+            )}
+          </Button>
 
-        <TouchableOpacity style={{ marginTop: 25 }} onPress={() => navigation.navigate('Register')}>
-          <LinkText theme={theme}>Nie masz konta? Zarejestruj się</LinkText>
-        </TouchableOpacity>
-      </Card>
+          <TouchableOpacity
+            style={{ marginTop: 25 }}
+            onPress={() => navigation.navigate('Register')}
+          >
+            <LinkText theme={theme}>Nie masz konta? Zarejestruj się</LinkText>
+          </TouchableOpacity>
+        </Card>
+      </ScrollContainer>
     </Container>
   );
 };

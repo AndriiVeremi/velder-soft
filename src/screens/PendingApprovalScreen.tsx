@@ -2,7 +2,7 @@ import React from 'react';
 import styled from 'styled-components/native';
 import { signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
-import { theme } from '../config/theme';
+import { useAppTheme } from '../context/ThemeContext';
 import { Clock, LogOut } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
@@ -55,6 +55,7 @@ const LogoutText = styled.Text`
 `;
 
 const PendingApprovalScreen = () => {
+  const { theme } = useAppTheme();
   return (
     <Container theme={theme}>
       <IconWrapper theme={theme}>

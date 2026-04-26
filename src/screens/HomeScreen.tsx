@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Image,
+  useWindowDimensions,
 } from 'react-native';
 import styled from 'styled-components/native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
@@ -27,7 +28,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import * as ImagePicker from 'expo-image-picker';
 import { db, storage } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
-import { theme } from '../config/theme';
+import { useAppTheme } from '../context/ThemeContext';
 import { CheckCircle2, Camera, ArrowRight, Megaphone, Palmtree } from 'lucide-react-native';
 import { format, isToday, parseISO } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -114,20 +115,22 @@ const Content = styled(ScrollView)`
   flex: 1;
 `;
 
-const MainWrapper = styled.View`
-  flex-direction: ${isDesktop ? 'row' : 'column'};
+const MainWrapper = styled.View<{ isDesktop: boolean }>`
+  flex-direction: ${(props) => (props.isDesktop ? 'row' : 'column')};
   padding: ${(props) => props.theme.spacing.md}px;
-  ${isDesktop && `max-width: 1200px; align-self: center; width: 100%;`}
+  width: 100%;
+  align-items: stretch;
+  ${(props) => props.isDesktop && `max-width: 1200px; align-self: center;`}
 `;
 
-const LeftColumn = styled.View`
-  flex: ${isDesktop ? 1.5 : 1};
-  margin-right: ${isDesktop ? theme.spacing.lg : 0}px;
+const LeftColumn = styled.View<{ isDesktop: boolean }>`
+  ${(props) => (props.isDesktop ? 'flex: 1.5;' : 'width: 100%; flex-shrink: 0;')}
+  margin-right: ${(props) => (props.isDesktop ? props.theme.spacing.lg : 0)}px;
 `;
 
-const RightColumn = styled.View`
-  flex: 1;
-  margin-top: ${isDesktop ? 0 : theme.spacing.lg}px;
+const RightColumn = styled.View<{ isDesktop: boolean }>`
+  ${(props) => (props.isDesktop ? 'flex: 1;' : 'width: 100%; flex-shrink: 0;')}
+  margin-top: ${(props) => (props.isDesktop ? 0 : props.theme.spacing.lg)}px;
 `;
 
 const Card = styled.View`
@@ -236,16 +239,16 @@ const ShowAllText = styled(RNText)`
 `;
 
 const VacationCountdownCard = styled.TouchableOpacity`
-  background-color: #e0f2f1;
+  background-color: ${(props) => props.theme.colors.accent};
   padding: 15px;
   border-radius: 12px;
   border-left-width: 5px;
-  border-left-color: #00897b;
+  border-left-color: ${(props) => props.theme.colors.primary};
   margin-bottom: 20px;
   flex-direction: row;
   align-items: center;
   border-width: 1px;
-  border-color: #b2dfdb;
+  border-color: ${(props) => props.theme.colors.border};
 `;
 
 const VacationTextWrapper = styled.View`
@@ -256,17 +259,17 @@ const VacationTextWrapper = styled.View`
 const VacationMainText = styled(RNText)`
   font-size: 15px;
   font-weight: bold;
-  color: #004d40;
+  color: ${(props) => props.theme.colors.text};
 `;
 
 const VacationSubText = styled(RNText)`
   font-size: 12px;
-  color: #00796b;
+  color: ${(props) => props.theme.colors.textSecondary};
   margin-top: 2px;
 `;
 
 const DaysBadge = styled.View`
-  background-color: #00897b;
+  background-color: ${(props) => props.theme.colors.primary};
   padding: 8px 12px;
   border-radius: 10px;
   align-items: center;
@@ -287,11 +290,11 @@ const DaysLabel = styled(RNText)`
 `;
 
 const TeamVacationSection = styled.View`
-  background-color: #f0f4ff;
+  background-color: ${(props) => props.theme.colors.surface};
   padding: 15px;
   border-radius: 12px;
   margin-bottom: 20px;
-  border: 1px solid #d0dfff;
+  border: 1px solid ${(props) => props.theme.colors.border};
 `;
 
 const TeamVacationHeader = styled.View`
@@ -305,11 +308,16 @@ const TeamVacationItem = styled.View`
   justify-content: space-between;
   padding: 8px 0;
   border-bottom-width: 1px;
-  border-bottom-color: #f0f0f0;
+  border-bottom-color: ${(props) => props.theme.colors.border};
+`;
+
+const TeamVacationName = styled(RNText)`
+  font-weight: 600;
+  color: ${(props) => props.theme.colors.text};
 `;
 
 const AnnouncementCard = styled.TouchableOpacity`
-  background-color: #fff4e5;
+  background-color: ${(props) => (props.theme.isDark ? '#2c1e00' : '#fff4e5')};
   padding: 15px;
   border-radius: 12px;
   border-left-width: 5px;
@@ -318,19 +326,23 @@ const AnnouncementCard = styled.TouchableOpacity`
   flex-direction: row;
   align-items: center;
   border-width: 1px;
-  border-color: #ffe0b2;
+  border-color: ${(props) => (props.theme.isDark ? '#4d3a00' : '#ffe0b2')};
 `;
 
 const AnnouncementText = styled(RNText)`
   flex: 1;
   font-size: 14px;
-  color: #663c00;
+  color: ${(props) => (props.theme.isDark ? '#ffcc80' : '#663c00')};
   font-weight: 600;
   margin-left: 12px;
 `;
 
 const HomeScreen = ({ navigation }: Props) => {
   const { user, role, userData } = useAuth();
+  const { theme } = useAppTheme();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === 'web' && width > 768;
+
   const [selectedDate, setSelectedDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -423,7 +435,9 @@ const HomeScreen = ({ navigation }: Props) => {
           batch.update(doc(db, 'tasks', d.id), { date: todayStr, wasMoved: true })
         );
         await batch.commit();
-      } catch (e) {}
+      } catch (e) {
+        console.error('Error moving overdue tasks:', e);
+      }
     };
     moveOverdue();
   }, [user, todayStr]);
@@ -456,7 +470,10 @@ const HomeScreen = ({ navigation }: Props) => {
   const toggleTask = async (id: string, currentStatus: boolean) => {
     try {
       await updateDoc(doc(db, 'tasks', id), { done: !currentStatus });
-    } catch (e) {}
+    } catch (e) {
+      console.error('Error toggling task:', e);
+      notify.error('Błąd aktualizacji zadania');
+    }
   };
 
   const addPhotoToTask = async (taskId: string, timestamp: number) => {
@@ -472,6 +489,8 @@ const HomeScreen = ({ navigation }: Props) => {
       const photoUrl = await getDownloadURL(storageRef);
       await updateDoc(doc(db, 'tasks', taskId), { photoUrl, photoPath: filename, done: true });
     } catch (e) {
+      console.error('Error adding photo to task:', e);
+      notify.error('Błąd przesyłania zdjęcia');
     } finally {
       setUploading(false);
     }
@@ -484,8 +503,8 @@ const HomeScreen = ({ navigation }: Props) => {
   return (
     <Container theme={theme}>
       <Content theme={theme}>
-        <MainWrapper theme={theme}>
-          <LeftColumn theme={theme}>
+        <MainWrapper theme={theme} isDesktop={isDesktop}>
+          <LeftColumn theme={theme} isDesktop={isDesktop}>
             {latestAnnouncement && (
               <AnnouncementCard theme={theme} onPress={() => navigation.navigate('Announcements')}>
                 <Megaphone size={24} color="#ff9800" />
@@ -530,9 +549,7 @@ const HomeScreen = ({ navigation }: Props) => {
                 {teamUpcomingVacations.length > 0 ? (
                   teamUpcomingVacations.map((v) => (
                     <TeamVacationItem key={v.id}>
-                      <RNText style={{ fontWeight: '600', color: theme.colors.text }}>
-                        {v.userName}
-                      </RNText>
+                      <TeamVacationName theme={theme}>{v.userName}</TeamVacationName>
                       <RNText style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
                         {v.startDate} (
                         {Math.ceil(
@@ -572,13 +589,28 @@ const HomeScreen = ({ navigation }: Props) => {
                   [selectedDate]: { selected: true, selectedColor: theme.colors.primary },
                 }}
                 theme={{
-                  todayTextColor: theme.colors.primary,
+                  backgroundColor: theme.colors.surface,
+                  calendarBackground: theme.colors.surface,
+                  textSectionTitleColor: theme.colors.textSecondary,
                   selectedDayBackgroundColor: theme.colors.primary,
+                  selectedDayTextColor: '#ffffff',
+                  todayTextColor: theme.colors.primary,
+                  dayTextColor: theme.colors.text,
+                  textDisabledColor: theme.colors.border,
+                  dotColor: theme.colors.primary,
+                  selectedDotColor: '#ffffff',
+                  arrowColor: theme.colors.primary,
+                  disabledArrowColor: theme.colors.border,
+                  monthTextColor: theme.colors.text,
+                  indicatorColor: theme.colors.primary,
+                  textDayFontWeight: '400',
+                  textMonthFontWeight: 'bold',
+                  textDayHeaderFontWeight: '400',
                 }}
               />
             </Card>
           </LeftColumn>
-          <RightColumn theme={theme}>
+          <RightColumn theme={theme} isDesktop={isDesktop}>
             <Card theme={theme}>
               <SectionTitle theme={theme}>Zadania na dziś</SectionTitle>
               {loading ? (
