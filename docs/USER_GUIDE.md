@@ -16,6 +16,7 @@ Niniejszy przewodnik pomoże Ci szybko zapoznać się z funkcjami aplikacji Veld
 - **Zadania:** Lista Twoich prac oraz zadań "Ogólnych" (dostępnych dla każdego). Przesuń w lewo, aby szybko oznaczyć zadanie jako wykonane.
 - **Zgłoś problem:** Przycisk w menu umożliwiający wysłanie do 5 zdjęć lub wideo z opisem usterki bezpośrednio do Dyrektora.
 - **O firmie:** Historia, misja Velder oraz informacje o twórcy systemu.
+- **Motyw (Dark/Light):** W ustawieniach swojego **Profilu** możesz w każdej chwili przełączyć się między trybem jasnym a ciemnym, aby dopasować aplikację do warunków oświetleniowych. Tryb ciemny oszczędza baterię i chroni wzrok podczas pracy wieczornej.
 
 ## 🔔 3. Inteligentne Powiadomienia
 
