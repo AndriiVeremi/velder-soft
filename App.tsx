@@ -8,6 +8,7 @@ import { theme } from './src/config/theme';
 import { MainLayout } from './src/components/Layout';
 import { View, ActivityIndicator, Text as RNText, Platform, LogBox } from 'react-native';
 import styled from 'styled-components/native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   registerForPushNotificationsAsync,
   setBadgeCount,
@@ -206,13 +207,15 @@ export default function App() {
   }, []);
 
   return (
-    <ThemeProvider theme={theme}>
-      <AuthProvider>
-        <NavigationContainer>
-          <RootNavigation />
-        </NavigationContainer>
-        <WebToaster />
-      </AuthProvider>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider theme={theme}>
+        <AuthProvider>
+          <NavigationContainer>
+            <RootNavigation />
+          </NavigationContainer>
+          <WebToaster />
+        </AuthProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

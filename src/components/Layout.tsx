@@ -29,6 +29,7 @@ import { useAuth } from '../context/AuthContext';
 import { signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { NavigationProp } from '@react-navigation/native';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 const getIsDesktop = () => Platform.OS === 'web' && width > 768;
@@ -77,11 +78,10 @@ const NavText = styled(RNText)<{ active?: boolean }>`
 
 const BottomTabs = styled.View`
   flex-direction: row;
-  height: 70px;
+  height: 65px;
   background-color: ${(props) => props.theme.colors.surface};
   border-top-width: 1px;
   border-top-color: ${(props) => props.theme.colors.border};
-  padding-bottom: ${Platform.OS === 'ios' ? 20 : 0}px;
   elevation: 10;
 `;
 
@@ -112,7 +112,6 @@ const MoreMenuContent = styled.View`
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
   padding: 20px;
-  padding-bottom: ${Platform.OS === 'ios' ? 40 : 20}px;
 `;
 
 const MoreMenuTitle = styled(RNText)`
@@ -170,6 +169,7 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
   const { role } = useAuth();
   const [moreVisible, setMoreVisible] = useState(false);
   const [isDesktop, setIsDesktop] = useState(getIsDesktop);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (Platform.OS !== 'web') return;
@@ -285,26 +285,30 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
     <RootContainer theme={theme} isDesktop={false}>
       <ContentArea>{children}</ContentArea>
 
-      <BottomTabs theme={theme}>
-        {visibleItems.map((item) => (
-          <TabItem
-            key={item.name + (item.params ? '_admin' : '')}
-            onPress={() => navigation.navigate(item.name, item.params as any)}
-          >
-            <item.icon
-              size={22}
-              color={currentRoute === item.name ? theme.colors.primary : theme.colors.textSecondary}
-            />
-            <TabLabel theme={theme} active={currentRoute === item.name}>
-              {item.label}
-            </TabLabel>
+      <SafeAreaView edges={['bottom']} style={{ backgroundColor: theme.colors.surface }}>
+        <BottomTabs theme={theme}>
+          {visibleItems.map((item) => (
+            <TabItem
+              key={item.name + (item.params ? '_admin' : '')}
+              onPress={() => navigation.navigate(item.name, item.params as any)}
+            >
+              <item.icon
+                size={22}
+                color={
+                  currentRoute === item.name ? theme.colors.primary : theme.colors.textSecondary
+                }
+              />
+              <TabLabel theme={theme} active={currentRoute === item.name}>
+                {item.label}
+              </TabLabel>
+            </TabItem>
+          ))}
+          <TabItem onPress={() => setMoreVisible(true)}>
+            <Menu size={22} color={theme.colors.textSecondary} />
+            <TabLabel theme={theme}>Menu</TabLabel>
           </TabItem>
-        ))}
-        <TabItem onPress={() => setMoreVisible(true)}>
-          <Menu size={22} color={theme.colors.textSecondary} />
-          <TabLabel theme={theme}>Menu</TabLabel>
-        </TabItem>
-      </BottomTabs>
+        </BottomTabs>
+      </SafeAreaView>
 
       <MoreMenuOverlay
         visible={moreVisible}
@@ -313,48 +317,53 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
         onRequestClose={() => setMoreVisible(false)}
       >
         <MoreMenuBackdrop activeOpacity={1} onPress={() => setMoreVisible(false)}>
-          <MoreMenuContent theme={theme}>
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 20,
-              }}
-            >
-              <MoreMenuTitle theme={theme}>Więcej opcji</MoreMenuTitle>
-              <TouchableOpacity onPress={() => setMoreVisible(false)}>
-                <X size={24} color={theme.colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            {hiddenItems.map((item) => (
-              <MoreMenuItem
-                key={item.name + (item.params ? '_admin' : '')}
-                onPress={() => {
-                  setMoreVisible(false);
-                  navigation.navigate(item.name, item.params as any);
+          <SafeAreaView
+            edges={['bottom']}
+            style={{ backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
+          >
+            <MoreMenuContent theme={theme}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 20,
                 }}
               >
-                <item.icon size={22} color={theme.colors.primary} />
-                <MoreMenuText theme={theme}>{item.label}</MoreMenuText>
-                <ChevronRight size={18} color="#ccc" />
-              </MoreMenuItem>
-            ))}
+                <MoreMenuTitle theme={theme}>Więcej opcji</MoreMenuTitle>
+                <TouchableOpacity onPress={() => setMoreVisible(false)}>
+                  <X size={24} color={theme.colors.text} />
+                </TouchableOpacity>
+              </View>
 
-            <MoreMenuItem
-              onPress={() => {
-                setMoreVisible(false);
-                signOut(auth);
-              }}
-              style={{ borderBottomWidth: 0, marginTop: 10 }}
-            >
-              <LogOut size={22} color={theme.colors.error} />
-              <MoreMenuText theme={theme} style={{ color: theme.colors.error }}>
-                Wyloguj się
-              </MoreMenuText>
-            </MoreMenuItem>
-          </MoreMenuContent>
+              {hiddenItems.map((item) => (
+                <MoreMenuItem
+                  key={item.name + (item.params ? '_admin' : '')}
+                  onPress={() => {
+                    setMoreVisible(false);
+                    navigation.navigate(item.name, item.params as any);
+                  }}
+                >
+                  <item.icon size={22} color={theme.colors.primary} />
+                  <MoreMenuText theme={theme}>{item.label}</MoreMenuText>
+                  <ChevronRight size={18} color="#ccc" />
+                </MoreMenuItem>
+              ))}
+
+              <MoreMenuItem
+                onPress={() => {
+                  setMoreVisible(false);
+                  signOut(auth);
+                }}
+                style={{ borderBottomWidth: 0, marginTop: 10 }}
+              >
+                <LogOut size={22} color={theme.colors.error} />
+                <MoreMenuText theme={theme} style={{ color: theme.colors.error }}>
+                  Wyloguj się
+                </MoreMenuText>
+              </MoreMenuItem>
+            </MoreMenuContent>
+          </SafeAreaView>
         </MoreMenuBackdrop>
       </MoreMenuOverlay>
     </RootContainer>

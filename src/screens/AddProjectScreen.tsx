@@ -7,6 +7,7 @@ import {
   ScrollView,
   Platform,
   View,
+  KeyboardAvoidingView,
 } from 'react-native';
 import styled from 'styled-components/native';
 import * as DocumentPicker from 'expo-document-picker';
@@ -270,89 +271,95 @@ const AddProjectScreen = ({ navigation }: Props) => {
   };
 
   return (
-    <Container theme={theme}>
-      <FormWrapper theme={theme}>
-        <Label theme={theme}>Nazwa dokumentu / projektu</Label>
-        <Input
-          theme={theme}
-          placeholder="Np. Schemat instalacji tlenu"
-          value={title}
-          onChangeText={setTitle}
-          placeholderTextColor={theme.colors.textSecondary}
-        />
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+      style={{ flex: 1 }}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 50}
+    >
+      <Container theme={theme}>
+        <FormWrapper theme={theme}>
+          <Label theme={theme}>Nazwa dokumentu / projektu</Label>
+          <Input
+            theme={theme}
+            placeholder="Np. Schemat instalacji tlenu"
+            value={title}
+            onChangeText={setTitle}
+            placeholderTextColor={theme.colors.textSecondary}
+          />
 
-        <Label theme={theme}>Szpital (Folder главні)</Label>
-        <Input
-          theme={theme}
-          placeholder="Np. Szpital Uniwersytecki"
-          value={hospital}
-          onChangeText={setHospital}
-          placeholderTextColor={theme.colors.textSecondary}
-        />
-        {renderSuggestions(
-          existingHospitals.filter(
-            (h) => h.toLowerCase().includes(hospital.toLowerCase()) && h !== hospital
-          ),
-          setHospital
-        )}
-
-        <Label theme={theme}>Oddział (Podfolder)</Label>
-        <Input
-          theme={theme}
-          placeholder="Np. Kardiologia"
-          value={department}
-          onChangeText={setDepartment}
-          placeholderTextColor={theme.colors.textSecondary}
-        />
-        {renderSuggestions(
-          existingDepartments.filter(
-            (d) => d.toLowerCase().includes(department.toLowerCase()) && d !== department
-          ),
-          setDepartment
-        )}
-
-        <Label theme={theme}>Opis / Notatki</Label>
-        <DescriptionInput
-          theme={theme}
-          placeholder="Opis dokumentacji..."
-          multiline
-          numberOfLines={6}
-          value={description}
-          onChangeText={setDescription}
-          placeholderTextColor={theme.colors.textSecondary}
-        />
-
-        <Label theme={theme}>Dokumentacja techniczna (PDF)</Label>
-        {!pdfFile ? (
-          <FilePickerButton theme={theme} onPress={pickDocument}>
-            <Upload size={40} color={theme.colors.primary} />
-            <PickerText theme={theme}>Kliknij, aby wybrać dokumentację</PickerText>
-            <MaxFileSizeText theme={theme}>Maksymalny rozmiar: 10MB</MaxFileSizeText>
-          </FilePickerButton>
-        ) : (
-          <SelectedFileCard theme={theme}>
-            <FileText size={24} color={theme.colors.primary} />
-            <FileName theme={theme} numberOfLines={1}>
-              {pdfFile.name}
-            </FileName>
-            <RemoveFileButton onPress={() => setPdfFile(null)}>
-              <X size={20} color={theme.colors.error} />
-            </RemoveFileButton>
-          </SelectedFileCard>
-        )}
-
-        <SubmitButton theme={theme} onPress={handleCreateProject} disabled={uploading}>
-          {uploading ? (
-            <LoadingContainer>
-              <LoadingSpinner color="white" />
-              <SubmitButtonText theme={theme}>Przesyłanie...</SubmitButtonText>
-            </LoadingContainer>
-          ) : (
-            <SubmitButtonText theme={theme}>Utwórz i opublikuj projekt</SubmitButtonText>
+          <Label theme={theme}>Szpital (Folder главні)</Label>
+          <Input
+            theme={theme}
+            placeholder="Np. Szpital Uniwersytecki"
+            value={hospital}
+            onChangeText={setHospital}
+            placeholderTextColor={theme.colors.textSecondary}
+          />
+          {renderSuggestions(
+            existingHospitals.filter(
+              (h) => h.toLowerCase().includes(hospital.toLowerCase()) && h !== hospital
+            ),
+            setHospital
           )}
-        </SubmitButton>
-      </FormWrapper>
-    </Container>
+
+          <Label theme={theme}>Oddział (Podfolder)</Label>
+          <Input
+            theme={theme}
+            placeholder="Np. Kardiologia"
+            value={department}
+            onChangeText={setDepartment}
+            placeholderTextColor={theme.colors.textSecondary}
+          />
+          {renderSuggestions(
+            existingDepartments.filter(
+              (d) => d.toLowerCase().includes(department.toLowerCase()) && d !== department
+            ),
+            setDepartment
+          )}
+
+          <Label theme={theme}>Opis / Notatki</Label>
+          <DescriptionInput
+            theme={theme}
+            placeholder="Opis dokumentacji..."
+            multiline
+            numberOfLines={6}
+            value={description}
+            onChangeText={setDescription}
+            placeholderTextColor={theme.colors.textSecondary}
+          />
+
+          <Label theme={theme}>Dokumentacja techniczna (PDF)</Label>
+          {!pdfFile ? (
+            <FilePickerButton theme={theme} onPress={pickDocument}>
+              <Upload size={40} color={theme.colors.primary} />
+              <PickerText theme={theme}>Kliknij, aby wybrać dokumentację</PickerText>
+              <MaxFileSizeText theme={theme}>Maksymalny rozmiar: 10MB</MaxFileSizeText>
+            </FilePickerButton>
+          ) : (
+            <SelectedFileCard theme={theme}>
+              <FileText size={24} color={theme.colors.primary} />
+              <FileName theme={theme} numberOfLines={1}>
+                {pdfFile.name}
+              </FileName>
+              <RemoveFileButton onPress={() => setPdfFile(null)}>
+                <X size={20} color={theme.colors.error} />
+              </RemoveFileButton>
+            </SelectedFileCard>
+          )}
+
+          <SubmitButton theme={theme} onPress={handleCreateProject} disabled={uploading}>
+            {uploading ? (
+              <LoadingContainer>
+                <LoadingSpinner color="white" />
+                <SubmitButtonText theme={theme}>Przesyłanie...</SubmitButtonText>
+              </LoadingContainer>
+            ) : (
+              <SubmitButtonText theme={theme}>Utwórz i opublikuj projekt</SubmitButtonText>
+            )}
+          </SubmitButton>
+        </FormWrapper>
+      </Container>
+    </KeyboardAvoidingView>
   );
 };
 

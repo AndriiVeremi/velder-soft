@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Image,
+  useWindowDimensions,
 } from 'react-native';
 import styled from 'styled-components/native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
@@ -114,20 +115,22 @@ const Content = styled(ScrollView)`
   flex: 1;
 `;
 
-const MainWrapper = styled.View`
-  flex-direction: ${isDesktop ? 'row' : 'column'};
+const MainWrapper = styled.View<{ isDesktop: boolean }>`
+  flex-direction: ${(props) => (props.isDesktop ? 'row' : 'column')};
   padding: ${(props) => props.theme.spacing.md}px;
-  ${isDesktop && `max-width: 1200px; align-self: center; width: 100%;`}
+  width: 100%;
+  align-items: stretch;
+  ${(props) => props.isDesktop && `max-width: 1200px; align-self: center;`}
 `;
 
-const LeftColumn = styled.View`
-  flex: ${isDesktop ? 1.5 : 1};
-  margin-right: ${isDesktop ? theme.spacing.lg : 0}px;
+const LeftColumn = styled.View<{ isDesktop: boolean }>`
+  ${(props) => (props.isDesktop ? 'flex: 1.5;' : 'width: 100%; flex-shrink: 0;')}
+  margin-right: ${(props) => (props.isDesktop ? props.theme.spacing.lg : 0)}px;
 `;
 
-const RightColumn = styled.View`
-  flex: 1;
-  margin-top: ${isDesktop ? 0 : theme.spacing.lg}px;
+const RightColumn = styled.View<{ isDesktop: boolean }>`
+  ${(props) => (props.isDesktop ? 'flex: 1;' : 'width: 100%; flex-shrink: 0;')}
+  margin-top: ${(props) => (props.isDesktop ? 0 : props.theme.spacing.lg)}px;
 `;
 
 const Card = styled.View`
@@ -331,6 +334,9 @@ const AnnouncementText = styled(RNText)`
 
 const HomeScreen = ({ navigation }: Props) => {
   const { user, role, userData } = useAuth();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === 'web' && width > 768;
+
   const [selectedDate, setSelectedDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -484,8 +490,8 @@ const HomeScreen = ({ navigation }: Props) => {
   return (
     <Container theme={theme}>
       <Content theme={theme}>
-        <MainWrapper theme={theme}>
-          <LeftColumn theme={theme}>
+        <MainWrapper theme={theme} isDesktop={isDesktop}>
+          <LeftColumn theme={theme} isDesktop={isDesktop}>
             {latestAnnouncement && (
               <AnnouncementCard theme={theme} onPress={() => navigation.navigate('Announcements')}>
                 <Megaphone size={24} color="#ff9800" />
@@ -578,7 +584,7 @@ const HomeScreen = ({ navigation }: Props) => {
               />
             </Card>
           </LeftColumn>
-          <RightColumn theme={theme}>
+          <RightColumn theme={theme} isDesktop={isDesktop}>
             <Card theme={theme}>
               <SectionTitle theme={theme}>Zadania na dziś</SectionTitle>
               {loading ? (

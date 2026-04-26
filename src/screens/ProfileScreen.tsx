@@ -7,6 +7,7 @@ import {
   Alert,
   Platform,
   ScrollView,
+  KeyboardAvoidingView,
 } from 'react-native';
 import styled from 'styled-components/native';
 import { useAuth } from '../context/AuthContext';
@@ -291,107 +292,113 @@ const ProfileScreen = ({ navigation, route }: Props) => {
   };
 
   return (
-    <Container theme={theme}>
-      <Content theme={theme}>
-        <ProfileCard theme={theme}>
-          <AvatarCircle theme={theme}>
-            <User size={40} color={theme.colors.primary} />
-          </AvatarCircle>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 20}
+    >
+      <Container theme={theme}>
+        <Content theme={theme}>
+          <ProfileCard theme={theme}>
+            <AvatarCircle theme={theme}>
+              <User size={40} color={theme.colors.primary} />
+            </AvatarCircle>
 
-          {isEditing ? (
-            <EditInputWrapper theme={theme}>
-              <EditInput theme={theme} value={name} onChangeText={setName} autoFocus />
-            </EditInputWrapper>
-          ) : (
-            <NameContainer theme={theme}>
-              <NameText theme={theme}>{userData?.name || 'Użytkownik'}</NameText>
-              <EditIconButton onPress={() => setIsEditing(true)} theme={theme}>
-                <Edit2 size={16} color={theme.colors.textSecondary} />
-              </EditIconButton>
-            </NameContainer>
-          )}
+            {isEditing ? (
+              <EditInputWrapper theme={theme}>
+                <EditInput theme={theme} value={name} onChangeText={setName} autoFocus />
+              </EditInputWrapper>
+            ) : (
+              <NameContainer theme={theme}>
+                <NameText theme={theme}>{userData?.name || 'Użytkownik'}</NameText>
+                <EditIconButton onPress={() => setIsEditing(true)} theme={theme}>
+                  <Edit2 size={16} color={theme.colors.textSecondary} />
+                </EditIconButton>
+              </NameContainer>
+            )}
 
-          <EmailText theme={theme}>{user?.email}</EmailText>
+            <EmailText theme={theme}>{user?.email}</EmailText>
 
-          <RoleBadge isAdmin={role === 'DIRECTOR'} theme={theme}>
-            <Shield
-              size={14}
-              color={role === 'DIRECTOR' ? theme.colors.warning : theme.colors.primary}
-            />
-            <RoleText isAdmin={role === 'DIRECTOR'} theme={theme}>
-              {role}
-            </RoleText>
-          </RoleBadge>
+            <RoleBadge isAdmin={role === 'DIRECTOR'} theme={theme}>
+              <Shield
+                size={14}
+                color={role === 'DIRECTOR' ? theme.colors.warning : theme.colors.primary}
+              />
+              <RoleText isAdmin={role === 'DIRECTOR'} theme={theme}>
+                {role}
+              </RoleText>
+            </RoleBadge>
 
-          <InfoSection theme={theme}>
-            <SectionTitleText theme={theme}>Ustawienia powiadomień</SectionTitleText>
+            <InfoSection theme={theme}>
+              <SectionTitleText theme={theme}>Ustawienia powiadomień</SectionTitleText>
 
-            <SectionLabel theme={theme}>Początek pracy (Pierwszy sygnał):</SectionLabel>
-            <TimePickerContainer theme={theme}>
-              <TimeBlock theme={theme}>
-                <TouchableOpacity onPress={() => adjustTime('sh', 1)}>
-                  <ChevronUp size={24} color={theme.colors.primary} />
-                </TouchableOpacity>
-                <TimeValue theme={theme}>{startH.toString().padStart(2, '0')}</TimeValue>
-                <TouchableOpacity onPress={() => adjustTime('sh', -1)}>
-                  <ChevronDown size={24} color={theme.colors.primary} />
-                </TouchableOpacity>
-              </TimeBlock>
-              <TimeSeparator theme={theme}>:</TimeSeparator>
-              <TimeBlock theme={theme}>
-                <TouchableOpacity onPress={() => adjustTime('sm', 5)}>
-                  <ChevronUp size={24} color={theme.colors.primary} />
-                </TouchableOpacity>
-                <TimeValue theme={theme}>{startM.toString().padStart(2, '0')}</TimeValue>
-                <TouchableOpacity onPress={() => adjustTime('sm', -5)}>
-                  <ChevronDown size={24} color={theme.colors.primary} />
-                </TouchableOpacity>
-              </TimeBlock>
-            </TimePickerContainer>
+              <SectionLabel theme={theme}>Początek pracy (Pierwszy sygnał):</SectionLabel>
+              <TimePickerContainer theme={theme}>
+                <TimeBlock theme={theme}>
+                  <TouchableOpacity onPress={() => adjustTime('sh', 1)}>
+                    <ChevronUp size={24} color={theme.colors.primary} />
+                  </TouchableOpacity>
+                  <TimeValue theme={theme}>{startH.toString().padStart(2, '0')}</TimeValue>
+                  <TouchableOpacity onPress={() => adjustTime('sh', -1)}>
+                    <ChevronDown size={24} color={theme.colors.primary} />
+                  </TouchableOpacity>
+                </TimeBlock>
+                <TimeSeparator theme={theme}>:</TimeSeparator>
+                <TimeBlock theme={theme}>
+                  <TouchableOpacity onPress={() => adjustTime('sm', 5)}>
+                    <ChevronUp size={24} color={theme.colors.primary} />
+                  </TouchableOpacity>
+                  <TimeValue theme={theme}>{startM.toString().padStart(2, '0')}</TimeValue>
+                  <TouchableOpacity onPress={() => adjustTime('sm', -5)}>
+                    <ChevronDown size={24} color={theme.colors.primary} />
+                  </TouchableOpacity>
+                </TimeBlock>
+              </TimePickerContainer>
 
-            <SectionLabel theme={theme} style={{ marginTop: 20 }}>
-              Koniec pracy (Tryb ciszy po):
-            </SectionLabel>
-            <TimePickerContainer theme={theme}>
-              <TimeBlock theme={theme}>
-                <TouchableOpacity onPress={() => adjustTime('eh', 1)}>
-                  <ChevronUp size={24} color={theme.colors.primary} />
-                </TouchableOpacity>
-                <TimeValue theme={theme}>{endH.toString().padStart(2, '0')}</TimeValue>
-                <TouchableOpacity onPress={() => adjustTime('eh', -1)}>
-                  <ChevronDown size={24} color={theme.colors.primary} />
-                </TouchableOpacity>
-              </TimeBlock>
-              <TimeSeparator theme={theme}>:</TimeSeparator>
-              <TimeBlock theme={theme}>
-                <TouchableOpacity onPress={() => adjustTime('sm', 5)}>
-                  <ChevronUp size={24} color={theme.colors.primary} />
-                </TouchableOpacity>
-                <TimeValue theme={theme}>{endM.toString().padStart(2, '0')}</TimeValue>
-                <TouchableOpacity onPress={() => adjustTime('sm', -5)}>
-                  <ChevronDown size={24} color={theme.colors.primary} />
-                </TouchableOpacity>
-              </TimeBlock>
-            </TimePickerContainer>
+              <SectionLabel theme={theme} style={{ marginTop: 20 }}>
+                Koniec pracy (Tryb ciszy po):
+              </SectionLabel>
+              <TimePickerContainer theme={theme}>
+                <TimeBlock theme={theme}>
+                  <TouchableOpacity onPress={() => adjustTime('eh', 1)}>
+                    <ChevronUp size={24} color={theme.colors.primary} />
+                  </TouchableOpacity>
+                  <TimeValue theme={theme}>{endH.toString().padStart(2, '0')}</TimeValue>
+                  <TouchableOpacity onPress={() => adjustTime('eh', -1)}>
+                    <ChevronDown size={24} color={theme.colors.primary} />
+                  </TouchableOpacity>
+                </TimeBlock>
+                <TimeSeparator theme={theme}>:</TimeSeparator>
+                <TimeBlock theme={theme}>
+                  <TouchableOpacity onPress={() => adjustTime('sm', 5)}>
+                    <ChevronUp size={24} color={theme.colors.primary} />
+                  </TouchableOpacity>
+                  <TimeValue theme={theme}>{endM.toString().padStart(2, '0')}</TimeValue>
+                  <TouchableOpacity onPress={() => adjustTime('sm', -5)}>
+                    <ChevronDown size={24} color={theme.colors.primary} />
+                  </TouchableOpacity>
+                </TimeBlock>
+              </TimePickerContainer>
 
-            <SaveSettingsButton onPress={saveSettings} theme={theme}>
-              {loading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <RNText style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>
-                  Zapisz zmiany
-                </RNText>
-              )}
-            </SaveSettingsButton>
-          </InfoSection>
-        </ProfileCard>
+              <SaveSettingsButton onPress={saveSettings} theme={theme}>
+                {loading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <RNText style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>
+                    Zapisz zmiany
+                  </RNText>
+                )}
+              </SaveSettingsButton>
+            </InfoSection>
+          </ProfileCard>
 
-        <LogoutButton theme={theme} onPress={handleLogout}>
-          <LogOut size={20} color={theme.colors.error} />
-          <LogoutButtonText theme={theme}>Wyloguj się</LogoutButtonText>
-        </LogoutButton>
-      </Content>
-    </Container>
+          <LogoutButton theme={theme} onPress={handleLogout}>
+            <LogOut size={20} color={theme.colors.error} />
+            <LogoutButtonText theme={theme}>Wyloguj się</LogoutButtonText>
+          </LogoutButton>
+        </Content>
+      </Container>
+    </KeyboardAvoidingView>
   );
 };
 
