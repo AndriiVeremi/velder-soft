@@ -23,6 +23,14 @@ Głównym celem działalności jest budowanie i utrzymanie sieci gazów medyczny
 
 ---
 
+## 📸 Prezentacja Systemu
+
+| Panel Zarządzania (Desktop) | Aplikacja Mobilna |
+|:---:|:---:|
+| ![Desktop View](assets/demo/desc.jpg) | ![Mobile View](assets/demo/mobile.jpg) |
+
+---
+
 ## 🚀 Możliwości Systemu Velder-soft
 
 Aplikacja została zaprojektowana, aby przenieść 35 lat doświadczenia firmy w erę cyfrową:
