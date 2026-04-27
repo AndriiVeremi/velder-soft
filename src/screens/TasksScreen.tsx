@@ -1,900 +1,397 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text as RNText,
-  FlatList,
   TouchableOpacity,
   ActivityIndicator,
+  FlatList,
   Modal,
+  TextInput,
   Platform,
   Alert,
-  Image,
-  ScrollView,
-  Dimensions,
-  KeyboardAvoidingView,
 } from 'react-native';
 import styled from 'styled-components/native';
 import {
   collection,
   query,
   where,
-  orderBy,
   onSnapshot,
-  addDoc,
-  serverTimestamp,
-  updateDoc,
   doc,
+  updateDoc,
+  addDoc,
   deleteDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import * as ImagePicker from 'expo-image-picker';
-import * as MediaLibrary from 'expo-media-library';
-import * as FileSystem from 'expo-file-system';
-import { Calendar } from 'react-native-calendars';
-import { db, storage } from '../config/firebase';
+import { db } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { useAppTheme } from '../context/ThemeContext';
 import {
   Plus,
-  X,
+  CheckCircle2,
   Trash2,
-  Camera,
   Calendar as CalendarIcon,
   Clock,
-  ChevronDown,
-  ChevronUp,
-  Edit2,
-  Download,
-  Eye,
-  Circle,
-  CheckCircle2,
+  Camera,
+  X,
+  ChevronRight,
+  ChevronLeft,
 } from 'lucide-react-native';
-import { format, isToday, parseISO } from 'date-fns';
+import { format, addDays, subDays, startOfDay } from 'date-fns';
+import { pl } from 'date-fns/locale';
 import { notify } from '../utils/notify';
-import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
-import { setBadgeCount, scheduleDailyReminder } from '../utils/notifications';
-
-const { width, height } = Dimensions.get('window');
-
-interface TaskPhoto {
-  url: string;
-  path: string;
-}
-
-interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  date: string;
-  time?: string;
-  done: boolean;
-  photos?: TaskPhoto[];
-  photoUrl?: string;
-  photoPath?: string;
-  wasMoved?: boolean;
-  assignedTo: string;
-  assignedToName?: string;
-}
-
-interface UserListItem {
-  id: string;
-  name: string;
-}
+import { pickAndUploadPhoto } from '../utils/upload';
+import { TimePicker, ModalOverlay, ModalContent } from '../components/CommonUI';
+import { Task } from '../types';
 
 const Container = styled.View`
   flex: 1;
   background-color: ${(props) => props.theme.colors.background};
 `;
 
-const Header = styled.View`
-  padding: ${(props) => props.theme.spacing.lg}px;
+const DateHeader = styled.View`
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px;
   background-color: ${(props) => props.theme.colors.surface};
   border-bottom-width: 1px;
   border-bottom-color: ${(props) => props.theme.colors.border};
 `;
 
-const Title = styled(RNText)`
-  font-size: 22px;
+const DateText = styled(RNText)`
+  font-size: 18px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
 `;
 
-const TaskCard = styled.View`
+const TaskCard = styled.View<{ done: boolean }>`
   background-color: ${(props) => props.theme.colors.surface};
-  margin: ${(props) => props.theme.spacing.sm}px ${(props) => props.theme.spacing.md}px;
-  border-radius: ${(props) => props.theme.borderRadius.lg}px;
+  margin: 8px 15px;
+  padding: 16px;
+  border-radius: 12px;
   border-width: 1px;
   border-color: ${(props) => props.theme.colors.border};
-  shadow-color: #000;
-  shadow-offset: 0px 2px;
-  shadow-opacity: 0.1;
-  shadow-radius: 4px;
-  elevation: 3;
-  overflow: hidden;
+  opacity: ${(props) => (props.done ? 0.7 : 1)};
 `;
 
-const TaskMainRow = styled.View`
-  flex-direction: row;
-  padding: ${(props) => props.theme.spacing.md}px;
-  align-items: center;
-  background-color: ${(props) => props.theme.colors.surface};
-`;
-
-const TaskInfo = styled.View`
-  flex: 1;
-  margin-left: 12px;
-`;
-
-const TaskTitle = styled(RNText)<{ done?: boolean }>`
+const TaskTitle = styled(RNText)<{ done: boolean }>`
   font-size: 16px;
-  font-weight: bold;
+  font-weight: 600;
   color: ${(props) => (props.done ? props.theme.colors.textSecondary : props.theme.colors.text)};
   text-decoration: ${(props) => (props.done ? 'line-through' : 'none')};
-`;
-
-const LeftAction = styled.View`
-  background-color: ${(props) => props.theme.colors.success};
-  justify-content: center;
-  align-items: flex-start;
-  padding-left: 20px;
-  margin: ${(props) => props.theme.spacing.sm}px ${(props) => props.theme.spacing.md}px;
-  border-radius: ${(props) => props.theme.borderRadius.md}px;
   flex: 1;
 `;
 
-const TaskDescriptionText = styled(RNText)`
-  font-size: 14px;
-  color: ${(props) => props.theme.colors.textSecondary};
-  margin-top: 6px;
-  line-height: 18px;
-`;
-
-const TaskDetailsContainer = styled.View`
-  padding: 15px;
-  border-top-width: 1px;
-  border-top-color: ${(props) => props.theme.colors.border};
-`;
-
-const PhotosScrollView = styled.ScrollView`
-  flex-direction: row;
-  margin-top: 10px;
-`;
-
-const TaskImgThumb = styled.TouchableOpacity`
-  width: 100px;
-  height: 100px;
-  margin-right: 8px;
-  border-radius: 8px;
-  overflow: hidden;
-  background-color: ${(props) => props.theme.colors.border};
-`;
-
-const ActionButtons = styled.View`
+const TaskMeta = styled.View`
   flex-direction: row;
   align-items: center;
+  margin-top: 8px;
+`;
+
+const MetaText = styled(RNText)`
+  font-size: 13px;
+  color: ${(props) => props.theme.colors.primary};
+  margin-left: 5px;
+  font-weight: 500;
+`;
+
+const ActionRow = styled.View`
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 12px;
+  border-top-width: 1px;
+  border-top-color: ${(props) => props.theme.colors.background};
+  padding-top: 10px;
 `;
 
 const IconButton = styled.TouchableOpacity`
   padding: 8px;
-  margin-left: 5px;
+  margin-left: 10px;
 `;
 
-const AddButton = styled.TouchableOpacity`
-  background-color: ${(props) => props.theme.colors.primary};
+const Fab = styled.TouchableOpacity`
+  position: absolute;
+  bottom: 25px;
+  right: 25px;
   width: 60px;
   height: 60px;
   border-radius: 30px;
-  position: absolute;
-  right: 20px;
-  bottom: 20px;
+  background-color: ${(props) => props.theme.colors.primary};
   justify-content: center;
   align-items: center;
   elevation: 5;
-  z-index: 100;
+  shadow-color: #000;
+  shadow-offset: 0px 2px;
+  shadow-opacity: 0.25;
+  shadow-radius: 3.84px;
 `;
 
-const ModalOverlay = styled.View`
-  flex: 1;
-  background-color: rgba(0, 0, 0, 0.5);
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-`;
-
-const ViewerOverlay = styled.View`
-  flex: 1;
-  background-color: black;
-  justify-content: center;
-  align-items: center;
-`;
-
-const ViewerImage = styled.Image`
-  width: ${width}px;
-  height: ${height * 0.7}px;
-  resize-mode: contain;
-`;
-
-const ViewerActions = styled.View`
-  flex-direction: row;
-  position: absolute;
-  bottom: 40px;
-  width: 100%;
-  justify-content: space-evenly;
-`;
-
-const ViewerButton = styled.TouchableOpacity`
-  background-color: rgba(255, 255, 255, 0.2);
-  padding: 15px 30px;
-  border-radius: 30px;
-  flex-direction: row;
-  align-items: center;
-`;
-
-const DateTimeText = styled(RNText)`
-  font-size: 12px;
-  color: ${(props) => props.theme.colors.textSecondary};
-`;
-
-const PhotoCountBadge = styled(RNText)`
-  font-size: 10px;
-  font-weight: bold;
-  color: ${(props) => props.theme.colors.success};
-  position: absolute;
-  top: 0;
-  right: 0;
-`;
-
-const CloseViewerButton = styled.TouchableOpacity`
-  position: absolute;
-  top: 50px;
-  right: 20px;
-  z-index: 10;
-`;
-
-const ModalScrollView = styled.ScrollView.attrs({
-  contentContainerStyle: { flexGrow: 1, paddingBottom: 40 },
-})`
-  background-color: ${(props) => props.theme.colors.surface};
-  width: 100%;
-  max-width: 600px;
-  border-radius: 15px;
-  max-height: 95%;
-`;
-
-const ModalContentContainer = styled.View`
-  padding: 25px;
-`;
-
-const ModalHeader = styled.View`
-  flex-direction: row;
-  justify-content: space-between;
-  margin-bottom: 20px;
-`;
-
-const ModalTitleText = styled(RNText)`
-  font-size: 20px;
-  font-weight: bold;
+const StyledInput = styled.TextInput`
+  background-color: ${(props) => props.theme.colors.background};
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 15px;
   color: ${(props) => props.theme.colors.text};
+  border-width: 1px;
+  border-color: ${(props) => props.theme.colors.border};
 `;
 
-const InputLabel = styled(RNText)`
+const Label = styled(RNText)`
   font-size: 14px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-bottom: 8px;
 `;
 
-const StyledTextInput = styled.TextInput`
-  background-color: ${(props) => props.theme.colors.background};
-  padding: 12px;
+const ImagePreview = styled.Image`
+  width: 100%;
+  height: 150px;
   border-radius: 8px;
-  margin-bottom: 15px;
-  font-size: 16px;
-  border: 1px solid ${(props) => props.theme.colors.border};
-  color: ${(props) => props.theme.colors.text};
-`;
-
-const TextArea = styled(StyledTextInput)`
-  height: 70px;
-`;
-
-const SaveButton = styled.TouchableOpacity`
-  background-color: ${(props) => props.theme.colors.primary};
-  padding: 18px;
-  border-radius: 10px;
-  align-items: center;
-  margin-top: 20px;
-`;
-
-const SaveButtonText = styled(RNText)`
-  color: white;
-  font-weight: bold;
-`;
-
-const UserChipContainer = styled.View`
-  flex-direction: row;
-  flex-wrap: wrap;
-  margin-bottom: 15px;
-`;
-
-const UserChip = styled.TouchableOpacity<{ selected: boolean }>`
-  background-color: ${(props) =>
-    props.selected ? props.theme.colors.primary : props.theme.colors.background};
-  padding: 8px 12px;
-  border-radius: 20px;
-  margin-right: 8px;
-  margin-bottom: 8px;
-  border-width: 1px;
-  border-color: ${(props) =>
-    props.selected ? props.theme.colors.primary : props.theme.colors.border};
-`;
-
-const UserChipText = styled(RNText)<{ selected: boolean }>`
-  color: ${(props) => (props.selected ? 'white' : props.theme.colors.text)};
-  font-size: 12px;
-  font-weight: bold;
-`;
-
-const AssignedBadge = styled.View`
-  background-color: ${(props) => props.theme.colors.accent};
-  padding: 2px 8px;
-  border-radius: 4px;
-  align-self: flex-start;
-  margin-top: 5px;
-`;
-
-const AssignedText = styled(RNText)`
-  font-size: 10px;
-  color: ${(props) => props.theme.colors.primary};
-  font-weight: bold;
-`;
-
-const TimePickerContainer = styled.View`
-  flex-direction: row;
-  align-items: center;
-  background-color: ${(props) => props.theme.colors.background};
-  padding: 20px;
-  border-radius: 12px;
   margin-top: 10px;
-  justify-content: center;
-  border: 1px solid ${(props) => props.theme.colors.border};
-`;
-
-const TimeBlock = styled.View`
-  align-items: center;
-  width: 50px;
-`;
-
-const TimeValue = styled(RNText)`
-  font-size: 24px;
-  font-weight: bold;
-  margin: 5px 0;
-  color: ${(props) => props.theme.colors.text};
-`;
-
-const TimeSeparator = styled(RNText)`
-  font-size: 24px;
-  font-weight: bold;
-  margin-horizontal: 10px;
-  color: ${(props) => props.theme.colors.text};
-`;
-
-const UploadOverlay = styled.View`
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background-color: rgba(0, 0, 0, 0.7);
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
 `;
 
 const TasksScreen = () => {
-  const { user, role, userData } = useAuth();
+  const { user, role } = useAuth();
   const { theme } = useAppTheme();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [users, setUsers] = useState<UserListItem[]>([]);
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
-  const [viewerVisible, setViewerVisible] = useState(false);
-  const [viewerUrl, setViewerUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [downloading, setDownloading] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
 
+  // New task state
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [hour, setHour] = useState(9);
   const [minute, setMinute] = useState(0);
-  const [assignedUserId, setAssignedUserId] = useState<string>('');
+
+  const dateStr = useMemo(() => format(selectedDate, 'yyyy-MM-dd'), [selectedDate]);
 
   useEffect(() => {
-    if (role === 'DIRECTOR') {
-      const uQ = query(collection(db, 'users'), where('isActive', '==', true));
-      const unsubUsers = onSnapshot(uQ, (snap) => {
-        const uList = snap.docs
-          .filter((d) => d.data().role !== 'DIRECTOR')
-          .map((d) => ({ id: d.id, name: d.data().name || 'Anonim' }));
-        setUsers(uList);
-      });
-      return () => unsubUsers();
-    }
-  }, [role]);
+    if (!user) return;
 
-  useEffect(() => {
-    if (!user?.uid) return;
+    const q = query(collection(db, 'tasks'), where('date', '==', dateStr));
 
-    const q = query(collection(db, 'tasks'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const allTasks = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Task);
+      // Filter by user in memory for reliability and backward compatibility
+      const filtered =
+        role === 'DIRECTOR' ? allTasks : allTasks.filter((t) => t.assignedTo === user.uid);
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snap) => {
-        try {
-          const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Task);
+      setTasks(filtered.sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00')));
+      setLoading(false);
+    });
 
-          const filtered = data.filter((t) => {
-            if (role === 'DIRECTOR') return true;
-            return t.assignedTo === user?.uid || t.assignedTo === 'ALL';
-          });
-
-          const sorted = filtered.sort((a, b) => {
-            const dateA = a.date || '';
-            const dateB = b.date || '';
-            if (dateA !== dateB) return dateB.localeCompare(dateA);
-            const timeA = a.time || '00:00';
-            const timeB = b.time || '00:00';
-            return timeA.localeCompare(timeB);
-          });
-          setTasks(sorted);
-
-          const todayStr = format(new Date(), 'yyyy-MM-dd');
-          const todayTasksCount = filtered.filter((t) => t.date === todayStr && !t.done).length;
-
-          setBadgeCount(todayTasksCount);
-          scheduleDailyReminder(todayTasksCount, userData?.notificationStart || '09:00');
-          setLoading(false);
-        } catch (err) {
-          console.error('Error processing tasks:', err);
-          setLoading(false);
-        }
-      },
-      (error) => {
-        console.error('Firestore onSnapshot error:', error);
-        setLoading(false);
-      }
-    );
     return () => unsubscribe();
-  }, [user?.uid, role, userData?.notificationStart]);
+  }, [user, dateStr, role]);
 
-  const saveTask = async () => {
-    if (!title.trim()) return notify.error('Podaj tytuł');
+  const handleAddTask = async () => {
+    if (!title.trim()) return notify.error('Wpisz tytuł zadania');
 
-    const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-    const selectedUser = users.find((u) => u.id === assignedUserId);
-
-    const taskData = {
-      title,
-      description,
-      date: selectedDate,
-      time: timeStr,
-      updatedAt: serverTimestamp(),
-      assignedTo: assignedUserId || 'ALL',
-      assignedToName: selectedUser?.name || 'Wszyscy',
-    };
     try {
-      if (editingId) await updateDoc(doc(db, 'tasks', editingId), taskData);
-      else
-        await addDoc(collection(db, 'tasks'), {
-          ...taskData,
-          done: false,
-          createdAt: serverTimestamp(),
-          photos: [],
-        });
+      const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      await addDoc(collection(db, 'tasks'), {
+        title: title.trim(),
+        date: dateStr,
+        time,
+        done: false,
+        assignedTo: user?.uid,
+        createdAt: serverTimestamp(),
+      });
       setModalVisible(false);
-      setAssignedUserId('');
-      notify.success('Zapisano');
+      setTitle('');
+      notify.success('Zadanie dodane');
     } catch (e) {
       notify.error('Błąd zapisu');
     }
   };
 
-  const toggleTask = async (id: string, currentStatus: boolean) => {
+  const toggleTask = async (task: Task) => {
     try {
-      await updateDoc(doc(db, 'tasks', id), { done: !currentStatus });
-      if (!currentStatus) notify.success('Gotowe!');
+      await updateDoc(doc(db, 'tasks', task.id), { done: !task.done });
     } catch (e) {
-      console.error('Error toggling task:', e);
-      notify.error('Błąd aktualizacji zadania');
+      notify.error('Błąd aktualizacji');
     }
   };
 
-  const addPhoto = async (task: Task) => {
-    const currentPhotos = task.photos || [];
-    if (currentPhotos.length >= 5) {
-      notify.error('Maksymalnie 5 zdjęć do jednego zadania');
-      return;
-    }
-
-    let result = await ImagePicker.launchCameraAsync({
-      quality: 0.5,
-      allowsEditing: false,
-    });
-    if (result.canceled) return;
-    setUploading(true);
-    try {
-      const response = await fetch(result.assets[0].uri);
-      const blob = await response.blob();
-      const filename = `task_photos/${task.id}_${Date.now()}.jpg`;
-      const storageRef = ref(storage, filename);
-      await uploadBytes(storageRef, blob);
-      const url = await getDownloadURL(storageRef);
-
-      const newPhoto = { url, path: filename };
-      await updateDoc(doc(db, 'tasks', task.id), {
-        photos: [...currentPhotos, newPhoto],
-        done: true,
-      });
-      notify.success(`Dodano zdjęcie (${currentPhotos.length + 1}/5)`);
-    } catch (e) {
-      notify.error('Błąd');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const downloadImage = async () => {
-    if (!viewerUrl) return;
-    if (Platform.OS === 'web') {
-      window.open(viewerUrl, '_blank');
-      return;
-    }
-    setDownloading(true);
-    try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') return notify.error('Brak uprawnień');
-      const fileUri = (FileSystem as any).cacheDirectory + 'task_photo.jpg';
-      const { uri } = await FileSystem.downloadAsync(viewerUrl, fileUri);
-      await MediaLibrary.saveToLibraryAsync(uri);
-      notify.success('Zapisano w galerii');
-    } catch (e) {
-      notify.error('Błąd');
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  const deleteTask = (id: string) => {
-    const performDelete = async () => {
-      await deleteDoc(doc(db, 'tasks', id));
-      notify.success('Usunięto');
+  const handleDeleteTask = (id: string) => {
+    const perform = async () => {
+      try {
+        await deleteDoc(doc(db, 'tasks', id));
+        notify.success('Zadanie usunięte');
+      } catch (e) {
+        notify.error('Błąd usuwania');
+      }
     };
+
     if (Platform.OS === 'web') {
-      if (window.confirm('Usunąć?')) performDelete();
+      if (window.confirm('Usunąć zadanie?')) perform();
     } else {
-      Alert.alert('Usuń', 'Czy napewno?', [
-        { text: 'Nie' },
-        { text: 'Tak', onPress: performDelete },
+      Alert.alert('Usuń', 'Czy na pewno?', [
+        { text: 'Anuluj' },
+        { text: 'Tak', onPress: perform, style: 'destructive' },
       ]);
     }
   };
 
-  const adjustTime = (type: 'h' | 'm', val: number) => {
-    if (type === 'h')
-      setHour((h) => {
-        let n = h + val;
-        return n > 23 ? 0 : n < 0 ? 23 : n;
-      });
-    else
-      setMinute((m) => {
-        let n = m + val;
-        return n > 55 ? 0 : n < 0 ? 55 : n;
-      });
+  const handleAddPhoto = async (task: Task) => {
+    setUploading(true);
+    const result = await pickAndUploadPhoto('task_photos', `${task.id}_${Date.now()}.jpg`);
+    if (result) {
+      try {
+        await updateDoc(doc(db, 'tasks', task.id), {
+          photoUrl: result.photoUrl,
+          photoPath: result.photoPath,
+          done: true,
+        });
+        notify.success('Zdjęcie dodane');
+      } catch (e) {
+        notify.error('Błąd zapisu');
+      }
+    }
+    setUploading(false);
   };
 
-  const renderLeftActions = () => (
-    <LeftAction theme={theme}>
-      <CheckCircle2 size={30} color="white" />
-    </LeftAction>
-  );
-
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <Container theme={theme}>
-        <Header theme={theme}>
-          <Title theme={theme}>Zadania</Title>
-        </Header>
-        {loading ? (
-          <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 20 }} />
-        ) : (
-          <FlatList
-            data={tasks}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <Swipeable
-                renderLeftActions={renderLeftActions}
-                onSwipeableOpen={(dir) => dir === 'left' && toggleTask(item.id, item.done)}
-              >
-                <TaskCard theme={theme}>
-                  <TaskMainRow theme={theme}>
-                    <TouchableOpacity onPress={() => toggleTask(item.id, item.done)}>
-                      {item.done ? (
-                        <CheckCircle2 size={24} color={theme.colors.success} />
-                      ) : (
-                        <Circle size={24} color={theme.colors.primary} />
-                      )}
-                    </TouchableOpacity>
-                    <TaskInfo onTouchEnd={() => toggleTask(item.id, item.done)}>
-                      <TaskTitle theme={theme} done={item.done}>
-                        {item.title}
-                      </TaskTitle>
-                      <DateTimeText theme={theme}>
-                        {item.date} {item.time}
-                      </DateTimeText>
-                      {role === 'DIRECTOR' && item.assignedToName && (
-                        <AssignedBadge theme={theme}>
-                          <AssignedText theme={theme}>
-                            Wykonawca: {item.assignedToName}
-                          </AssignedText>
-                        </AssignedBadge>
-                      )}
-                    </TaskInfo>
-                    <ActionButtons>
-                      <IconButton onPress={() => addPhoto(item)}>
-                        <Camera
-                          size={22}
-                          color={
-                            (item.photos?.length || 0) > 0
-                              ? theme.colors.success
-                              : theme.colors.primary
-                          }
-                        />
-                        {(item.photos?.length || 0) > 0 && (
-                          <PhotoCountBadge theme={theme}>{item.photos?.length}</PhotoCountBadge>
-                        )}
-                      </IconButton>
-                      {role === 'DIRECTOR' && (
-                        <>
-                          <IconButton
-                            onPress={() => {
-                              setEditingId(item.id);
-                              setTitle(item.title);
-                              setDescription(item.description || '');
-                              setSelectedDate(item.date);
-                              setAssignedUserId(item.assignedTo);
-                              setModalVisible(true);
-                            }}
-                          >
-                            <Edit2 size={20} color={theme.colors.primary} />
-                          </IconButton>
-                          <IconButton onPress={() => deleteTask(item.id)}>
-                            <Trash2 size={20} color={theme.colors.error} />
-                          </IconButton>
-                        </>
-                      )}
-                    </ActionButtons>
-                  </TaskMainRow>
-                  {(item.description ||
-                    (item.photos && item.photos.length > 0) ||
-                    item.photoUrl) && (
-                    <TaskDetailsContainer theme={theme}>
-                      {item.description && (
-                        <TaskDescriptionText theme={theme}>{item.description}</TaskDescriptionText>
-                      )}
+    <Container theme={theme}>
+      <DateHeader theme={theme}>
+        <TouchableOpacity onPress={() => setSelectedDate(subDays(selectedDate, 1))}>
+          <ChevronLeft size={28} color={theme.colors.primary} />
+        </TouchableOpacity>
+        <DateText theme={theme}>{format(selectedDate, 'EEEE, d MMMM', { locale: pl })}</DateText>
+        <TouchableOpacity onPress={() => setSelectedDate(addDays(selectedDate, 1))}>
+          <ChevronRight size={28} color={theme.colors.primary} />
+        </TouchableOpacity>
+      </DateHeader>
 
-                      <PhotosScrollView horizontal showsHorizontalScrollIndicator={false}>
-                        {item.photoUrl && !item.photos?.some((p) => p.url === item.photoUrl) && (
-                          <TaskImgThumb
-                            onPress={() => {
-                              setViewerUrl(item.photoUrl!);
-                              setViewerVisible(true);
-                            }}
-                          >
-                            <Image
-                              source={{ uri: item.photoUrl }}
-                              style={{ width: '100%', height: '100%' }}
-                            />
-                          </TaskImgThumb>
-                        )}
+      {loading ? (
+        <ActivityIndicator style={{ marginTop: 50 }} color={theme.colors.primary} />
+      ) : (
+        <FlatList
+          data={tasks}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingVertical: 10 }}
+          renderItem={({ item }) => (
+            <TaskCard theme={theme} done={item.done}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <TouchableOpacity onPress={() => toggleTask(item)}>
+                  <CheckCircle2
+                    size={24}
+                    color={item.done ? theme.colors.success : theme.colors.border}
+                  />
+                </TouchableOpacity>
+                <TaskTitle theme={theme} done={item.done} style={{ marginLeft: 12 }}>
+                  {item.title}
+                </TaskTitle>
+              </View>
 
-                        {item.photos?.map((photo) => (
-                          <TaskImgThumb
-                            key={photo.path}
-                            onPress={() => {
-                              setViewerUrl(photo.url);
-                              setViewerVisible(true);
-                            }}
-                          >
-                            <Image
-                              source={{ uri: photo.url }}
-                              style={{ width: '100%', height: '100%' }}
-                            />
-                          </TaskImgThumb>
-                        ))}
-                      </PhotosScrollView>
-                    </TaskDetailsContainer>
-                  )}
-                </TaskCard>
-              </Swipeable>
-            )}
-          />
-        )}
-        {role === 'DIRECTOR' && (
-          <AddButton
-            theme={theme}
-            onPress={() => {
-              setEditingId(null);
-              setTitle('');
-              setDescription('');
-              setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
-              setHour(9);
-              setMinute(0);
-              setModalVisible(true);
-            }}
-          >
-            <Plus size={30} color="white" />
-          </AddButton>
-        )}
+              <TaskMeta>
+                <Clock size={14} color={theme.colors.primary} />
+                <MetaText theme={theme}>{item.time || 'Brak czasu'}</MetaText>
+              </TaskMeta>
 
-        <Modal visible={viewerVisible} transparent animationType="fade">
-          <ViewerOverlay>
-            <CloseViewerButton onPress={() => setViewerVisible(false)}>
-              <X size={30} color="white" />
-            </CloseViewerButton>
-            {viewerUrl && <ViewerImage source={{ uri: viewerUrl }} />}
-            <ViewerActions>
-              <ViewerButton onPress={downloadImage} disabled={downloading}>
-                {downloading ? (
-                  <ActivityIndicator color="white" />
-                ) : (
-                  <>
-                    <Download size={20} color="white" />
-                    <RNText style={{ color: 'white', marginLeft: 10, fontWeight: 'bold' }}>
-                      Zapisz
-                    </RNText>
-                  </>
-                )}
-              </ViewerButton>
-            </ViewerActions>
-          </ViewerOverlay>
-        </Modal>
+              {item.photoUrl && <ImagePreview source={{ uri: item.photoUrl }} />}
 
-        <Modal visible={modalVisible} transparent animationType="slide">
-          <ModalOverlay>
-            <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-              style={{ width: '100%', alignItems: 'center' }}
+              <ActionRow theme={theme}>
+                <IconButton onPress={() => handleAddPhoto(item)}>
+                  <Camera
+                    size={20}
+                    color={item.photoUrl ? theme.colors.success : theme.colors.textSecondary}
+                  />
+                </IconButton>
+                <IconButton onPress={() => handleDeleteTask(item.id)}>
+                  <Trash2 size={20} color={theme.colors.error} opacity={0.6} />
+                </IconButton>
+              </ActionRow>
+            </TaskCard>
+          )}
+          ListEmptyComponent={
+            <RNText
+              style={{
+                textAlign: 'center',
+                marginTop: 50,
+                color: theme.colors.textSecondary,
+              }}
             >
-              <ModalScrollView theme={theme} indicatorStyle={theme.isDark ? 'white' : 'black'}>
-                <ModalContentContainer theme={theme}>
-                  <ModalHeader theme={theme}>
-                    <ModalTitleText theme={theme}>
-                      {editingId ? 'Edytuj' : 'Nowe zadanie'}
-                    </ModalTitleText>
-                    <TouchableOpacity onPress={() => setModalVisible(false)}>
-                      <X size={24} color={theme.colors.text} />
-                    </TouchableOpacity>
-                  </ModalHeader>
-                  <InputLabel theme={theme}>TYTUŁ</InputLabel>
-                  <StyledTextInput
-                    theme={theme}
-                    placeholder="Co zrobić?"
-                    placeholderTextColor={theme.colors.textSecondary}
-                    value={title}
-                    onChangeText={setTitle}
-                  />
+              Brak zadań на цей день.
+            </RNText>
+          }
+        />
+      )}
 
-                  {role === 'DIRECTOR' && (
-                    <>
-                      <InputLabel theme={theme}>PRZYPISZ DO PRACOWNIKA</InputLabel>
-                      <UserChipContainer>
-                        <UserChip
-                          selected={!assignedUserId || assignedUserId === 'ALL'}
-                          onPress={() => setAssignedUserId('ALL')}
-                          theme={theme}
-                        >
-                          <UserChipText
-                            selected={!assignedUserId || assignedUserId === 'ALL'}
-                            theme={theme}
-                          >
-                            Wszyscy (Ogólne)
-                          </UserChipText>
-                        </UserChip>
-                        {users.map((u) => (
-                          <UserChip
-                            key={u.id}
-                            selected={assignedUserId === u.id}
-                            onPress={() => setAssignedUserId(u.id)}
-                            theme={theme}
-                          >
-                            <UserChipText selected={assignedUserId === u.id} theme={theme}>
-                              {u.name}
-                            </UserChipText>
-                          </UserChip>
-                        ))}
-                      </UserChipContainer>
-                    </>
-                  )}
+      {role === 'EMPLOYEE' && (
+        <Fab theme={theme} onPress={() => setModalVisible(true)}>
+          <Plus size={30} color="white" />
+        </Fab>
+      )}
 
-                  <InputLabel theme={theme}>OPIS</InputLabel>
-                  <TextArea
-                    theme={theme}
-                    placeholder="Szczegóły..."
-                    placeholderTextColor={theme.colors.textSecondary}
-                    value={description}
-                    onChangeText={setDescription}
-                    multiline
-                  />
-                  <InputLabel theme={theme}>DATA</InputLabel>
-                  <Calendar
-                    onDayPress={(day) => setSelectedDate(day.dateString)}
-                    markedDates={{
-                      [selectedDate]: { selected: true, selectedColor: theme.colors.primary },
-                    }}
-                    theme={{
-                      backgroundColor: theme.colors.surface,
-                      calendarBackground: theme.colors.surface,
-                      textSectionTitleColor: theme.colors.textSecondary,
-                      selectedDayBackgroundColor: theme.colors.primary,
-                      selectedDayTextColor: '#ffffff',
-                      todayTextColor: theme.colors.primary,
-                      dayTextColor: theme.colors.text,
-                      textDisabledColor: theme.colors.border,
-                      dotColor: theme.colors.primary,
-                      selectedDotColor: '#ffffff',
-                      arrowColor: theme.colors.primary,
-                      disabledArrowColor: theme.colors.border,
-                      monthTextColor: theme.colors.text,
-                      indicatorColor: theme.colors.primary,
-                      textDayFontWeight: '400',
-                      textMonthFontWeight: 'bold',
-                      textDayHeaderFontWeight: '400',
-                    }}
-                  />
+      <Modal visible={modalVisible} transparent animationType="slide">
+        <ModalOverlay>
+          <ModalContent theme={theme}>
+            <View
+              style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}
+            >
+              <RNText style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.text }}>
+                Nowe zadanie
+              </RNText>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <X size={24} color={theme.colors.text} />
+              </TouchableOpacity>
+            </View>
 
-                  <InputLabel theme={theme} style={{ marginTop: 20 }}>
-                    GODZINA
-                  </InputLabel>
-                  <TimePickerContainer theme={theme}>
-                    <TimeBlock>
-                      <TouchableOpacity onPress={() => adjustTime('h', 1)}>
-                        <ChevronUp size={24} color={theme.colors.primary} />
-                      </TouchableOpacity>
-                      <TimeValue theme={theme}>{hour.toString().padStart(2, '0')}</TimeValue>
-                      <TouchableOpacity onPress={() => adjustTime('h', -1)}>
-                        <ChevronDown size={24} color={theme.colors.primary} />
-                      </TouchableOpacity>
-                    </TimeBlock>
-                    <TimeSeparator theme={theme}>:</TimeSeparator>
-                    <TimeBlock>
-                      <TouchableOpacity onPress={() => adjustTime('m', 5)}>
-                        <ChevronUp size={24} color={theme.colors.primary} />
-                      </TouchableOpacity>
-                      <TimeValue theme={theme}>{minute.toString().padStart(2, '0')}</TimeValue>
-                      <TouchableOpacity onPress={() => adjustTime('m', -5)}>
-                        <ChevronDown size={24} color={theme.colors.primary} />
-                      </TouchableOpacity>
-                    </TimeBlock>
-                  </TimePickerContainer>
+            <Label theme={theme}>Tytuł zadania</Label>
+            <StyledInput
+              theme={theme}
+              placeholder="Np. Kontrola instalacji"
+              value={title}
+              onChangeText={setTitle}
+              placeholderTextColor={theme.colors.textSecondary}
+            />
 
-                  <SaveButton theme={theme} onPress={saveTask}>
-                    <SaveButtonText theme={theme}>ZAPISZ</SaveButtonText>
-                  </SaveButton>
-                </ModalContentContainer>
-              </ModalScrollView>
-            </KeyboardAvoidingView>
-          </ModalOverlay>
-        </Modal>
+            <Label theme={theme}>Godzina</Label>
+            <TimePicker
+              hour={hour}
+              minute={minute}
+              onHourChange={setHour}
+              onMinuteChange={setMinute}
+              theme={theme}
+            />
 
-        {uploading && (
-          <UploadOverlay theme={theme}>
-            <ActivityIndicator size="large" color={theme.colors.primary} />
-          </UploadOverlay>
-        )}
-      </Container>
-    </GestureHandlerRootView>
+            <TouchableOpacity
+              onPress={handleAddTask}
+              style={{
+                backgroundColor: theme.colors.primary,
+                padding: 16,
+                borderRadius: 12,
+                marginTop: 30,
+                alignItems: 'center',
+              }}
+            >
+              <RNText style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>
+                Dodaj zadanie
+              </RNText>
+            </TouchableOpacity>
+          </ModalContent>
+        </ModalOverlay>
+      </Modal>
+
+      {uploading && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(255,255,255,0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      )}
+    </Container>
   );
 };
 

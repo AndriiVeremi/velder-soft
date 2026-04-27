@@ -17,12 +17,23 @@ export async function registerForPushNotificationsAsync() {
 
   try {
     if (Platform.OS === 'android') {
+      // Канал за замовчуванням
       await Notifications.setNotificationChannelAsync('default', {
         name: 'default',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#008744',
         enableVibrate: true,
+        showBadge: true,
+        sound: 'default',
+      });
+
+      // Спеціальний канал для термінових сповіщень (Запити/Оголошення)
+      await Notifications.setNotificationChannelAsync('alerts', {
+        name: 'Alerts',
+        importance: Notifications.AndroidImportance.MAX,
+        enableVibrate: true,
+        vibrationPattern: [0, 500, 200, 500],
         showBadge: true,
         sound: 'default',
         lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,

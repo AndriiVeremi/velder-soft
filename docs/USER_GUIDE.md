@@ -7,36 +7,32 @@ Niniejszy przewodnik pomoże Ci szybko zapoznać się z funkcjami aplikacji Veld
 ## 🔑 1. Pierwsze kroki (Logowanie i Aktywacja)
 
 1.  **Rejestracja:** Przy pierwszym uruchomieniu załóż konto podając e-mail i hasło.
-2.  **Aktywacja:** Twoje konto musi zostać aktywowane przez Dyrektora. Dopóki to nie nastąpi, zobaczysz ekran oczekiwania.
-3.  **Uprawnienia:** Przy pierwszym logowaniu zaakceptuj prośbę o **Powiadomienia** oraz dostęp do **Galerii/Aparatu** – są one kluczowe dla raportowania problemów i otrzymywania zadań.
+2.  **Aktywacja:** Twoje konto musi zostać aktywowane przez Dyrektora.
+3.  **Uprawnienia:** Zaakceptuj prośbę o **Powiadomienia** oraz **Aparat** – są one kluczowe dla komunikacji i raportowania.
 
 ## 📱 2. Nawigacja i Funkcje Główne
 
-- **Start:** Kalendarz zadań, ogłoszenia oraz odliczanie do Twojego urlopu.
-- **Zadania:** Lista Twoich prac oraz zadań "Ogólnych" (dostępnych dla każdego). Przesuń w lewo, aby szybko oznaczyć zadanie jako wykonane.
-- **Zgłoś problem:** Przycisk w menu umożliwiający wysłanie do 5 zdjęć lub wideo z opisem usterki bezpośrednio do Dyrektora.
-- **O firmie:** Historia, misja Velder oraz informacje o twórcy systemu.
-- **Motyw (Dark/Light):** W ustawieniach swojego **Profilu** możesz w każdej chwili przełączyć się między trybem jasnym a ciemnym, aby dopasować aplikację do warunków oświetleniowych. Tryb ciemny oszczędza baterię i chroni wzrok podczas pracy wieczornej.
+- **Start:** Twoje centrum dowodzenia. Tutaj widzisz najważniejsze powiadomienia, zadania na dziś oraz odliczanie do urlopu.
+- **Linia do Szefa:** Bezpośredni kanał komunikacji. Możesz tu wysłać szybką wiadomość do Dyrektora (np. prośbę o paliwo lub materiały). Twoje wiadomości są zapisywane w archiwum, gdzie widzisz ich status (Oczekuje / Potwierdzone).
+- **Zadania:** Lista Twoich prac. Możesz dodawać zdjęcia do zadań, co automatycznie oznacza je jako wykonane.
+- **Ogłoszenia:** Ważne komunikaty od firmy. Ogłoszenie znika z ekranu głównego dopiero po Twoim potwierdzeniu (przycisk "OK"). Wszystkie ogłoszenia wygasają automatycznie po 3 dniach.
 
-## 🔔 3. Inteligentne Powiadomienia
+## 🏢 3. Projekty i Dokumentacja
 
-Aplikacja dba o to, abyś nie przegapił ważnych informacji:
+- **Struktura Folderów:** Dokumentacja techniczna jest podzielona na **Szpitale** i **Oddziały**.
+- **Status Projektu:** Każdy oddział ma swój status (W toku / Zakończony), widoczny bezpośrednio na folderze.
+- **Wiele Dokumentów:** W jednym oddziale może znajdować się wiele schematów PDF. Kliknij w plik, aby otworzyć go w przeglądarce. Nowe pliki są zoptymalizowane do szybkiego podglądu.
 
-- **Przypomnienia:** Po ustawieniu osobistego przypomnienia, telefon wyśle Ci serię **5 powiadomień co minutę**, abyś na pewno zauważył ważny termin.
-- **Powiadomienia Push:** Otrzymasz natychmiastowy sygnał, gdy Dyrektor opublikuje nowe ogłoszenie lub podejmie decyzję w sprawie Twojego urlopu.
+## 🔔 4. System Sygnałów
 
-## 🏢 4. Praca z Projektami i Serwisem
-
-- **Archiwum PDF:** Dostęp do schematów instalacji gazów medycznych. Linki są weryfikowane pod kątem bezpieczeństwa.
-- **Serwis:** Rejestr przeglądów i konserwacji urządzeń. Możesz dodawać zdjęcia z komentarzem technicznym po zakończeniu prac.
+- **Dźwięk i Wibracja:** Aplikacja powiadomi Cię sygnałem dźwiękowym o nowym ogłoszeniu od Dyrektora.
+- **Dla Dyrektora:** Natychmiastowy alarm przy nadejściu nowej wiadomości na "Linii do Szefa".
 
 ## 👥 5. Panel Dyrektora
 
-Dyrektor posiada dodatkowe narzędzia:
-
-- **Zarządzanie Zespołem:** Aktywacja/deaktywacja kont, zmiana uprawnień.
-- **Centrum Zgłoszeń:** Podgląd wszystkich raportów o problemach przysłanych przez pracowników (automatycznie usuwane po 7 dniach).
-- **Zadania:** Możliwość przydzielania zadań konkretnym osobom lub całej grupie.
+- **Zarządzanie Folderami:** Możliwość tworzenia i usuwania folderów szpitali oraz oddziałów.
+- **Zarządzanie Statusem:** Jednym kliknięciem na folderze oddziału możesz zmienić stan prac na "Zakończony".
+- **Linia do Szefa:** Podgląd wszystkich próśb od pracowników bezpośrednio na ekranie głównym. Po załatwieniu sprawy naciśnij "OK", aby usunąć powiadomienie.
 
 ---
 

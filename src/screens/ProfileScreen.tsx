@@ -20,18 +20,8 @@ import { notify } from '../utils/notify';
 import { scheduleDailyReminder } from '../utils/notifications';
 import { format } from 'date-fns';
 import { StackScreenProps } from '@react-navigation/stack';
-import {
-  User,
-  Mail,
-  Shield,
-  LogOut,
-  Edit2,
-  Check,
-  X,
-  Bell,
-  ChevronUp,
-  ChevronDown,
-} from 'lucide-react-native';
+import { User, Shield, LogOut, Edit2 } from 'lucide-react-native';
+import { TimePicker } from '../components/CommonUI';
 
 const Container = styled.ScrollView`
   flex: 1;
@@ -129,29 +119,6 @@ const EditInput = styled.TextInput`
   color: ${(props) => props.theme.colors.text};
 `;
 
-const TimePickerContainer = styled.View`
-  flex-direction: row;
-  align-items: center;
-  background-color: ${(props) => props.theme.colors.background};
-  padding: 15px;
-  border-radius: 12px;
-  margin-top: 10px;
-  justify-content: center;
-  border: 1px solid ${(props) => props.theme.colors.border};
-`;
-
-const TimeBlock = styled.View`
-  align-items: center;
-  width: 50px;
-`;
-
-const TimeValue = styled(RNText)`
-  font-size: 24px;
-  font-weight: bold;
-  margin: 5px 0;
-  color: ${(props) => props.theme.colors.text};
-`;
-
 const LogoutButton = styled.TouchableOpacity`
   flex-direction: row;
   align-items: center;
@@ -182,13 +149,7 @@ const SectionTitleText = styled(RNText)`
 const SectionLabel = styled(RNText)`
   font-size: 12px;
   color: ${(props) => props.theme.colors.textSecondary};
-`;
-
-const TimeSeparator = styled(RNText)`
-  font-size: 24px;
-  font-weight: bold;
-  margin-horizontal: 10px;
-  color: ${(props) => props.theme.colors.text};
+  margin-bottom: 8px;
 `;
 
 const SaveSettingsButton = styled.TouchableOpacity`
@@ -208,7 +169,7 @@ const LogoutButtonText = styled(RNText)`
 
 type Props = StackScreenProps<any, 'Profile'>;
 
-const ProfileScreen = ({ navigation, route }: Props) => {
+const ProfileScreen = ({ navigation }: Props) => {
   const { user, userData, role } = useAuth();
   const { theme, isDark, toggleTheme } = useAppTheme();
   const [isEditing, setIsEditing] = useState(false);
@@ -221,20 +182,31 @@ const ProfileScreen = ({ navigation, route }: Props) => {
 
   useEffect(() => {
     if (!userData) return;
-    Promise.resolve().then(() => {
-      if (userData.name) setName(userData.name);
+
+    const timer = setTimeout(() => {
+      if (userData.name && name === '') {
+        setName(userData.name);
+      }
+
       if (userData.notificationStart) {
         const [h, m] = userData.notificationStart.split(':');
-        setStartH(parseInt(h));
-        setStartM(parseInt(m));
+        const newH = parseInt(h);
+        const newM = parseInt(m);
+        if (startH !== newH) setStartH(newH);
+        if (startM !== newM) setStartM(newM);
       }
+
       if (userData.notificationEnd) {
         const [h, m] = userData.notificationEnd.split(':');
-        setEndH(parseInt(h));
-        setEndM(parseInt(m));
+        const newEH = parseInt(h);
+        const newEM = parseInt(m);
+        if (endH !== newEH) setEndH(newEH);
+        if (endM !== newEM) setEndM(newEM);
       }
-    });
-  }, [userData]);
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [userData, name, startH, startM, endH, endM]);
 
   const saveSettings = async () => {
     if (!user) return;
@@ -264,37 +236,6 @@ const ProfileScreen = ({ navigation, route }: Props) => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const adjustTime = (type: 'sh' | 'sm' | 'eh' | 'em', val: number) => {
-    if (type === 'sh')
-      setStartH((p) => {
-        let n = p + val;
-        if (n > 23) return 0;
-        if (n < 0) return 23;
-        return n;
-      });
-    if (type === 'sm')
-      setStartM((p) => {
-        let n = p + val;
-        if (n > 55) return 0;
-        if (n < 0) return 55;
-        return n;
-      });
-    if (type === 'eh')
-      setEndH((p) => {
-        let n = p + val;
-        if (n > 23) return 0;
-        if (n < 0) return 23;
-        return n;
-      });
-    if (type === 'em')
-      setEndM((p) => {
-        let n = p + val;
-        if (n > 55) return 0;
-        if (n < 0) return 55;
-        return n;
-      });
   };
 
   const handleLogout = () => {
@@ -350,52 +291,24 @@ const ProfileScreen = ({ navigation, route }: Props) => {
               <SectionTitleText theme={theme}>Ustawienia powiadomień</SectionTitleText>
 
               <SectionLabel theme={theme}>Początek pracy (Pierwszy sygnał):</SectionLabel>
-              <TimePickerContainer theme={theme}>
-                <TimeBlock theme={theme}>
-                  <TouchableOpacity onPress={() => adjustTime('sh', 1)}>
-                    <ChevronUp size={24} color={theme.colors.primary} />
-                  </TouchableOpacity>
-                  <TimeValue theme={theme}>{startH.toString().padStart(2, '0')}</TimeValue>
-                  <TouchableOpacity onPress={() => adjustTime('sh', -1)}>
-                    <ChevronDown size={24} color={theme.colors.primary} />
-                  </TouchableOpacity>
-                </TimeBlock>
-                <TimeSeparator theme={theme}>:</TimeSeparator>
-                <TimeBlock theme={theme}>
-                  <TouchableOpacity onPress={() => adjustTime('sm', 5)}>
-                    <ChevronUp size={24} color={theme.colors.primary} />
-                  </TouchableOpacity>
-                  <TimeValue theme={theme}>{startM.toString().padStart(2, '0')}</TimeValue>
-                  <TouchableOpacity onPress={() => adjustTime('sm', -5)}>
-                    <ChevronDown size={24} color={theme.colors.primary} />
-                  </TouchableOpacity>
-                </TimeBlock>
-              </TimePickerContainer>
+              <TimePicker
+                hour={startH}
+                minute={startM}
+                onHourChange={setStartH}
+                onMinuteChange={setStartM}
+                theme={theme}
+              />
 
               <SectionLabel theme={theme} style={{ marginTop: 20 }}>
                 Koniec pracy (Tryb ciszy po):
               </SectionLabel>
-              <TimePickerContainer theme={theme}>
-                <TimeBlock theme={theme}>
-                  <TouchableOpacity onPress={() => adjustTime('eh', 1)}>
-                    <ChevronUp size={24} color={theme.colors.primary} />
-                  </TouchableOpacity>
-                  <TimeValue theme={theme}>{endH.toString().padStart(2, '0')}</TimeValue>
-                  <TouchableOpacity onPress={() => adjustTime('eh', -1)}>
-                    <ChevronDown size={24} color={theme.colors.primary} />
-                  </TouchableOpacity>
-                </TimeBlock>
-                <TimeSeparator theme={theme}>:</TimeSeparator>
-                <TimeBlock theme={theme}>
-                  <TouchableOpacity onPress={() => adjustTime('sm', 5)}>
-                    <ChevronUp size={24} color={theme.colors.primary} />
-                  </TouchableOpacity>
-                  <TimeValue theme={theme}>{endM.toString().padStart(2, '0')}</TimeValue>
-                  <TouchableOpacity onPress={() => adjustTime('sm', -5)}>
-                    <ChevronDown size={24} color={theme.colors.primary} />
-                  </TouchableOpacity>
-                </TimeBlock>
-              </TimePickerContainer>
+              <TimePicker
+                hour={endH}
+                minute={endM}
+                onHourChange={setEndH}
+                onMinuteChange={setEndM}
+                theme={theme}
+              />
 
               <SaveSettingsButton onPress={saveSettings} theme={theme}>
                 {loading ? (
@@ -438,9 +351,6 @@ const ProfileScreen = ({ navigation, route }: Props) => {
               <View>
                 <RNText style={{ fontWeight: '600', color: theme.colors.text, fontSize: 15 }}>
                   {isDark ? 'Tryb ciemny' : 'Tryb jasny'}
-                </RNText>
-                <RNText style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
-                  {isDark ? 'Przełącz na jasny' : 'Przełącz na ciemny'}
                 </RNText>
               </View>
             </View>

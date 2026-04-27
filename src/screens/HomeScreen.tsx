@@ -23,53 +23,35 @@ import {
   updateDoc,
   orderBy,
   limit,
+  setDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import * as ImagePicker from 'expo-image-picker';
 import { db, storage } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { useAppTheme } from '../context/ThemeContext';
-import { CheckCircle2, Camera, ArrowRight, Megaphone, Palmtree } from 'lucide-react-native';
-import { format, isToday, parseISO } from 'date-fns';
+import {
+  CheckCircle2,
+  Camera,
+  ArrowRight,
+  Megaphone,
+  Palmtree,
+  X,
+  CheckCircle,
+} from 'lucide-react-native';
+import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { notify } from '../utils/notify';
 import { runWeeklyCleanup } from '../utils/cleanup';
 import * as Notifications from 'expo-notifications';
 import { StackScreenProps } from '@react-navigation/stack';
+import { Task, Announcement, VacationInfo, UserRequest } from '../types';
+import { RootStackParamList } from '../config/navigationTypes';
 
-interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  date: string;
-  time?: string;
-  done: boolean;
-  photoUrl?: string;
-  photoPath?: string;
-  wasMoved?: boolean;
-}
-
-interface Announcement {
-  id: string;
-  text: string;
-  createdAt: any;
-  authorName: string;
-}
-
-interface VacationInfo {
-  id: string;
-  userId: string;
-  userName: string;
-  startDate: string;
-  endDate: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  createdAt: any;
-}
-
-type Props = StackScreenProps<any, 'Home'>;
+type Props = StackScreenProps<RootStackParamList, 'Home'>;
 
 const { width } = Dimensions.get('window');
-const isDesktop = Platform.OS === 'web' && width > 768;
 
 LocaleConfig.locales['pl'] = {
   monthNames: [
@@ -316,7 +298,7 @@ const TeamVacationName = styled(RNText)`
   color: ${(props) => props.theme.colors.text};
 `;
 
-const AnnouncementCard = styled.TouchableOpacity`
+const AnnouncementCard = styled.View`
   background-color: ${(props) => (props.theme.isDark ? '#2c1e00' : '#fff4e5')};
   padding: 15px;
   border-radius: 12px;
@@ -329,12 +311,44 @@ const AnnouncementCard = styled.TouchableOpacity`
   border-color: ${(props) => (props.theme.isDark ? '#4d3a00' : '#ffe0b2')};
 `;
 
-const AnnouncementText = styled(RNText)`
+const RequestsSection = styled.View`
+  margin-bottom: 20px;
+`;
+
+const RequestItem = styled.View`
+  background-color: ${(props) => (props.theme.isDark ? '#2c1e00' : '#fff4e5')};
+  padding: 15px;
+  border-radius: 12px;
+  border: 1px solid ${(props) => (props.theme.isDark ? '#4d3a00' : '#ffe0b2')};
+  border-left-width: 5px;
+  border-left-color: #ff9800;
+  margin-bottom: 10px;
+  flex-direction: row;
+  align-items: center;
+`;
+
+const RequestContent = styled.View`
   flex: 1;
-  font-size: 14px;
+  margin-right: 10px;
+`;
+
+const RequestSender = styled(RNText)`
+  font-weight: bold;
+  color: #ff9800;
+  font-size: 13px;
+`;
+
+const RequestText = styled(RNText)`
   color: ${(props) => (props.theme.isDark ? '#ffcc80' : '#663c00')};
+  margin-top: 4px;
+  font-size: 14px;
   font-weight: 600;
-  margin-left: 12px;
+`;
+
+const ConfirmBtn = styled.TouchableOpacity`
+  padding: 8px;
+  background-color: #ff9800;
+  border-radius: 8px;
 `;
 
 const HomeScreen = ({ navigation }: Props) => {
@@ -348,14 +362,199 @@ const HomeScreen = ({ navigation }: Props) => {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [latestAnnouncement, setLatestAnnouncement] = useState<Announcement | null>(null);
+  const [isAnnouncementConfirmed, setIsAnnouncementConfirmed] = useState(false);
   const [vacations, setVacations] = useState<VacationInfo[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<UserRequest[]>([]);
 
   const todayStr = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
+
+  useEffect(() => {
+    if (role !== 'DIRECTOR') return;
+    const q = query(collection(db, 'requests'), where('status', '==', 'PENDING'));
+
+    return onSnapshot(q, (snap) => {
+      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as UserRequest);
+
+      snap.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          const newReq = change.doc.data() as UserRequest;
+          const now = Date.now();
+          const created = newReq.createdAt?.toMillis() || now;
+          if (now - created < 30000 && Platform.OS !== 'web') {
+            Notifications.scheduleNotificationAsync({
+              content: {
+                title: 'Nowa prośba od pracownika! 📩',
+                body: `${newReq.senderName}: ${newReq.text}`,
+                sound: true,
+                vibrate: [0, 250, 250, 250],
+                priority: Notifications.AndroidNotificationPriority.MAX,
+                categoryIdentifier: 'alerts',
+              },
+              trigger: null,
+            });
+          }
+        }
+      });
+
+      const sorted = data.sort(
+        (a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)
+      );
+      setPendingRequests(sorted);
+    });
+  }, [role]);
+
+  const handleConfirmRequest = async (requestId: string) => {
+    setPendingRequests((prev) => prev.filter((r) => r.id !== requestId));
+    try {
+      await updateDoc(doc(db, 'requests', requestId), { status: 'CONFIRMED' });
+      notify.success('Potwierdzono');
+    } catch (e) {
+      notify.error('Błąd');
+    }
+  };
+
+  useEffect(() => {
+    const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'), limit(1));
+    return onSnapshot(q, async (snap) => {
+      if (!snap.empty) {
+        const annData = { id: snap.docs[0].id, ...snap.docs[0].data() } as Announcement;
+        setLatestAnnouncement(annData);
+
+        snap.docChanges().forEach((change) => {
+          if (change.type === 'added' && role !== 'DIRECTOR') {
+            const now = Date.now();
+            const created = annData.createdAt?.toMillis() || now;
+            if (now - created < 30000 && Platform.OS !== 'web') {
+              Notifications.scheduleNotificationAsync({
+                content: {
+                  title: 'Nowe ogłoszenie od Dyrektora! 📢',
+                  body: annData.text,
+                  sound: true,
+                  vibrate: [0, 500, 200, 500],
+                  priority: Notifications.AndroidNotificationPriority.MAX,
+                  categoryIdentifier: 'alerts',
+                },
+                trigger: null,
+              });
+            }
+          }
+        });
+
+        if (user) {
+          const readDoc = await getDocs(
+            query(
+              collection(db, 'announcement_reads'),
+              where('userId', '==', user.uid),
+              where('announcementId', '==', annData.id)
+            )
+          );
+          setIsAnnouncementConfirmed(!readDoc.empty);
+        }
+      }
+    });
+  }, [user, role]);
+
+  const handleConfirmAnnouncement = async () => {
+    if (!latestAnnouncement || !user) return;
+    setIsAnnouncementConfirmed(true);
+    try {
+      await setDoc(doc(db, 'announcement_reads', `${user.uid}_${latestAnnouncement.id}`), {
+        userId: user.uid,
+        announcementId: latestAnnouncement.id,
+        confirmedAt: serverTimestamp(),
+      });
+      notify.success('Ogłoszenie przeczytane');
+    } catch (e) {
+      setIsAnnouncementConfirmed(false);
+      notify.error('Błąd');
+    }
+  };
+
+  useEffect(() => {
+    const q = query(collection(db, 'vacations'), where('status', '==', 'APPROVED'));
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as VacationInfo);
+      setVacations(data);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const moveOverdue = async () => {
+      if (!user) return;
+      try {
+        const q = query(
+          collection(db, 'tasks'),
+          where('done', '==', false),
+          where('date', '<', todayStr)
+        );
+        const snap = await getDocs(q);
+        if (snap.empty) return;
+
+        const batch = writeBatch(db);
+        snap.forEach((d) => {
+          const data = d.data();
+
+          if (data.assignedTo === user.uid) {
+            batch.update(doc(db, 'tasks', d.id), { date: todayStr, wasMoved: true });
+          }
+        });
+        await batch.commit();
+      } catch (e) {
+        console.error('Move overdue error:', e);
+      }
+    };
+    moveOverdue();
+  }, [user, todayStr]);
+
+  useEffect(() => {
+    const q = query(collection(db, 'tasks'), where('date', '==', selectedDate));
+    return onSnapshot(q, (querySnapshot) => {
+      const allTasks = querySnapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Task);
+
+      const filtered =
+        role === 'DIRECTOR' ? allTasks : allTasks.filter((t) => t.assignedTo === user?.uid);
+
+      setTasks(filtered.sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00')));
+      setLoading(false);
+    });
+  }, [selectedDate, user, role]);
+
+  const toggleTask = async (id: string, currentStatus: boolean) => {
+    try {
+      await updateDoc(doc(db, 'tasks', id), { done: !currentStatus });
+    } catch (e) {
+      notify.error('Błąd');
+    }
+  };
+
+  const addPhotoToTask = async (taskId: string, timestamp: number) => {
+    let result = await ImagePicker.launchCameraAsync({ quality: 0.6 });
+    if (result.canceled) return;
+    setUploading(true);
+    try {
+      const response = await fetch(result.assets[0].uri);
+      const blob = await response.blob();
+      const filename = `task_photos/${taskId}_${timestamp}.jpg`;
+      const storageRef = ref(storage, filename);
+      await uploadBytes(storageRef, blob);
+      const photoUrl = await getDownloadURL(storageRef);
+      await updateDoc(doc(db, 'tasks', taskId), { photoUrl, photoPath: filename, done: true });
+    } catch (e) {
+      notify.error('Błąd');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (role === 'DIRECTOR') runWeeklyCleanup();
+  }, [role]);
 
   const myNextVacation = useMemo(() => {
     return (
       vacations
-        .filter((v) => v.userId === user?.uid && v.status === 'APPROVED' && v.startDate >= todayStr)
+        .filter((v) => v.userId === user?.uid && v.startDate >= todayStr)
         .sort((a, b) => a.startDate.localeCompare(b.startDate))[0] || null
     );
   }, [vacations, user, todayStr]);
@@ -374,10 +573,8 @@ const HomeScreen = ({ navigation }: Props) => {
 
   const teamUpcomingVacations = useMemo(() => {
     if (role !== 'DIRECTOR') return [];
-
     return vacations
       .filter((v) => {
-        if (v.status !== 'APPROVED') return false;
         const start = new Date(v.startDate);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -388,134 +585,52 @@ const HomeScreen = ({ navigation }: Props) => {
       .slice(0, 3);
   }, [vacations, role]);
 
-  useEffect(() => {
-    const q = query(collection(db, 'vacations'));
-    const unsubscribe = onSnapshot(q, (snap) => {
-      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as VacationInfo);
-      setVacations(data);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'), limit(1));
-    const unsubscribe = onSnapshot(q, (snap) => {
-      if (!snap.empty) {
-        const data = { id: snap.docs[0].id, ...snap.docs[0].data() } as Announcement;
-        setLatestAnnouncement(data);
-
-        const now = Date.now();
-        const created = data.createdAt?.toMillis() || now;
-        if (now - created < 60000 && Platform.OS !== 'web') {
-          Notifications.scheduleNotificationAsync({
-            content: {
-              title: 'Wiadomość od Dyrektora! 📢',
-              body: data.text,
-              sound: true,
-            },
-            trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date() },
-          });
-        }
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    const moveOverdue = async () => {
-      if (!user) return;
-      try {
-        const q = query(collection(db, 'tasks'), where('done', '==', false));
-        const snap = await getDocs(q);
-        const overdue = snap.docs.filter((d) => d.data().date < todayStr);
-        if (overdue.length === 0) return;
-
-        const batch = writeBatch(db);
-        overdue.forEach((d) =>
-          batch.update(doc(db, 'tasks', d.id), { date: todayStr, wasMoved: true })
-        );
-        await batch.commit();
-      } catch (e) {
-        console.error('Error moving overdue tasks:', e);
-      }
-    };
-    moveOverdue();
-  }, [user, todayStr]);
-
-  useEffect(() => {
-    let isSubscribed = true;
-    const q = query(collection(db, 'tasks'), where('date', '==', selectedDate));
-    const unsubscribe = onSnapshot(
-      q,
-      (querySnapshot) => {
-        const tasksData = querySnapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Task);
-        const sorted = tasksData.sort((a, b) =>
-          (a.time || '00:00').localeCompare(b.time || '00:00')
-        );
-        if (isSubscribed) {
-          setTasks(sorted);
-          setLoading(false);
-        }
-      },
-      (error) => {
-        if (isSubscribed) setLoading(false);
-      }
-    );
-    return () => {
-      isSubscribed = false;
-      unsubscribe();
-    };
-  }, [selectedDate]);
-
-  const toggleTask = async (id: string, currentStatus: boolean) => {
-    try {
-      await updateDoc(doc(db, 'tasks', id), { done: !currentStatus });
-    } catch (e) {
-      console.error('Error toggling task:', e);
-      notify.error('Błąd aktualizacji zadania');
-    }
-  };
-
-  const addPhotoToTask = async (taskId: string, timestamp: number) => {
-    let result = await ImagePicker.launchCameraAsync({ quality: 0.6 });
-    if (result.canceled) return;
-    setUploading(true);
-    try {
-      const response = await fetch(result.assets[0].uri);
-      const blob = await response.blob();
-      const filename = `task_photos/${taskId}_${timestamp}.jpg`;
-      const storageRef = ref(storage, filename);
-      await uploadBytes(storageRef, blob);
-      const photoUrl = await getDownloadURL(storageRef);
-      await updateDoc(doc(db, 'tasks', taskId), { photoUrl, photoPath: filename, done: true });
-    } catch (e) {
-      console.error('Error adding photo to task:', e);
-      notify.error('Błąd przesyłania zdjęcia');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (role === 'DIRECTOR') runWeeklyCleanup();
-  }, [role]);
-
   return (
     <Container theme={theme}>
       <Content theme={theme}>
         <MainWrapper theme={theme} isDesktop={isDesktop}>
           <LeftColumn theme={theme} isDesktop={isDesktop}>
-            {latestAnnouncement && (
-              <AnnouncementCard theme={theme} onPress={() => navigation.navigate('Announcements')}>
-                <Megaphone size={24} color="#ff9800" />
-                <AnnouncementText theme={theme} numberOfLines={2}>
-                  {latestAnnouncement.text}
-                </AnnouncementText>
-                <ArrowRight size={18} color="#ff9800" />
+            {role === 'DIRECTOR' && pendingRequests.length > 0 && (
+              <RequestsSection>
+                <SectionTitle theme={theme}>
+                  📩 Prośby od pracowników ({pendingRequests.length})
+                </SectionTitle>
+                {pendingRequests.map((req) => (
+                  <RequestItem key={req.id} theme={theme}>
+                    <RequestContent>
+                      <RequestSender theme={theme}>{req.senderName}</RequestSender>
+                      <RequestText theme={theme}>{req.text}</RequestText>
+                    </RequestContent>
+                    <ConfirmBtn theme={theme} onPress={() => handleConfirmRequest(req.id)}>
+                      <CheckCircle size={24} color="white" />
+                    </ConfirmBtn>
+                  </RequestItem>
+                ))}
+              </RequestsSection>
+            )}
+
+            {role !== 'DIRECTOR' && latestAnnouncement && !isAnnouncementConfirmed && (
+              <AnnouncementCard theme={theme}>
+                <View style={{ marginRight: 15 }}>
+                  <Megaphone size={28} color="#ff9800" />
+                </View>
+                <RequestContent style={{ marginLeft: 0 }}>
+                  <RequestSender theme={theme}>OGŁOSZENIE</RequestSender>
+                  <RequestText theme={theme} numberOfLines={3}>
+                    {latestAnnouncement.text}
+                  </RequestText>
+                </RequestContent>
+                <ConfirmBtn
+                  theme={theme}
+                  onPress={handleConfirmAnnouncement}
+                  style={{ marginLeft: 10 }}
+                >
+                  <CheckCircle size={22} color="white" />
+                </ConfirmBtn>
               </AnnouncementCard>
             )}
 
-            {role !== 'DIRECTOR' && daysToVacation !== null && daysToVacation >= 0 && (
+            {role !== 'DIRECTOR' && daysToVacation !== null && (
               <VacationCountdownCard theme={theme} onPress={() => navigation.navigate('Vacations')}>
                 <Palmtree size={24} color="#00897b" />
                 <VacationTextWrapper>
@@ -531,7 +646,7 @@ const HomeScreen = ({ navigation }: Props) => {
               </VacationCountdownCard>
             )}
 
-            {role === 'DIRECTOR' && (
+            {role === 'DIRECTOR' && teamUpcomingVacations.length > 0 && (
               <TeamVacationSection theme={theme}>
                 <TeamVacationHeader>
                   <Palmtree size={18} color={theme.colors.primary} />
@@ -546,27 +661,19 @@ const HomeScreen = ({ navigation }: Props) => {
                     Nadchodzące urlopy zespołu
                   </RNText>
                 </TeamVacationHeader>
-                {teamUpcomingVacations.length > 0 ? (
-                  teamUpcomingVacations.map((v) => (
-                    <TeamVacationItem key={v.id}>
-                      <TeamVacationName theme={theme}>{v.userName}</TeamVacationName>
-                      <RNText style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
-                        {v.startDate} (
-                        {Math.ceil(
-                          (new Date(v.startDate).getTime() - new Date().setHours(0, 0, 0, 0)) /
-                            (1000 * 60 * 60 * 24)
-                        )}{' '}
-                        dni)
-                      </RNText>
-                    </TeamVacationItem>
-                  ))
-                ) : (
-                  <RNText
-                    style={{ color: theme.colors.textSecondary, fontSize: 12, fontStyle: 'italic' }}
-                  >
-                    Brak nadchodzących urlopów w zespole.
-                  </RNText>
-                )}
+                {teamUpcomingVacations.map((v) => (
+                  <TeamVacationItem key={v.id}>
+                    <TeamVacationName theme={theme}>{v.userName}</TeamVacationName>
+                    <RNText style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
+                      {v.startDate} (
+                      {Math.ceil(
+                        (new Date(v.startDate).getTime() - new Date().setHours(0, 0, 0, 0)) /
+                          (1000 * 60 * 60 * 24)
+                      )}{' '}
+                      dni)
+                    </RNText>
+                  </TeamVacationItem>
+                ))}
               </TeamVacationSection>
             )}
 
@@ -603,9 +710,6 @@ const HomeScreen = ({ navigation }: Props) => {
                   disabledArrowColor: theme.colors.border,
                   monthTextColor: theme.colors.text,
                   indicatorColor: theme.colors.primary,
-                  textDayFontWeight: '400',
-                  textMonthFontWeight: 'bold',
-                  textDayHeaderFontWeight: '400',
                 }}
               />
             </Card>
