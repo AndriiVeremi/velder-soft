@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Platform,
@@ -26,6 +26,7 @@ import {
   AlertTriangle,
   Inbox,
   Info,
+  MessageSquare,
 } from 'lucide-react-native';
 import { useAppTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -33,7 +34,7 @@ import { signOut } from 'firebase/auth';
 import { auth, db } from '../config/firebase';
 import { NavigationProp } from '@react-navigation/native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 const { width } = Dimensions.get('window');
 const getIsDesktop = () => Platform.OS === 'web' && width > 768;
@@ -195,11 +196,9 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
   const [isDesktop, setIsDesktop] = useState(getIsDesktop);
   const insets = useSafeAreaInsets();
 
-  // Стан для бейджів
   const [badges, setBadges] = useState({
     reports: 0,
     vacations: 0,
-    announcements: 0,
     tasks: 0,
     service: 0,
     pendingUsers: 0,
@@ -207,128 +206,95 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
 
   useEffect(() => {
     if (!user) return;
-
     const unsubscribes: (() => void)[] = [];
 
-    // 1. Для Директора: Звіти про проблеми
     if (role === 'DIRECTOR') {
       const q = query(collection(db, 'reports'));
-      unsubscribes.push(
-        onSnapshot(q, (snap) => {
-          setBadges((prev) => ({ ...prev, reports: snap.size }));
-        })
-      );
-
-      // 2. Для Директора: Заяви на відпустку (PENDING)
+      unsubscribes.push(onSnapshot(q, (snap) => setBadges((p) => ({ ...p, reports: snap.size }))));
       const vQ = query(collection(db, 'vacations'), where('status', '==', 'PENDING'));
       unsubscribes.push(
-        onSnapshot(vQ, (snap) => {
-          setBadges((prev) => ({ ...prev, vacations: snap.size }));
-        })
+        onSnapshot(vQ, (snap) => setBadges((p) => ({ ...p, vacations: snap.size })))
       );
-
-      // 3. Для Директора: Користувачі, що чекають активації
-      const uQ_pending = query(collection(db, 'users'), where('isActive', '==', false));
+      const uQ = query(collection(db, 'users'), where('isActive', '==', false));
       unsubscribes.push(
-        onSnapshot(uQ_pending, (snap) => {
-          setBadges((prev) => ({ ...prev, pendingUsers: snap.size }));
-        })
+        onSnapshot(uQ, (snap) => setBadges((p) => ({ ...p, pendingUsers: snap.size })))
       );
     }
 
-    // 4. Оголошення (якщо є сьогодні)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const aQ = query(collection(db, 'announcements'), where('createdAt', '>=', today));
-    unsubscribes.push(
-      onSnapshot(aQ, (snap) => {
-        setBadges((prev) => ({ ...prev, announcements: snap.size }));
-      })
-    );
-
-    // 5. Завдання (тільки персональні для працівника)
     if (role === 'EMPLOYEE') {
       const tQ = query(
         collection(db, 'tasks'),
         where('assignedTo', '==', user.uid),
         where('done', '==', false)
       );
-      unsubscribes.push(
-        onSnapshot(tQ, (snap) => {
-          setBadges((prev) => ({ ...prev, tasks: snap.size }));
-        })
-      );
+      unsubscribes.push(onSnapshot(tQ, (snap) => setBadges((p) => ({ ...p, tasks: snap.size }))));
     }
 
-    // 6. Сервіс (Загальний для всіх - тільки PENDING)
     const sQ = query(collection(db, 'services'), where('status', '==', 'PENDING'));
-    unsubscribes.push(
-      onSnapshot(sQ, (snap) => {
-        setBadges((prev) => ({ ...prev, service: snap.size }));
-      })
-    );
+    unsubscribes.push(onSnapshot(sQ, (snap) => setBadges((p) => ({ ...p, service: snap.size }))));
 
     return () => unsubscribes.forEach((unsub) => unsub());
   }, [user, role]);
 
   useEffect(() => {
     if (Platform.OS !== 'web') return;
-    const subscription = Dimensions.addEventListener('change', () => {
-      setIsDesktop(getIsDesktop());
-    });
+    const subscription = Dimensions.addEventListener('change', () => setIsDesktop(getIsDesktop()));
     return () => subscription.remove();
   }, []);
 
-  const sections = [
-    {
-      title: 'Główne',
-      items: [{ name: 'Home', label: 'Start', icon: Home }],
-    },
-    {
-      title: 'Praca i Projekty',
-      items: [
-        { name: 'Tasks', label: 'Zadania', icon: CheckSquare, badge: badges.tasks },
-        { name: 'Dashboard', label: 'Projekty', icon: LayoutGrid },
-        { name: 'Service', label: 'Serwis', icon: Wrench, badge: badges.service },
-        ...(role !== 'DIRECTOR'
-          ? [{ name: 'ReportProblem', label: 'Zgłoś problem', icon: AlertTriangle }]
-          : []),
-      ],
-    },
-    {
-      title: 'Moje',
-      items: [
-        { name: 'Reminders', label: 'Przypomnienia', icon: Bell },
-        ...(role !== 'DIRECTOR' ? [{ name: 'Vacations', label: 'Urlop', icon: Palmtree }] : []),
-        { name: 'Profile', label: 'Profil', icon: User },
-        { name: 'About', label: 'O firmie', icon: Info },
-      ],
-    },
-    ...(role === 'DIRECTOR'
-      ? [
-          {
-            title: 'Zespół',
-            items: [
-              { name: 'Users', label: 'Pracownicy', icon: Users, badge: badges.pendingUsers },
-              {
-                name: 'Announcements',
-                label: 'Ogłoszenia',
-                icon: Megaphone,
-                badge: badges.announcements,
-              },
-              { name: 'DirectorReports', label: 'Zgłoszenia', icon: Inbox, badge: badges.reports },
-              {
-                name: 'Vacations',
-                label: 'Wnioski Urlopowe',
-                icon: Palmtree,
-                params: { isAdminView: true },
-                badge: badges.vacations,
-              },
-            ],
-          },
-        ]
-      : []),
-  ];
+  const sections = useMemo(
+    () => [
+      { title: 'Główne', items: [{ name: 'Home', label: 'Start', icon: Home }] },
+      {
+        title: 'Praca i Projekty',
+        items: [
+          { name: 'Tasks', label: 'Zadania', icon: CheckSquare, badge: badges.tasks },
+          { name: 'Dashboard', label: 'Projekty', icon: LayoutGrid },
+          { name: 'Service', label: 'Serwis', icon: Wrench, badge: badges.service },
+          ...(role !== 'DIRECTOR'
+            ? [{ name: 'ReportProblem', label: 'Zgłoś problem', icon: AlertTriangle }]
+            : []),
+        ],
+      },
+      {
+        title: 'Moje',
+        items: [
+          { name: 'Reminders', label: 'Przypomnienia', icon: Bell },
+          ...(role !== 'DIRECTOR' ? [{ name: 'Vacations', label: 'Urlop', icon: Palmtree }] : []),
+          ...(role !== 'DIRECTOR'
+            ? [{ name: 'LiniaDoSzefa', label: 'Linia do Szefa', icon: MessageSquare }]
+            : []),
+          { name: 'Profile', label: 'Profil', icon: User },
+          { name: 'About', label: 'O firmie', icon: Info },
+        ],
+      },
+      ...(role === 'DIRECTOR'
+        ? [
+            {
+              title: 'Zespół',
+              items: [
+                { name: 'Users', label: 'Pracownicy', icon: Users, badge: badges.pendingUsers },
+                { name: 'Announcements', label: 'Ogłoszenia', icon: Megaphone },
+                {
+                  name: 'DirectorReports',
+                  label: 'Zgłoszenia',
+                  icon: Inbox,
+                  badge: badges.reports,
+                },
+                {
+                  name: 'Vacations',
+                  label: 'Wnioski Urlopowe',
+                  icon: Palmtree,
+                  params: { isAdminView: true },
+                  badge: badges.vacations,
+                },
+              ],
+            },
+          ]
+        : []),
+    ],
+    [role, badges]
+  );
 
   if (isDesktop) {
     return (
@@ -337,7 +303,6 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
           <SidebarLogoContainer>
             <SidebarLogo source={require('../../assets/velder.png')} />
           </SidebarLogoContainer>
-
           <SidebarScroll showsVerticalScrollIndicator={false}>
             {sections.map((section) => (
               <View key={section.title} style={{ marginBottom: 10 }}>
@@ -370,7 +335,6 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
               </View>
             ))}
           </SidebarScroll>
-
           <NavItem
             theme={theme}
             onPress={() => signOut(auth)}
@@ -387,7 +351,6 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
             </LogoutNavText>
           </NavItem>
         </Sidebar>
-
         <ContentArea>{children}</ContentArea>
       </RootContainer>
     );
@@ -400,7 +363,6 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
   return (
     <RootContainer theme={theme} isDesktop={false}>
       <ContentArea>{children}</ContentArea>
-
       <SafeAreaView edges={['bottom']} style={{ backgroundColor: theme.colors.surface }}>
         <BottomTabs theme={theme}>
           {visibleItems.map((item) => (
@@ -431,7 +393,6 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
           </TabItem>
         </BottomTabs>
       </SafeAreaView>
-
       <MoreMenuOverlay
         visible={moreVisible}
         transparent
@@ -457,7 +418,6 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
                   <X size={24} color={theme.colors.text} />
                 </TouchableOpacity>
               </View>
-
               {hiddenItems.map((item) => (
                 <MoreMenuItem
                   key={item.name + (item.params ? '_admin' : '')}
@@ -474,7 +434,6 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
                   <ChevronRight size={18} color="#ccc" />
                 </MoreMenuItem>
               ))}
-
               <MoreMenuItem
                 onPress={() => {
                   setMoreVisible(false);

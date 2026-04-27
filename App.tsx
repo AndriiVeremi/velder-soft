@@ -1,11 +1,11 @@
 import 'react-native-gesture-handler';
 import React, { useEffect } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, RouteProp } from '@react-navigation/native';
 import { createStackNavigator, StackNavigationProp } from '@react-navigation/stack';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { AppThemeProvider, useAppTheme } from './src/context/ThemeContext';
 import { MainLayout } from './src/components/Layout';
-import { View, ActivityIndicator, Text as RNText, Platform, LogBox } from 'react-native';
+import { View, ActivityIndicator, LogBox } from 'react-native';
 import styled from 'styled-components/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
@@ -31,28 +31,10 @@ import PendingApprovalScreen from './src/screens/PendingApprovalScreen';
 import ReportProblemScreen from './src/screens/ReportProblemScreen';
 import DirectorReportsScreen from './src/screens/DirectorReportsScreen';
 import AboutCompanyScreen from './src/screens/AboutCompanyScreen';
+import SendRequestScreen from './src/screens/SendRequestScreen';
+import { RootStackParamList } from './src/config/navigationTypes';
 
 LogBox.ignoreLogs(['Image: style.tintColor is deprecated', 'Blocked aria-hidden on an element']);
-
-type RootStackParamList = {
-  Home: undefined;
-  Tasks: undefined;
-  Dashboard: undefined;
-  Service: undefined;
-  Users: undefined;
-  Vacations: undefined;
-  Reminders: undefined;
-  Announcements: undefined;
-  Profile: undefined;
-  AddProject: undefined;
-  ProjectDetails: { project: unknown };
-  Login: undefined;
-  Register: undefined;
-  PendingApproval: undefined;
-  ReportProblem: undefined;
-  DirectorReports: undefined;
-  About: undefined;
-};
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -65,19 +47,24 @@ const CenteredContainer = styled.View`
 
 type RouteKey = keyof RootStackParamList;
 
-const withLayout =
-  (Screen: React.ComponentType<any>, routeName: RouteKey) =>
-  ({
-    navigation,
-    route,
-  }: {
-    navigation: StackNavigationProp<RootStackParamList, RouteKey>;
-    route: any;
-  }) => (
-    <MainLayout navigation={navigation} currentRoute={routeName}>
-      <Screen navigation={navigation} route={route} />
+interface LayoutWrapperProps<K extends RouteKey> {
+  navigation: StackNavigationProp<RootStackParamList, K>;
+  route: RouteProp<RootStackParamList, K>;
+}
+
+const withLayout = <K extends RouteKey>(
+  Screen: React.ComponentType<{
+    navigation: StackNavigationProp<RootStackParamList, K>;
+    route: RouteProp<RootStackParamList, K>;
+  }>,
+  routeName: K
+) => {
+  return (props: LayoutWrapperProps<K>) => (
+    <MainLayout navigation={props.navigation} currentRoute={routeName}>
+      <Screen {...props} />
     </MainLayout>
   );
+};
 
 const AuthenticatedStack = () => {
   const { theme } = useAppTheme();
@@ -135,6 +122,11 @@ const AuthenticatedStack = () => {
         options={{ title: 'Profil' }}
       />
       <Stack.Screen
+        name="LiniaDoSzefa"
+        component={withLayout(SendRequestScreen, 'LiniaDoSzefa')}
+        options={{ title: 'Linia do Szefa' }}
+      />
+      <Stack.Screen
         name="ReportProblem"
         component={withLayout(ReportProblemScreen, 'ReportProblem')}
         options={{ title: 'Zgłoś problem' }}
@@ -165,12 +157,11 @@ const AuthenticatedStack = () => {
 
 const RootNavigation = () => {
   const { user, isActive, loading } = useAuth();
-  const { theme } = useAppTheme();
 
   if (loading) {
     return (
       <CenteredContainer>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <ActivityIndicator size="large" color="#008744" />
       </CenteredContainer>
     );
   }

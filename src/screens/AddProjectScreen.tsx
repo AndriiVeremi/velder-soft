@@ -46,6 +46,7 @@ const Input = styled.TextInput`
   border-radius: ${(props) => props.theme.borderRadius.md}px;
   border: 1px solid ${(props) => props.theme.colors.border};
   font-size: 16px;
+  color: ${(props) => props.theme.colors.text};
 `;
 
 const FilePickerButton = styled.TouchableOpacity`
@@ -156,11 +157,13 @@ const LoadingSpinner = styled(ActivityIndicator)`
   margin-right: 10px;
 `;
 
-const AddProjectScreen = ({ navigation }: Props) => {
+const AddProjectScreen = ({ navigation, route }: Props) => {
   const { theme } = useAppTheme();
+  const { hospitalId, departmentId, hospitalName, departmentName } = route.params || {};
+
   const [title, setTitle] = useState('');
-  const [hospital, setHospital] = useState('');
-  const [department, setDepartment] = useState('');
+  const [hospital, setHospital] = useState(hospitalName || '');
+  const [department, setDepartment] = useState(departmentName || '');
   const [description, setDescription] = useState('');
   const [pdfFile, setPdfFile] = useState<DocumentPickerAsset | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -200,8 +203,8 @@ const AddProjectScreen = ({ navigation }: Props) => {
 
       if (!result.canceled) {
         const file = result.assets[0];
-        if (file.size && file.size > 10 * 1024 * 1024) {
-          notify.error('Plik jest zbyt duży. Maksymalny rozmiar to 10MB.');
+        if (file.size && file.size > 20 * 1024 * 1024) {
+          notify.error('Plik jest zbyt duży. Maksymalny rozmiar to 20MB.');
           return;
         }
         setPdfFile(file);
@@ -223,19 +226,23 @@ const AddProjectScreen = ({ navigation }: Props) => {
       const response = await fetch(pdfFile.uri);
       const blob = await response.blob();
       const timestamp = Date.now();
-      const sanitizedHospital = hospital.trim().replace(/\s+/g, '_');
-      const sanitizedDept = department.trim().replace(/\s+/g, '_');
-      const filename = `projects/${sanitizedHospital}/${sanitizedDept}/${timestamp}_${pdfFile.name.replace(/\s+/g, '_')}`;
+
+      const pathHospital = hospitalId || hospital.trim().replace(/\s+/g, '_');
+      const pathDept = departmentId || department.trim().replace(/\s+/g, '_');
+      const filename = `projects/${pathHospital}/${pathDept}/${timestamp}_${pdfFile.name.replace(/\s+/g, '_')}`;
 
       const storageRef = ref(storage, filename);
+      const metadata = { contentType: 'application/pdf' };
 
-      await uploadBytes(storageRef, blob);
+      await uploadBytes(storageRef, blob, metadata);
       const pdfUrl = await getDownloadURL(storageRef);
 
       await addDoc(collection(db, 'projects'), {
         title,
         hospital: hospital.trim(),
         department: department.trim(),
+        hospitalId: hospitalId || null,
+        departmentId: departmentId || null,
         description,
         pdfUrl,
         pdfPath: filename,
@@ -276,7 +283,7 @@ const AddProjectScreen = ({ navigation }: Props) => {
     >
       <Container theme={theme}>
         <FormWrapper theme={theme}>
-          <Label theme={theme}>Nazwa dokumentu / projektu</Label>
+          <Label theme={theme}>Nazwa dokumentu</Label>
           <Input
             theme={theme}
             placeholder="Np. Schemat instalacji tlenu"
@@ -285,34 +292,51 @@ const AddProjectScreen = ({ navigation }: Props) => {
             placeholderTextColor={theme.colors.textSecondary}
           />
 
-          <Label theme={theme}>Szpital (Folder главні)</Label>
-          <Input
-            theme={theme}
-            placeholder="Np. Szpital Uniwersytecki"
-            value={hospital}
-            onChangeText={setHospital}
-            placeholderTextColor={theme.colors.textSecondary}
-          />
-          {renderSuggestions(
-            existingHospitals.filter(
-              (h) => h.toLowerCase().includes(hospital.toLowerCase()) && h !== hospital
-            ),
-            setHospital
+          {!hospitalId && (
+            <>
+              <Label theme={theme}>Szpital</Label>
+              <Input
+                theme={theme}
+                placeholder="Np. Szpital Uniwersytecki"
+                value={hospital}
+                onChangeText={setHospital}
+                placeholderTextColor={theme.colors.textSecondary}
+              />
+              {renderSuggestions(
+                existingHospitals.filter(
+                  (h) => h.toLowerCase().includes(hospital.toLowerCase()) && h !== hospital
+                ),
+                setHospital
+              )}
+            </>
           )}
 
-          <Label theme={theme}>Oddział (Podfolder)</Label>
-          <Input
-            theme={theme}
-            placeholder="Np. Kardiologia"
-            value={department}
-            onChangeText={setDepartment}
-            placeholderTextColor={theme.colors.textSecondary}
-          />
-          {renderSuggestions(
-            existingDepartments.filter(
-              (d) => d.toLowerCase().includes(department.toLowerCase()) && d !== department
-            ),
-            setDepartment
+          {!departmentId && (
+            <>
+              <Label theme={theme}>Oddział</Label>
+              <Input
+                theme={theme}
+                placeholder="Np. Kardiologia"
+                value={department}
+                onChangeText={setDepartment}
+                placeholderTextColor={theme.colors.textSecondary}
+              />
+              {renderSuggestions(
+                existingDepartments.filter(
+                  (d) => d.toLowerCase().includes(department.toLowerCase()) && d !== department
+                ),
+                setDepartment
+              )}
+            </>
+          )}
+
+          {hospitalId && departmentId && (
+            <RNText style={{ color: theme.colors.textSecondary, marginTop: 10 }}>
+              Dodajesz do:{' '}
+              <RNText style={{ fontWeight: 'bold' }}>
+                {hospitalName} {' > '} {departmentName}
+              </RNText>
+            </RNText>
           )}
 
           <Label theme={theme}>Opis / Notatki</Label>
@@ -331,7 +355,7 @@ const AddProjectScreen = ({ navigation }: Props) => {
             <FilePickerButton theme={theme} onPress={pickDocument}>
               <Upload size={40} color={theme.colors.primary} />
               <PickerText theme={theme}>Kliknij, aby wybrać dokumentację</PickerText>
-              <MaxFileSizeText theme={theme}>Maksymalny rozmiar: 10MB</MaxFileSizeText>
+              <MaxFileSizeText theme={theme}>Maksymalny розмір: 20MB</MaxFileSizeText>
             </FilePickerButton>
           ) : (
             <SelectedFileCard theme={theme}>
@@ -352,7 +376,7 @@ const AddProjectScreen = ({ navigation }: Props) => {
                 <SubmitButtonText theme={theme}>Przesyłanie...</SubmitButtonText>
               </LoadingContainer>
             ) : (
-              <SubmitButtonText theme={theme}>Utwórz i opublikuj projekt</SubmitButtonText>
+              <SubmitButtonText theme={theme}>Opublikuj dokument</SubmitButtonText>
             )}
           </SubmitButton>
         </FormWrapper>

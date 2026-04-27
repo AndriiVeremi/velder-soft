@@ -10,38 +10,18 @@ import {
   ScrollView,
 } from 'react-native';
 import styled from 'styled-components/native';
-import { doc, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, onSnapshot, deleteDoc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
-import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { db, storage } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
-import { FileText, ExternalLink, CheckCircle, Clock, Trash2 } from 'lucide-react-native';
+import { FileText, ExternalLink, Trash2 } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 const isDesktop = isWeb && width > 768;
-
-const StatusBadge = styled.TouchableOpacity<{ status?: string; canEdit?: boolean }>`
-  background-color: ${(props) =>
-    props.status === 'COMPLETED' ? props.theme.colors.success : '#FFA000'};
-  padding: 6px 12px;
-  border-radius: 20px;
-  align-self: flex-start;
-  margin-top: 10px;
-  flex-direction: row;
-  align-items: center;
-  opacity: ${(props) => (props.canEdit ? 1 : 0.9)};
-`;
-
-const StatusText = styled(RNText)`
-  color: white;
-  font-size: 14px;
-  font-weight: bold;
-  margin-left: 6px;
-`;
 
 const Container = styled.View`
   flex: 1;
@@ -86,7 +66,7 @@ const Description = styled(RNText)`
 const PdfButton = styled.TouchableOpacity`
   flex-direction: row;
   align-items: center;
-  margin-top: 20px;
+  margin-top: 25px;
   background-color: #f0f7ff;
   padding: 16px;
   border-radius: ${(props) => props.theme.borderRadius.md}px;
@@ -106,7 +86,6 @@ const ProjectDetailsScreen = ({ route, navigation }: any) => {
   const { role } = useAuth();
   const { theme } = useAppTheme();
   const [project, setProject] = useState(initialProject);
-  const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
@@ -121,17 +100,6 @@ const ProjectDetailsScreen = ({ route, navigation }: any) => {
 
     return () => unsubProject();
   }, [initialProject.id, navigation]);
-
-  const toggleProjectStatus = async () => {
-    if (role !== 'DIRECTOR') return;
-    const newStatus = project.status === 'COMPLETED' ? 'IN_PROGRESS' : 'COMPLETED';
-    try {
-      await updateDoc(doc(db, 'projects', project.id), { status: newStatus });
-      notify.success(newStatus === 'COMPLETED' ? 'Zakończony' : 'W toku');
-    } catch (error) {
-      notify.error('Błąd statusu');
-    }
-  };
 
   const handleDeleteProject = async () => {
     if (role !== 'DIRECTOR') return;
@@ -154,7 +122,7 @@ const ProjectDetailsScreen = ({ route, navigation }: any) => {
     } else {
       Alert.alert('Usuń', 'Czy na pewno?', [
         { text: 'Nie' },
-        { text: 'Tak', onPress: performDelete },
+        { text: 'Tak', onPress: performDelete, style: 'destructive' },
       ]);
     }
   };
@@ -163,15 +131,14 @@ const ProjectDetailsScreen = ({ route, navigation }: any) => {
     if (!project.pdfUrl) return;
 
     if (Platform.OS === 'web') {
-      if (project.pdfUrl.startsWith('https://') || project.pdfUrl.startsWith('http://')) {
-        window.open(project.pdfUrl, '_blank');
-      } else {
-        notify.error('Nieprawidłowy adres URL dokumentu');
-      }
+      window.open(project.pdfUrl, '_blank');
     } else {
       setDownloading(true);
       try {
-        await WebBrowser.openBrowserAsync(project.pdfUrl);
+        await WebBrowser.openBrowserAsync(project.pdfUrl, {
+          enableBarCollapsing: true,
+          showTitle: true,
+        });
       } catch (error) {
         console.error(error);
         notify.error('Nie udało się otworzyć dokumentu PDF');
@@ -201,22 +168,6 @@ const ProjectDetailsScreen = ({ route, navigation }: any) => {
               </TouchableOpacity>
             )}
           </View>
-
-          <StatusBadge
-            theme={theme}
-            status={project.status}
-            onPress={toggleProjectStatus}
-            disabled={role !== 'DIRECTOR'}
-          >
-            {project.status === 'COMPLETED' ? (
-              <CheckCircle size={16} color="white" />
-            ) : (
-              <Clock size={16} color="white" />
-            )}
-            <StatusText theme={theme}>
-              {project.status === 'COMPLETED' ? 'Zakończony' : 'W toku'}
-            </StatusText>
-          </StatusBadge>
 
           <Description theme={theme}>{project.description}</Description>
 

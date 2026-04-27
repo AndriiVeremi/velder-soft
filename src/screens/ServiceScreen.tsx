@@ -5,7 +5,6 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  Image,
   Modal,
   ScrollView,
   Platform,
@@ -21,639 +20,429 @@ import {
   onSnapshot,
   addDoc,
   serverTimestamp,
-  updateDoc,
   doc,
   deleteDoc,
+  updateDoc,
+  Timestamp,
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import * as ImagePicker from 'expo-image-picker';
-import { Calendar } from 'react-native-calendars';
-import { db, storage, auth } from '../config/firebase';
+import { db } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
+import { pickAndUploadPhoto } from '../utils/upload';
+import { TimePicker, ModalOverlay, ModalContent } from '../components/CommonUI';
 import {
   Wrench,
   Plus,
-  Calendar as CalendarIcon,
+  Clock,
+  CheckCircle2,
+  Trash2,
   Camera,
   X,
-  ClipboardCheck,
-  Trash2,
-  ChevronUp,
-  ChevronDown,
+  ChevronRight,
+  AlertTriangle,
 } from 'lucide-react-native';
 import { format } from 'date-fns';
+import { pl } from 'date-fns/locale';
 import { StackScreenProps } from '@react-navigation/stack';
 
 const { width } = Dimensions.get('window');
-
-interface ServicePhoto {
-  url: string;
-  path: string;
-  comment?: string;
-}
-
-interface ServiceRecord {
-  id: string;
-  title: string;
-  description: string;
-  photos: ServicePhoto[];
-  serviceDate: string;
-  serviceTime?: string;
-  status: 'PENDING' | 'DONE';
-  createdAt: any;
-}
 
 const Container = styled.View`
   flex: 1;
   background-color: ${(props) => props.theme.colors.background};
 `;
 
-const Header = styled.View`
-  padding: ${(props) => props.theme.spacing.lg}px;
+const ServiceCard = styled.View<{ status: string }>`
   background-color: ${(props) => props.theme.colors.surface};
-  border-bottom-width: 1px;
-  border-bottom-color: ${(props) => props.theme.colors.border};
-`;
-
-const Title = styled(RNText)`
-  font-size: 22px;
-  font-weight: bold;
-  color: ${(props) => props.theme.colors.text};
-`;
-
-const ServiceCard = styled.View`
-  background-color: ${(props) => props.theme.colors.surface};
-  margin: ${(props) => props.theme.spacing.sm}px ${(props) => props.theme.spacing.md}px;
-  border-radius: ${(props) => props.theme.borderRadius.md}px;
-  border: 1px solid ${(props) => props.theme.colors.border};
-  overflow: hidden;
-`;
-
-const CardContent = styled.View`
-  padding: ${(props) => props.theme.spacing.md}px;
-`;
-
-const CardTitle = styled(RNText)`
-  font-size: 18px;
-  font-weight: bold;
-  color: ${(props) => props.theme.colors.primary};
-`;
-
-const CardDesc = styled(RNText)`
-  font-size: 14px;
-  color: ${(props) => props.theme.colors.text};
-  margin-top: 5px;
-`;
-
-const PhotoStrip = styled.ScrollView`
-  flex-direction: row;
-  margin-top: 15px;
-`;
-
-const PhotoItem = styled.View`
-  width: 160px;
-  margin-right: 12px;
-  background-color: ${(props) => props.theme.colors.background};
-  border-radius: 10px;
-  padding: 5px;
-  border: 1px solid ${(props) => props.theme.colors.border};
-`;
-
-const PhotoImg = styled.Image`
-  width: 150px;
-  height: 110px;
-  border-radius: 8px;
-`;
-
-const PhotoComment = styled(RNText)`
-  font-size: 11px;
-  color: ${(props) => props.theme.colors.textSecondary};
-  margin-top: 6px;
-  font-style: italic;
-`;
-
-const Badge = styled.View<{ done: boolean }>`
-  padding: 4px 12px;
-  border-radius: 20px;
-  background-color: ${(props) => (props.done ? props.theme.colors.success : '#FFA000')};
-  align-self: flex-start;
-  margin-bottom: 8px;
-  flex-direction: row;
-  align-items: center;
-`;
-
-const BadgeText = styled(RNText)`
-  color: white;
-  font-size: 10px;
-  font-weight: bold;
-  margin-left: 5px;
-`;
-
-const DateInfo = styled.View`
-  flex-direction: row;
-  align-items: center;
-  margin-top: 12px;
-  background-color: ${(props) => props.theme.colors.accent};
-  padding: 6px 12px;
-  border-radius: 6px;
-  align-self: flex-start;
-`;
-
-const AddButton = styled.TouchableOpacity`
-  background-color: ${(props) => props.theme.colors.primary};
-  width: 60px;
-  height: 60px;
-  border-radius: 30px;
-  position: absolute;
-  right: 20px;
-  bottom: 20px;
-  justify-content: center;
-  align-items: center;
-  elevation: 5;
-`;
-
-const ModalOverlay = styled.View`
-  flex: 1;
-  background-color: rgba(0, 0, 0, 0.5);
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-`;
-
-const ModalContent = styled(ScrollView)`
-  background-color: ${(props) => props.theme.colors.surface};
-  width: 100%;
-  max-width: 600px;
-  border-radius: 15px;
-  max-height: 95%;
-`;
-
-const LoaderContainer = styled.View`
-  flex: 1;
-  justify-content: center;
-  align-items: center;
+  margin: 8px 15px;
+  padding: 16px;
+  border-radius: 12px;
+  border-width: 1px;
+  border-color: ${(props) => props.theme.colors.border};
+  border-left-width: 5px;
+  border-left-color: ${(props) =>
+    props.status === 'DONE' ? props.theme.colors.success : props.theme.colors.warning};
 `;
 
 const CardHeader = styled.View`
   flex-direction: row;
   justify-content: space-between;
+  align-items: flex-start;
 `;
 
-const DateText = styled(RNText)`
-  font-size: 12px;
-  margin-left: 6px;
-  color: ${(props) => props.theme.colors.primary};
+const HospitalName = styled(RNText)`
+  font-size: 16px;
   font-weight: bold;
+  color: ${(props) => props.theme.colors.text};
+  flex: 1;
 `;
 
-const AddPhotoPlaceholder = styled.TouchableOpacity`
-  width: 160px;
-  height: 110px;
-  background-color: ${(props) => props.theme.colors.background};
-  border-radius: 10px;
-  justify-content: center;
-  align-items: center;
-  border-style: dashed;
-  border-width: 1px;
-  border-color: ${(props) => props.theme.colors.border};
-`;
-
-const PlaceholderText = styled(RNText)`
-  font-size: 11px;
+const DeptName = styled(RNText)`
+  font-size: 14px;
   color: ${(props) => props.theme.colors.textSecondary};
-  margin-top: 5px;
+  margin-top: 2px;
 `;
 
-const EmptyRecordsText = styled(RNText)`
-  text-align: center;
-  margin-top: 50px;
-  color: ${(props) => props.theme.colors.textSecondary};
+const Description = styled(RNText)`
+  font-size: 14px;
+  color: ${(props) => props.theme.colors.text};
+  margin-top: 10px;
+  line-height: 20px;
 `;
 
-const ModalInner = styled.View`
-  padding: 25px;
-`;
-
-const ModalHeader = styled.View`
+const MetaRow = styled.View`
   flex-direction: row;
-  justify-content: space-between;
-  margin-bottom: 20px;
-`;
-
-const ModalTitleText = styled(RNText)`
-  font-size: 20px;
-  font-weight: bold;
-  color: ${(props) => props.theme.colors.text};
-`;
-
-const InputLabel = styled(RNText)`
-  font-size: 12px;
-  font-weight: bold;
-  color: ${(props) => props.theme.colors.textSecondary};
-  margin-bottom: 5px;
-`;
-
-const StyledTextInput = styled.TextInput`
-  background-color: ${(props) => props.theme.colors.background};
-  padding: 12px;
-  border-radius: 8px;
-  margin-bottom: 15px;
-  border: 1px solid ${(props) => props.theme.colors.border};
-  color: ${(props) => props.theme.colors.text};
-`;
-
-const TextArea = styled(StyledTextInput)`
-  height: 80px;
-`;
-
-const SubmitButton = styled.TouchableOpacity<{ success?: boolean }>`
-  background-color: ${(props) =>
-    props.success ? props.theme.colors.success : props.theme.colors.primary};
-  padding: 18px;
-  border-radius: 10px;
   align-items: center;
-  margin-top: 20px;
+  margin-top: 12px;
 `;
 
-const SubmitButtonText = styled(RNText)`
-  color: white;
-  font-weight: bold;
+const MetaItem = styled.View`
+  flex-direction: row;
+  align-items: center;
+  margin-right: 15px;
 `;
 
-const PhotoModalContainer = styled.View`
-  background-color: ${(props) => props.theme.colors.surface};
-  width: 90%;
-  border-radius: 15px;
-  padding: 20px;
-  border: 1px solid ${(props) => props.theme.colors.border};
-`;
-
-const PhotoPreview = styled.Image`
-  width: 100%;
-  height: 200px;
-  border-radius: 10px;
-  margin-bottom: 15px;
+const MetaText = styled(RNText)`
+  font-size: 12px;
+  color: ${(props) => props.theme.colors.textSecondary};
+  margin-left: 5px;
 `;
 
 const ActionButtons = styled.View`
   flex-direction: row;
-  justify-content: space-between;
+  justify-content: flex-end;
+  margin-top: 15px;
+  border-top-width: 1px;
+  border-top-color: ${(props) => props.theme.colors.background};
+  padding-top: 10px;
 `;
 
-const TimePickerContainer = styled.View`
-  flex-direction: row;
-  align-items: center;
-  background-color: ${(props) => props.theme.colors.background};
-  padding: 15px;
-  border-radius: 12px;
-  margin-top: 10px;
+const ActionBtn = styled.TouchableOpacity`
+  padding: 8px;
+  margin-left: 10px;
+`;
+
+const Fab = styled.TouchableOpacity`
+  position: absolute;
+  bottom: 25px;
+  right: 25px;
+  width: 60px;
+  height: 60px;
+  border-radius: 30px;
+  background-color: ${(props) => props.theme.colors.primary};
   justify-content: center;
-  border: 1px solid ${(props) => props.theme.colors.border};
-`;
-
-const TimeBlock = styled.View`
   align-items: center;
-  width: 50px;
+  elevation: 5;
 `;
 
-const TimeValue = styled(RNText)`
-  font-size: 24px;
-  font-weight: bold;
-  margin: 5px 0;
-  color: ${(props) => props.theme.colors.text};
-`;
-
-const TimeSeparator = styled(RNText)`
-  font-size: 24px;
-  font-weight: bold;
-  margin-horizontal: 10px;
-  color: ${(props) => props.theme.colors.text};
-`;
-
-const CancelBtn = styled.TouchableOpacity`
-  padding: 15px;
-`;
-
-const ReportBtn = styled.TouchableOpacity<{ disabled?: boolean }>`
-  background-color: ${(props) =>
-    props.disabled ? props.theme.colors.border : props.theme.colors.success};
-  padding: 15px;
+const StyledInput = styled.TextInput`
+  background-color: ${(props) => props.theme.colors.background};
   border-radius: 8px;
-  min-width: 120px;
-  align-items: center;
+  padding: 12px;
+  margin-bottom: 15px;
+  color: ${(props) => props.theme.colors.text};
+  border-width: 1px;
+  border-color: ${(props) => props.theme.colors.border};
 `;
 
-type Props = StackScreenProps<any, 'Service'>;
+const Label = styled(RNText)`
+  font-size: 14px;
+  font-weight: bold;
+  color: ${(props) => props.theme.colors.textSecondary};
+  margin-bottom: 8px;
+`;
 
-const ServiceScreen = ({ navigation, route }: Props) => {
-  const { role } = useAuth();
+const PhotoPreview = styled.Image`
+  width: 100%;
+  height: 150px;
+  border-radius: 8px;
+  margin-top: 10px;
+`;
+
+interface Service {
+  id: string;
+  hospital: string;
+  department: string;
+  description: string;
+  status: 'PENDING' | 'DONE';
+  photoUrl?: string;
+  photoPath?: string;
+  createdAt: Timestamp | null;
+  createdBy: string;
+  authorName: string;
+}
+
+const ServiceScreen = () => {
+  const { user, role, userData } = useAuth();
   const { theme } = useAppTheme();
-  const [records, setRecords] = useState<ServiceRecord[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
-  const [photoModalVisible, setPhotoModalVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [hour, setHour] = useState(10);
-  const [minute, setMinute] = useState(0);
-  const [activeRecordId, setActiveRecordId] = useState<string | null>(null);
-  const [comment, setComment] = useState('');
-  const [tempPhoto, setTempPhoto] = useState<string | null>(null);
 
-  const adjustTime = (type: 'h' | 'm', val: number) => {
-    if (type === 'h')
-      setHour((h) => {
-        let n = h + val;
-        return n > 23 ? 0 : n < 0 ? 23 : n;
-      });
-    else
-      setMinute((m) => {
-        let n = m + val;
-        return n > 55 ? 0 : n < 0 ? 55 : n;
-      });
-  };
+  // Form state
+  const [hospital, setHospital] = useState('');
+  const [department, setDepartment] = useState('');
+  const [description, setDescription] = useState('');
 
   useEffect(() => {
-    const q = query(collection(db, 'services'), orderBy('serviceDate', 'desc'));
-    const unsubscribe = onSnapshot(q, (snap) => {
-      const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as ServiceRecord);
-      setRecords(data);
+    const q = query(collection(db, 'services'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Service);
+      setServices(data);
       setLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
-  const handleCreate = async () => {
-    if (!title.trim()) return notify.error('Podaj nazwę obiektu');
-    const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+  const handleAddService = async () => {
+    if (!hospital.trim() || !department.trim() || !description.trim()) {
+      return notify.error('Wypełnij wszystkie pola');
+    }
+
     try {
       await addDoc(collection(db, 'services'), {
-        title,
-        description,
-        serviceDate: selectedDate,
-        serviceTime: timeStr,
+        hospital: hospital.trim(),
+        department: department.trim(),
+        description: description.trim(),
         status: 'PENDING',
-        photos: [],
+        createdBy: user?.uid,
+        authorName: userData?.name || 'Pracownik',
         createdAt: serverTimestamp(),
       });
       setModalVisible(false);
-      setTitle('');
+      setHospital('');
+      setDepartment('');
       setDescription('');
-      setHour(10);
-      setMinute(0);
-      notify.success('Zlecenie serwisowe utworzone');
+      notify.success('Zgłoszenie dodane');
     } catch (e) {
       notify.error('Błąd zapisu');
     }
   };
 
-  const startAddPhoto = async (recordId: string) => {
-    let result = await ImagePicker.launchCameraAsync({ quality: 0.5, allowsEditing: false });
-    if (!result.canceled) {
-      setTempPhoto(result.assets[0].uri);
-      setActiveRecordId(recordId);
-      setPhotoModalVisible(true);
-    }
-  };
-
-  const uploadPhotoWithComment = async () => {
-    if (!activeRecordId || !tempPhoto) return;
-    setUploading(true);
+  const toggleStatus = async (service: Service) => {
+    if (role !== 'DIRECTOR') return;
+    const newStatus = service.status === 'DONE' ? 'PENDING' : 'DONE';
     try {
-      const response = await fetch(tempPhoto);
-      const blob = await response.blob();
-      const filename = `service/${activeRecordId}/${Date.now()}.jpg`;
-      const storageRef = ref(storage, filename);
-      await uploadBytes(storageRef, blob);
-      const url = await getDownloadURL(storageRef);
-
-      const record = records.find((r) => r.id === activeRecordId);
-      const newPhotos = [...(record?.photos || []), { url, path: filename, comment }];
-
-      await updateDoc(doc(db, 'services', activeRecordId), {
-        photos: newPhotos,
-        status: 'DONE',
-      });
-
-      setPhotoModalVisible(false);
-      setTempPhoto(null);
-      setComment('');
-      notify.success('Raport serwisowy dodany');
+      await updateDoc(doc(db, 'services', service.id), { status: newStatus });
+      notify.success('Status zaktualizowany');
     } catch (e) {
-      notify.error('Błąd uploadu');
-    } finally {
-      setUploading(false);
+      notify.error('Błąd aktualizacji');
     }
   };
 
-  const deleteRecord = (id: string) => {
-    Alert.alert('Usuń zlecenie', 'Czy na pewno chcesz usunąć ten wpis serwisowy?', [
-      { text: 'Nie' },
-      {
-        text: 'Tak',
-        style: 'destructive',
-        onPress: async () => await deleteDoc(doc(db, 'services', id)),
-      },
-    ]);
+  const handleDelete = (id: string) => {
+    if (role !== 'DIRECTOR') return;
+    const perform = async () => {
+      try {
+        await deleteDoc(doc(db, 'services', id));
+        notify.success('Usunięto');
+      } catch (e) {
+        notify.error('Błąd usuwania');
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Usunąć zgłoszenie?')) perform();
+    } else {
+      Alert.alert('Usuń', 'Czy na pewno?', [
+        { text: 'Anuluj' },
+        { text: 'Tak', onPress: perform, style: 'destructive' },
+      ]);
+    }
   };
 
-  if (loading)
-    return (
-      <LoaderContainer>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </LoaderContainer>
-    );
+  const handleAddPhoto = async (service: Service) => {
+    setUploading(true);
+    const result = await pickAndUploadPhoto('service_photos', `${service.id}_${Date.now()}.jpg`);
+    if (result) {
+      try {
+        await updateDoc(doc(db, 'services', service.id), {
+          photoUrl: result.photoUrl,
+          photoPath: result.photoPath,
+          status: 'DONE',
+        });
+        notify.success('Zdjęcie dodane i status zmieniony');
+      } catch (e) {
+        notify.error('Błąd zapisu');
+      }
+    }
+    setUploading(false);
+  };
 
   return (
     <Container theme={theme}>
-      <Header theme={theme}>
-        <Title theme={theme}>Serwis i Konserwacja</Title>
-      </Header>
-
-      <FlatList
-        data={records}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <ServiceCard theme={theme}>
-            <CardContent theme={theme}>
+      {loading ? (
+        <ActivityIndicator style={{ marginTop: 50 }} color={theme.colors.primary} />
+      ) : (
+        <FlatList
+          data={services}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingVertical: 10 }}
+          renderItem={({ item }) => (
+            <ServiceCard theme={theme} status={item.status}>
               <CardHeader>
-                <Badge done={item.status === 'DONE'} theme={theme}>
-                  {item.status === 'DONE' ? (
-                    <ClipboardCheck size={14} color="white" />
-                  ) : (
-                    <Wrench size={14} color="white" />
-                  )}
-                  <BadgeText>{item.status === 'DONE' ? 'WYKONANO' : 'DO ZROBIENIA'}</BadgeText>
-                </Badge>
-                {role === 'DIRECTOR' && (
-                  <TouchableOpacity onPress={() => deleteRecord(item.id)}>
-                    <Trash2 size={20} color={theme.colors.border} />
-                  </TouchableOpacity>
-                )}
+                <View style={{ flex: 1 }}>
+                  <HospitalName theme={theme}>{item.hospital}</HospitalName>
+                  <DeptName theme={theme}>{item.department}</DeptName>
+                </View>
+                <View
+                  style={{
+                    backgroundColor: item.status === 'DONE' ? '#e8f5e9' : '#fff3e0',
+                    padding: 4,
+                    borderRadius: 4,
+                  }}
+                >
+                  <RNText
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 'bold',
+                      color: item.status === 'DONE' ? '#2e7d32' : '#e65100',
+                    }}
+                  >
+                    {item.status === 'DONE' ? 'ZAKOŃCZONE' : 'OCZEKUJE'}
+                  </RNText>
+                </View>
               </CardHeader>
 
-              <CardTitle theme={theme}>{item.title}</CardTitle>
-              <CardDesc theme={theme}>{item.description}</CardDesc>
+              <Description theme={theme}>{item.description}</Description>
 
-              <DateInfo>
-                <CalendarIcon size={14} color={theme.colors.primary} />
-                <DateText theme={theme}>
-                  Termin: {item.serviceDate} {item.serviceTime ? `@ ${item.serviceTime}` : ''}
-                </DateText>
-              </DateInfo>
+              <MetaRow>
+                <MetaItem>
+                  <Clock size={12} color={theme.colors.textSecondary} />
+                  <MetaText theme={theme}>
+                    {item.createdAt
+                      ? format(item.createdAt.toDate(), 'd MMM, HH:mm', { locale: pl })
+                      : '...'}
+                  </MetaText>
+                </MetaItem>
+                <MetaItem>
+                  <RNText style={{ fontSize: 12, color: theme.colors.primary, fontWeight: 'bold' }}>
+                    {item.authorName}
+                  </RNText>
+                </MetaItem>
+              </MetaRow>
 
-              <PhotoStrip horizontal showsHorizontalScrollIndicator={false}>
-                {item.photos?.map((p) => (
-                  <PhotoItem key={p.path}>
-                    <PhotoImg source={{ uri: p.url }} />
-                    <PhotoComment theme={theme} numberOfLines={2}>
-                      {p.comment || 'Bez opisu'}
-                    </PhotoComment>
-                  </PhotoItem>
-                ))}
-                {item.status === 'PENDING' && (
-                  <AddPhotoPlaceholder onPress={() => startAddPhoto(item.id)} theme={theme}>
-                    <Camera size={28} color={theme.colors.textSecondary} />
-                    <PlaceholderText theme={theme}>Dodaj raport foto</PlaceholderText>
-                  </AddPhotoPlaceholder>
+              {item.photoUrl && <PhotoPreview source={{ uri: item.photoUrl }} />}
+
+              <ActionButtons theme={theme}>
+                {role === 'DIRECTOR' && (
+                  <ActionBtn onPress={() => toggleStatus(item)}>
+                    <CheckCircle2
+                      size={20}
+                      color={
+                        item.status === 'DONE' ? theme.colors.success : theme.colors.textSecondary
+                      }
+                    />
+                  </ActionBtn>
                 )}
-              </PhotoStrip>
-            </CardContent>
-          </ServiceCard>
-        )}
-        ListEmptyComponent={
-          <EmptyRecordsText theme={theme}>Brak zleceń serwisowych.</EmptyRecordsText>
-        }
-      />
-
-      {role === 'DIRECTOR' && (
-        <AddButton theme={theme} onPress={() => setModalVisible(true)}>
-          <Plus size={30} color="white" />
-        </AddButton>
+                <ActionBtn onPress={() => handleAddPhoto(item)}>
+                  <Camera
+                    size={20}
+                    color={item.photoUrl ? theme.colors.success : theme.colors.textSecondary}
+                  />
+                </ActionBtn>
+                {role === 'DIRECTOR' && (
+                  <ActionBtn onPress={() => handleDelete(item.id)}>
+                    <Trash2 size={20} color={theme.colors.error} opacity={0.6} />
+                  </ActionBtn>
+                )}
+              </ActionButtons>
+            </ServiceCard>
+          )}
+          ListEmptyComponent={
+            <RNText
+              style={{ textAlign: 'center', marginTop: 50, color: theme.colors.textSecondary }}
+            >
+              Brak zgłoszeń serwisowych.
+            </RNText>
+          }
+        />
       )}
+
+      <Fab theme={theme} onPress={() => setModalVisible(true)}>
+        <Plus size={30} color="white" />
+      </Fab>
 
       <Modal visible={modalVisible} transparent animationType="slide">
         <ModalOverlay>
-          <ModalContent>
-            <ModalInner theme={theme}>
-              <ModalHeader theme={theme}>
-                <ModalTitleText theme={theme}>Nowe zlecenie serwisu</ModalTitleText>
-                <TouchableOpacity onPress={() => setModalVisible(false)}>
-                  <X size={24} color={theme.colors.text} />
-                </TouchableOpacity>
-              </ModalHeader>
+          <ModalContent theme={theme}>
+            <View
+              style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}
+            >
+              <RNText style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.text }}>
+                Nowe zgłoszenie
+              </RNText>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <X size={24} color={theme.colors.text} />
+              </TouchableOpacity>
+            </View>
 
-              <InputLabel theme={theme}>URZĄDZENIE / OBIEKT</InputLabel>
-              <StyledTextInput
-                theme={theme}
-                placeholder="np. Centrala wentylacyjna"
-                value={title}
-                onChangeText={setTitle}
-                placeholderTextColor={theme.colors.textSecondary}
-              />
+            <Label theme={theme}>Szpital</Label>
+            <StyledInput
+              theme={theme}
+              placeholder="Nazwa szpitala"
+              value={hospital}
+              onChangeText={setHospital}
+              placeholderTextColor={theme.colors.textSecondary}
+            />
 
-              <InputLabel theme={theme}>OPIS PRAC</InputLabel>
-              <TextArea
-                theme={theme}
-                placeholder="Co trzeba sprawdzić/naprawić?"
-                value={description}
-                onChangeText={setDescription}
-                multiline
-                placeholderTextColor={theme.colors.textSecondary}
-              />
+            <Label theme={theme}>Oddział</Label>
+            <StyledInput
+              theme={theme}
+              placeholder="Nazwa oddziału"
+              value={department}
+              onChangeText={setDepartment}
+              placeholderTextColor={theme.colors.textSecondary}
+            />
 
-              <InputLabel theme={theme}>PLANOWANA DATA</InputLabel>
-              <Calendar
-                onDayPress={(day) => setSelectedDate(day.dateString)}
-                markedDates={{
-                  [selectedDate]: { selected: true, selectedColor: theme.colors.primary },
-                }}
-                theme={{
-                  backgroundColor: theme.colors.surface,
-                  calendarBackground: theme.colors.surface,
-                  textSectionTitleColor: theme.colors.textSecondary,
-                  selectedDayBackgroundColor: theme.colors.primary,
-                  selectedDayTextColor: '#ffffff',
-                  todayTextColor: theme.colors.primary,
-                  dayTextColor: theme.colors.text,
-                  textDisabledColor: theme.colors.border,
-                  dotColor: theme.colors.primary,
-                  selectedDotColor: '#ffffff',
-                  arrowColor: theme.colors.primary,
-                  disabledArrowColor: theme.colors.border,
-                  monthTextColor: theme.colors.text,
-                  indicatorColor: theme.colors.primary,
-                  textDayFontWeight: '400',
-                  textMonthFontWeight: 'bold',
-                  textDayHeaderFontWeight: '400',
-                }}
-              />
+            <Label theme={theme}>Opis problemu / Prace</Label>
+            <StyledInput
+              theme={theme}
+              placeholder="Co należy zrobić або що зроблено..."
+              multiline
+              numberOfLines={4}
+              value={description}
+              onChangeText={setDescription}
+              placeholderTextColor={theme.colors.textSecondary}
+              style={{ height: 100, textAlignVertical: 'top' }}
+            />
 
-              <InputLabel theme={theme} style={{ marginTop: 20 }}>
-                GODZINA
-              </InputLabel>
-              <TimePickerContainer theme={theme}>
-                <TimeBlock>
-                  <TouchableOpacity onPress={() => adjustTime('h', 1)}>
-                    <ChevronUp size={24} color={theme.colors.primary} />
-                  </TouchableOpacity>
-                  <TimeValue theme={theme}>{hour.toString().padStart(2, '0')}</TimeValue>
-                  <TouchableOpacity onPress={() => adjustTime('h', -1)}>
-                    <ChevronDown size={24} color={theme.colors.primary} />
-                  </TouchableOpacity>
-                </TimeBlock>
-                <TimeSeparator theme={theme}>:</TimeSeparator>
-                <TimeBlock>
-                  <TouchableOpacity onPress={() => adjustTime('m', 5)}>
-                    <ChevronUp size={24} color={theme.colors.primary} />
-                  </TouchableOpacity>
-                  <TimeValue theme={theme}>{minute.toString().padStart(2, '0')}</TimeValue>
-                  <TouchableOpacity onPress={() => adjustTime('m', -5)}>
-                    <ChevronDown size={24} color={theme.colors.primary} />
-                  </TouchableOpacity>
-                </TimeBlock>
-              </TimePickerContainer>
-
-              <SubmitButton onPress={handleCreate} theme={theme}>
-                <SubmitButtonText theme={theme}>WYŚLIJ DO SERWISU</SubmitButtonText>
-              </SubmitButton>
-            </ModalInner>
+            <TouchableOpacity
+              onPress={handleAddService}
+              style={{
+                backgroundColor: theme.colors.primary,
+                padding: 16,
+                borderRadius: 12,
+                marginTop: 20,
+                alignItems: 'center',
+              }}
+            >
+              <RNText style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>
+                Wyślij zgłoszenie
+              </RNText>
+            </TouchableOpacity>
           </ModalContent>
         </ModalOverlay>
       </Modal>
 
-      <Modal visible={photoModalVisible} transparent animationType="slide">
-        <ModalOverlay>
-          <PhotoModalContainer theme={theme}>
-            <ModalTitleText theme={theme}>Opis wykonanych prac</ModalTitleText>
-            {tempPhoto && <PhotoPreview source={{ uri: tempPhoto }} theme={theme} />}
-            <TextArea
-              theme={theme}
-              placeholder="Napisz co zostało zrobione..."
-              value={comment}
-              onChangeText={setComment}
-              multiline
-              placeholderTextColor={theme.colors.textSecondary}
-            />
-            <ActionButtons theme={theme}>
-              <CancelBtn onPress={() => setPhotoModalVisible(false)} theme={theme}>
-                <RNText style={{ color: theme.colors.textSecondary }}>Anuluj</RNText>
-              </CancelBtn>
-              <ReportBtn onPress={uploadPhotoWithComment} disabled={uploading} theme={theme}>
-                {uploading ? (
-                  <ActivityIndicator color="white" />
-                ) : (
-                  <SubmitButtonText theme={theme}>WYŚLIJ RAPORT</SubmitButtonText>
-                )}
-              </ReportBtn>
-            </ActionButtons>
-          </PhotoModalContainer>
-        </ModalOverlay>
-      </Modal>
+      {uploading && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(255,255,255,0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      )}
     </Container>
   );
 };

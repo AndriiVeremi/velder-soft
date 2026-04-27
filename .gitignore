@@ -44,3 +44,4 @@ yarn-error.*
 # Private docs (local only)
 docs/INSTALLATION.md
 docs/PROJECT_STATUS.md
+GEMINI.md
