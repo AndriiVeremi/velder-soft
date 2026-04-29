@@ -93,13 +93,13 @@ const ServiceTextWrapper = styled.View`
 `;
 
 const ServiceTitle = styled(RNText)`
-  font-size: 15px;
+  font-size: ${(props) => props.theme.fontSize.f15}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
 `;
 
 const ServiceDesc = styled(RNText)`
-  font-size: 13px;
+  font-size: ${(props) => props.theme.fontSize.sm}px;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-top: 2px;
 `;
@@ -121,14 +121,14 @@ const DeveloperInfo = styled.View`
 `;
 
 const DevLabel = styled(RNText)`
-  font-size: 12px;
+  font-size: ${(props) => props.theme.fontSize.f12}px;
   color: ${(props) => props.theme.colors.primary};
   font-weight: bold;
   text-transform: uppercase;
 `;
 
 const DevName = styled(RNText)`
-  font-size: 18px;
+  font-size: ${(props) => props.theme.fontSize.lg}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
 `;

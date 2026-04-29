@@ -19,14 +19,14 @@ const TimeBlock = styled.View`
 `;
 
 const TimeValue = styled(RNText)`
-  font-size: 24px;
+  font-size: ${(props) => props.theme.fontSize.f24}px;
   font-weight: bold;
   margin: 5px 0;
   color: ${(props) => props.theme.colors.text};
 `;
 
 const TimeSeparator = styled(RNText)`
-  font-size: 24px;
+  font-size: ${(props) => props.theme.fontSize.f24}px;
   font-weight: bold;
   margin-horizontal: 10px;
   color: ${(props) => props.theme.colors.text};

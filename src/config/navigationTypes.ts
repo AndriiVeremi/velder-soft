@@ -26,4 +26,5 @@ export type RootStackParamList = {
   ReportProblem: undefined;
   DirectorReports: undefined;
   About: undefined;
+  Docs: undefined;
 };

@@ -53,7 +53,7 @@ const Header = styled.View`
 `;
 
 const Title = styled(RNText)`
-  font-size: 24px;
+  font-size: ${(props) => props.theme.fontSize.f24}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
 `;
@@ -82,18 +82,18 @@ const AuthorRow = styled.View`
 
 const AuthorName = styled(RNText)`
   font-weight: bold;
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
   margin-left: 8px;
   color: ${(props) => props.theme.colors.text};
 `;
 
 const DateText = styled(RNText)`
-  font-size: 12px;
+  font-size: ${(props) => props.theme.fontSize.f12}px;
   color: ${(props) => props.theme.colors.textSecondary};
 `;
 
 const Description = styled(RNText)`
-  font-size: 15px;
+  font-size: ${(props) => props.theme.fontSize.f15}px;
   color: ${(props) => props.theme.colors.text};
   margin-bottom: 15px;
   line-height: 22px;
@@ -116,7 +116,7 @@ const MediaThumbnail = styled.TouchableOpacity`
 `;
 
 const DeletionInfo = styled(RNText)`
-  font-size: 11px;
+  font-size: ${(props) => props.theme.fontSize.f11}px;
   color: ${(props) => props.theme.colors.error};
   font-style: italic;
   margin-top: 10px;
@@ -247,7 +247,7 @@ const DirectorReportsScreen = () => {
     <Container theme={theme}>
       <Header theme={theme}>
         <Title theme={theme}>Zgłoszenia problemów</Title>
-        <RNText style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
+        <RNText style={{ color: theme.colors.textSecondary, fontSize: theme.fontSize.f12 }}>
           Automatyczne usuwanie po 7 dniach
         </RNText>
       </Header>

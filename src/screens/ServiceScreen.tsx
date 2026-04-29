@@ -19,13 +19,16 @@ import {
   orderBy,
   onSnapshot,
   addDoc,
+  getDocs,
   serverTimestamp,
   doc,
   deleteDoc,
   updateDoc,
+  where,
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { sendPushNotification } from '../utils/notifications';
 import { useAuth } from '../context/AuthContext';
 import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
@@ -72,20 +75,20 @@ const CardHeader = styled.View`
 `;
 
 const HospitalName = styled(RNText)`
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
   flex: 1;
 `;
 
 const DeptName = styled(RNText)`
-  font-size: 14px;
+  font-size: ${(props) => props.theme.fontSize.f14}px;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-top: 2px;
 `;
 
 const Description = styled(RNText)`
-  font-size: 14px;
+  font-size: ${(props) => props.theme.fontSize.f14}px;
   color: ${(props) => props.theme.colors.text};
   margin-top: 10px;
   line-height: 20px;
@@ -104,7 +107,7 @@ const MetaItem = styled.View`
 `;
 
 const MetaText = styled(RNText)`
-  font-size: 12px;
+  font-size: ${(props) => props.theme.fontSize.f12}px;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-left: 5px;
 `;
@@ -147,7 +150,7 @@ const StyledInput = styled.TextInput`
 `;
 
 const Label = styled(RNText)`
-  font-size: 14px;
+  font-size: ${(props) => props.theme.fontSize.f14}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-bottom: 8px;
@@ -211,6 +214,33 @@ const ServiceScreen = () => {
         authorName: userData?.name || 'Pracownik',
         createdAt: serverTimestamp(),
       });
+
+      try {
+        const directorsSnap = await getDocs(
+          query(collection(db, 'users'), where('role', '==', 'DIRECTOR'))
+        );
+        const tokens: { token: string; notificationStart?: string; notificationEnd?: string }[] =
+          [];
+        directorsSnap.forEach((d) => {
+          const data = d.data();
+          if (data.pushToken)
+            tokens.push({
+              token: data.pushToken,
+              notificationStart: data.notificationStart,
+              notificationEnd: data.notificationEnd,
+            });
+        });
+        if (tokens.length > 0) {
+          await sendPushNotification(
+            tokens,
+            'Nowe zgłoszenie serwisowe! 🔧',
+            `${userData?.name || 'Pracownik'}: ${hospital.trim()} — ${department.trim()}`
+          );
+        }
+      } catch (pushErr) {
+        console.warn('Failed to notify director:', pushErr);
+      }
+
       setModalVisible(false);
       setHospital('');
       setDepartment('');
@@ -226,6 +256,33 @@ const ServiceScreen = () => {
     const newStatus = service.status === 'DONE' ? 'PENDING' : 'DONE';
     try {
       await updateDoc(doc(db, 'services', service.id), { status: newStatus });
+
+      if (newStatus === 'DONE') {
+        try {
+          const workerSnap = await getDocs(
+            query(collection(db, 'users'), where('__name__', '==', service.createdBy))
+          );
+          if (!workerSnap.empty) {
+            const workerData = workerSnap.docs[0].data();
+            if (workerData.pushToken) {
+              await sendPushNotification(
+                [
+                  {
+                    token: workerData.pushToken,
+                    notificationStart: workerData.notificationStart,
+                    notificationEnd: workerData.notificationEnd,
+                  },
+                ],
+                'Zgłoszenie serwisowe zakończone! ✅',
+                `${service.hospital} — ${service.department} zostało zakończone.`
+              );
+            }
+          }
+        } catch (pushErr) {
+          console.warn('Failed to notify worker:', pushErr);
+        }
+      }
+
       notify.success('Status zaktualizowany');
     } catch (e) {
       notify.error('Błąd aktualizacji');
@@ -263,6 +320,33 @@ const ServiceScreen = () => {
           photoPath: result.photoPath,
           status: 'DONE',
         });
+
+        try {
+          const directorsSnap = await getDocs(
+            query(collection(db, 'users'), where('role', '==', 'DIRECTOR'))
+          );
+          const tokens: { token: string; notificationStart?: string; notificationEnd?: string }[] =
+            [];
+          directorsSnap.forEach((d) => {
+            const data = d.data();
+            if (data.pushToken)
+              tokens.push({
+                token: data.pushToken,
+                notificationStart: data.notificationStart,
+                notificationEnd: data.notificationEnd,
+              });
+          });
+          if (tokens.length > 0) {
+            await sendPushNotification(
+              tokens,
+              'Serwis zakończony ze zdjęciem! 📸',
+              `${service.authorName}: ${service.hospital} — ${service.department}`
+            );
+          }
+        } catch (pushErr) {
+          console.warn('Failed to notify director:', pushErr);
+        }
+
         notify.success('Zdjęcie dodane i status zmieniony');
       } catch (e) {
         notify.error('Błąd zapisu');
@@ -296,7 +380,7 @@ const ServiceScreen = () => {
                 >
                   <RNText
                     style={{
-                      fontSize: 10,
+                      fontSize: theme.fontSize.f10,
                       fontWeight: 'bold',
                       color: item.status === 'DONE' ? '#2e7d32' : '#e65100',
                     }}
@@ -318,7 +402,13 @@ const ServiceScreen = () => {
                   </MetaText>
                 </MetaItem>
                 <MetaItem>
-                  <RNText style={{ fontSize: 12, color: theme.colors.primary, fontWeight: 'bold' }}>
+                  <RNText
+                    style={{
+                      fontSize: theme.fontSize.f12,
+                      color: theme.colors.primary,
+                      fontWeight: 'bold',
+                    }}
+                  >
                     {item.authorName}
                   </RNText>
                 </MetaItem>
@@ -361,9 +451,11 @@ const ServiceScreen = () => {
         />
       )}
 
-      <Fab theme={theme} onPress={() => setModalVisible(true)}>
-        <Plus size={30} color="white" />
-      </Fab>
+      {role === 'DIRECTOR' && (
+        <Fab theme={theme} onPress={() => setModalVisible(true)}>
+          <Plus size={30} color="white" />
+        </Fab>
+      )}
 
       <Modal visible={modalVisible} transparent animationType="slide">
         <ModalOverlay>
@@ -371,7 +463,13 @@ const ServiceScreen = () => {
             <View
               style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}
             >
-              <RNText style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.text }}>
+              <RNText
+                style={{
+                  fontSize: theme.fontSize.f20,
+                  fontWeight: 'bold',
+                  color: theme.colors.text,
+                }}
+              >
                 Nowe zgłoszenie
               </RNText>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
@@ -419,7 +517,7 @@ const ServiceScreen = () => {
                 alignItems: 'center',
               }}
             >
-              <RNText style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>
+              <RNText style={{ color: 'white', fontWeight: 'bold', fontSize: theme.fontSize.f16 }}>
                 Wyślij zgłoszenie
               </RNText>
             </TouchableOpacity>

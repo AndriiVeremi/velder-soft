@@ -49,15 +49,13 @@ const Section = styled.View`
     width: 100%;
   `}
 `;
-
 const ProjectTitle = styled(RNText)`
-  font-size: 24px;
+  font-size: ${(props) => props.theme.fontSize.f24}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
 `;
-
 const Description = styled(RNText)`
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-top: ${(props) => props.theme.spacing.sm}px;
   line-height: 22px;
@@ -78,7 +76,7 @@ const PdfButtonText = styled(RNText)`
   color: ${(props) => props.theme.colors.primary};
   font-weight: bold;
   flex: 1;
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
 `;
 
 const ProjectDetailsScreen = ({ route, navigation }: any) => {

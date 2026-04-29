@@ -90,7 +90,7 @@ const PostButtonText = styled(RNText)`
   color: white;
   font-weight: bold;
   margin-left: 10px;
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
 `;
 
 const AnnouncementCard = styled.View`
@@ -106,20 +106,20 @@ const AnnouncementCard = styled.View`
 `;
 
 const AuthorText = styled(RNText)`
-  font-size: 12px;
+  font-size: ${(props) => props.theme.fontSize.f12}px;
   font-weight: bold;
   color: #ff9800;
   margin-bottom: 5px;
 `;
 
 const ContentText = styled(RNText)`
-  font-size: 15px;
+  font-size: ${(props) => props.theme.fontSize.f15}px;
   color: ${(props) => props.theme.colors.text};
   line-height: 22px;
 `;
 
 const DateText = styled(RNText)`
-  font-size: 11px;
+  font-size: ${(props) => props.theme.fontSize.f11}px;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-top: 10px;
   text-align: right;
@@ -166,11 +166,16 @@ const AnnouncementsScreen = ({ navigation, route }: Props) => {
         const usersSnap = await getDocs(
           query(collection(db, 'users'), where('isActive', '==', true))
         );
-        const tokens: string[] = [];
+        const tokens: { token: string; notificationStart?: string; notificationEnd?: string }[] =
+          [];
         usersSnap.forEach((docSnap) => {
           const u = docSnap.data();
           if (u.pushToken && docSnap.id !== user?.uid) {
-            tokens.push(u.pushToken);
+            tokens.push({
+              token: u.pushToken,
+              notificationStart: u.notificationStart,
+              notificationEnd: u.notificationEnd,
+            });
           }
         });
 

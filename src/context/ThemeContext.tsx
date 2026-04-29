@@ -2,34 +2,41 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Appearance } from 'react-native';
 import { ThemeProvider } from 'styled-components/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { lightTheme, darkTheme, ThemeType } from '../config/theme';
+import { lightTheme, darkTheme, ThemeType, FontScale, buildFontSize } from '../config/theme';
 
 const THEME_KEY = '@app_theme';
+const FONT_SCALE_KEY = '@app_font_scale';
 
 interface ThemeContextType {
   isDark: boolean;
   theme: ThemeType;
   toggleTheme: () => void;
+  fontScale: FontScale;
+  setFontScale: (scale: FontScale) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType>({
   isDark: false,
   theme: lightTheme,
   toggleTheme: () => {},
+  fontScale: 1,
+  setFontScale: () => {},
 });
 
 export const AppThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const systemIsDark = Appearance.getColorScheme() === 'dark';
   const [isDark, setIsDark] = useState(systemIsDark);
+  const [fontScale, setFontScaleState] = useState<FontScale>(1);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(THEME_KEY).then((saved) => {
-      if (saved !== null) {
-        setIsDark(saved === 'dark');
+    Promise.all([AsyncStorage.getItem(THEME_KEY), AsyncStorage.getItem(FONT_SCALE_KEY)]).then(
+      ([savedTheme, savedScale]) => {
+        if (savedTheme !== null) setIsDark(savedTheme === 'dark');
+        if (savedScale !== null) setFontScaleState(parseFloat(savedScale) as FontScale);
+        setLoaded(true);
       }
-      setLoaded(true);
-    });
+    );
   }, []);
 
   const toggleTheme = () => {
@@ -40,12 +47,24 @@ export const AppThemeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
   };
 
-  const activeTheme = isDark ? darkTheme : lightTheme;
+  const setFontScale = (scale: FontScale) => {
+    AsyncStorage.setItem(FONT_SCALE_KEY, String(scale));
+    setFontScaleState(scale);
+  };
+
+  const base = isDark ? darkTheme : lightTheme;
+  const activeTheme: ThemeType = {
+    ...base,
+    fontScale,
+    fontSize: buildFontSize(fontScale),
+  };
 
   if (!loaded) return null;
 
   return (
-    <ThemeContext.Provider value={{ isDark, theme: activeTheme, toggleTheme }}>
+    <ThemeContext.Provider
+      value={{ isDark, theme: activeTheme, toggleTheme, fontScale, setFontScale }}
+    >
       <ThemeProvider theme={activeTheme}>{children}</ThemeProvider>
     </ThemeContext.Provider>
   );

@@ -3,7 +3,7 @@ import { Timestamp } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
-import { registerForPushNotificationsAsync } from '../utils/notifications';
+import { registerForPushNotificationsAsync, setQuietHoursCache } from '../utils/notifications';
 import { Platform } from 'react-native';
 
 export type UserRole = 'DIRECTOR' | 'EMPLOYEE';
@@ -69,6 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setRole(data.role ?? 'EMPLOYEE');
               setIsActive(data.isActive ?? false);
               setUserData(data);
+              setQuietHoursCache(data.notificationStart, data.notificationEnd);
             } else {
               setRole('EMPLOYEE');
               setIsActive(false);

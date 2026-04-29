@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   FlatList,
   Modal,
+  ScrollView,
   TextInput,
   Platform,
   Alert,
@@ -19,10 +20,12 @@ import {
   doc,
   updateDoc,
   addDoc,
+  getDocs,
   deleteDoc,
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { sendPushNotification } from '../utils/notifications';
 import { useAuth } from '../context/AuthContext';
 import { useAppTheme } from '../context/ThemeContext';
 import {
@@ -59,7 +62,7 @@ const DateHeader = styled.View`
 `;
 
 const DateText = styled(RNText)`
-  font-size: 18px;
+  font-size: ${(props) => props.theme.fontSize.lg}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
 `;
@@ -74,12 +77,20 @@ const TaskCard = styled.View<{ done: boolean }>`
   opacity: ${(props) => (props.done ? 0.7 : 1)};
 `;
 
-const TaskTitle = styled(RNText)<{ done: boolean }>`
-  font-size: 16px;
-  font-weight: 600;
+const TaskTitle = styled(RNText)<{ done?: boolean }>`
+  font-size: ${(props) => props.theme.fontSize.lg}px;
+  font-weight: bold;
   color: ${(props) => (props.done ? props.theme.colors.textSecondary : props.theme.colors.text)};
   text-decoration: ${(props) => (props.done ? 'line-through' : 'none')};
   flex: 1;
+`;
+
+const TaskDescription = styled(RNText)<{ done?: boolean }>`
+  font-size: ${(props) => props.theme.fontSize.f14}px;
+  color: ${(props) => props.theme.colors.textSecondary};
+  margin-top: 4px;
+  margin-left: 36px;
+  line-height: 18px;
 `;
 
 const TaskMeta = styled.View`
@@ -89,7 +100,7 @@ const TaskMeta = styled.View`
 `;
 
 const MetaText = styled(RNText)`
-  font-size: 13px;
+  font-size: ${(props) => props.theme.fontSize.sm}px;
   color: ${(props) => props.theme.colors.primary};
   margin-left: 5px;
   font-weight: 500;
@@ -138,7 +149,7 @@ const StyledInput = styled.TextInput`
 `;
 
 const Label = styled(RNText)`
-  font-size: 14px;
+  font-size: ${(props) => props.theme.fontSize.md}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-bottom: 8px;
@@ -151,6 +162,14 @@ const ImagePreview = styled.Image`
   margin-top: 10px;
 `;
 
+interface Worker {
+  id: string;
+  name: string;
+  pushToken?: string;
+  notificationStart?: string;
+  notificationEnd?: string;
+}
+
 const TasksScreen = () => {
   const { user, role } = useAuth();
   const { theme } = useAppTheme();
@@ -159,13 +178,32 @@ const TasksScreen = () => {
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [selectedWorkerId, setSelectedWorkerId] = useState<string>('all');
 
   // New task state
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [hour, setHour] = useState(9);
   const [minute, setMinute] = useState(0);
 
   const dateStr = useMemo(() => format(selectedDate, 'yyyy-MM-dd'), [selectedDate]);
+
+  useEffect(() => {
+    if (role !== 'DIRECTOR') return;
+    getDocs(query(collection(db, 'users'), where('isActive', '==', true))).then((snap) => {
+      const list: Worker[] = snap.docs
+        .filter((d) => d.data().role !== 'DIRECTOR')
+        .map((d) => ({
+          id: d.id,
+          name: d.data().name,
+          pushToken: d.data().pushToken,
+          notificationStart: d.data().notificationStart,
+          notificationEnd: d.data().notificationEnd,
+        }));
+      setWorkers(list);
+    });
+  }, [role]);
 
   useEffect(() => {
     if (!user) return;
@@ -174,9 +212,10 @@ const TasksScreen = () => {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const allTasks = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Task);
-      // Filter by user in memory for reliability and backward compatibility
       const filtered =
-        role === 'DIRECTOR' ? allTasks : allTasks.filter((t) => t.assignedTo === user.uid);
+        role === 'DIRECTOR'
+          ? allTasks
+          : allTasks.filter((t) => t.assignedTo === user.uid || t.assignedTo === 'all');
 
       setTasks(filtered.sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00')));
       setLoading(false);
@@ -190,16 +229,46 @@ const TasksScreen = () => {
 
     try {
       const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      const assignedTo = role === 'DIRECTOR' ? selectedWorkerId : user?.uid;
+
       await addDoc(collection(db, 'tasks'), {
         title: title.trim(),
+        description: description.trim(),
         date: dateStr,
         time,
         done: false,
-        assignedTo: user?.uid,
+        assignedTo,
         createdAt: serverTimestamp(),
       });
+
+      if (role === 'DIRECTOR') {
+        try {
+          const targetWorkers =
+            selectedWorkerId === 'all' ? workers : workers.filter((w) => w.id === selectedWorkerId);
+          const tokens = targetWorkers
+            .filter((w) => w.pushToken)
+            .map((w) => ({
+              token: w.pushToken as string,
+              notificationStart: (w as any).notificationStart,
+              notificationEnd: (w as any).notificationEnd,
+            }));
+
+          if (tokens.length > 0) {
+            await sendPushNotification(
+              tokens,
+              'Nowe zadanie! 📋',
+              `${title.trim()}${description ? '\n' + description.trim() : ''}\n${dateStr} o ${time}`
+            );
+          }
+        } catch (pushErr) {
+          console.warn('Failed to send task notification:', pushErr);
+        }
+      }
+
       setModalVisible(false);
       setTitle('');
+      setDescription('');
+      setSelectedWorkerId('all');
       notify.success('Zadanie dodane');
     } catch (e) {
       notify.error('Błąd zapisu');
@@ -285,6 +354,12 @@ const TasksScreen = () => {
                 </TaskTitle>
               </View>
 
+              {item.description ? (
+                <TaskDescription theme={theme} done={item.done}>
+                  {item.description}
+                </TaskDescription>
+              ) : null}
+
               <TaskMeta>
                 <Clock size={14} color={theme.colors.primary} />
                 <MetaText theme={theme}>{item.time || 'Brak czasu'}</MetaText>
@@ -311,15 +386,16 @@ const TasksScreen = () => {
                 textAlign: 'center',
                 marginTop: 50,
                 color: theme.colors.textSecondary,
+                fontSize: theme.fontSize.f15,
               }}
             >
-              Brak zadań на цей день.
+              Brak zadań na ten dzień.
             </RNText>
           }
         />
       )}
 
-      {role === 'EMPLOYEE' && (
+      {role === 'DIRECTOR' && (
         <Fab theme={theme} onPress={() => setModalVisible(true)}>
           <Plus size={30} color="white" />
         </Fab>
@@ -328,49 +404,118 @@ const TasksScreen = () => {
       <Modal visible={modalVisible} transparent animationType="slide">
         <ModalOverlay>
           <ModalContent theme={theme}>
-            <View
-              style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}
-            >
-              <RNText style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.text }}>
-                Nowe zadanie
-              </RNText>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color={theme.colors.text} />
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View
+                style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}
+              >
+                <RNText
+                  style={{
+                    fontSize: theme.fontSize.f20,
+                    fontWeight: 'bold',
+                    color: theme.colors.text,
+                  }}
+                >
+                  Nowe zadanie
+                </RNText>
+                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                  <X size={24} color={theme.colors.text} />
+                </TouchableOpacity>
+              </View>
+
+              <Label theme={theme}>Tytuł zadania</Label>
+              <StyledInput
+                theme={theme}
+                placeholder="Np. Kontrola instalacji"
+                value={title}
+                onChangeText={setTitle}
+                placeholderTextColor={theme.colors.textSecondary}
+              />
+
+              <Label theme={theme}>Opis (opcjonalnie)</Label>
+              <StyledInput
+                theme={theme}
+                placeholder="Dodatkowe informacje..."
+                value={description}
+                onChangeText={setDescription}
+                placeholderTextColor={theme.colors.textSecondary}
+                multiline
+                numberOfLines={3}
+                style={{ minHeight: 80, textAlignVertical: 'top' }}
+              />
+
+              {role === 'DIRECTOR' && (
+                <>
+                  <Label theme={theme}>Przypisz do</Label>
+                  <View style={{ marginBottom: 15 }}>
+                    {[{ id: 'all', name: 'Wszyscy pracownicy' }, ...workers].map((w) => (
+                      <TouchableOpacity
+                        key={w.id}
+                        onPress={() => setSelectedWorkerId(w.id)}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          padding: 10,
+                          borderRadius: 8,
+                          marginBottom: 4,
+                          backgroundColor:
+                            selectedWorkerId === w.id
+                              ? theme.colors.primary + '20'
+                              : theme.colors.background,
+                          borderWidth: 1,
+                          borderColor:
+                            selectedWorkerId === w.id ? theme.colors.primary : theme.colors.border,
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: 18,
+                            height: 18,
+                            borderRadius: 9,
+                            borderWidth: 2,
+                            borderColor:
+                              selectedWorkerId === w.id
+                                ? theme.colors.primary
+                                : theme.colors.border,
+                            backgroundColor:
+                              selectedWorkerId === w.id ? theme.colors.primary : 'transparent',
+                            marginRight: 10,
+                          }}
+                        />
+                        <RNText style={{ color: theme.colors.text, fontSize: theme.fontSize.f15 }}>
+                          {w.name}
+                        </RNText>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
+
+              <Label theme={theme}>Godzina</Label>
+              <TimePicker
+                hour={hour}
+                minute={minute}
+                onHourChange={setHour}
+                onMinuteChange={setMinute}
+                theme={theme}
+              />
+
+              <TouchableOpacity
+                onPress={handleAddTask}
+                style={{
+                  backgroundColor: theme.colors.primary,
+                  padding: 16,
+                  borderRadius: 12,
+                  marginTop: 30,
+                  alignItems: 'center',
+                }}
+              >
+                <RNText
+                  style={{ color: 'white', fontWeight: 'bold', fontSize: theme.fontSize.f16 }}
+                >
+                  Dodaj zadanie
+                </RNText>
               </TouchableOpacity>
-            </View>
-
-            <Label theme={theme}>Tytuł zadania</Label>
-            <StyledInput
-              theme={theme}
-              placeholder="Np. Kontrola instalacji"
-              value={title}
-              onChangeText={setTitle}
-              placeholderTextColor={theme.colors.textSecondary}
-            />
-
-            <Label theme={theme}>Godzina</Label>
-            <TimePicker
-              hour={hour}
-              minute={minute}
-              onHourChange={setHour}
-              onMinuteChange={setMinute}
-              theme={theme}
-            />
-
-            <TouchableOpacity
-              onPress={handleAddTask}
-              style={{
-                backgroundColor: theme.colors.primary,
-                padding: 16,
-                borderRadius: 12,
-                marginTop: 30,
-                alignItems: 'center',
-              }}
-            >
-              <RNText style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>
-                Dodaj zadanie
-              </RNText>
-            </TouchableOpacity>
+            </ScrollView>
           </ModalContent>
         </ModalOverlay>
       </Modal>

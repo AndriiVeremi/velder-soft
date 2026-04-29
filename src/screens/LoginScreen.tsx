@@ -58,7 +58,7 @@ const Input = styled.TextInput`
   border-radius: ${(props) => props.theme.borderRadius.md}px;
   margin-bottom: ${(props) => props.theme.spacing.md}px;
   border: 1px solid ${(props) => props.theme.colors.border};
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
 `;
 
 const Button = styled.TouchableOpacity`
@@ -71,7 +71,7 @@ const Button = styled.TouchableOpacity`
 
 const ButtonText = styled(RNText)`
   color: white;
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
   font-weight: bold;
 `;
 

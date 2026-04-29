@@ -21,6 +21,7 @@
     "android": {
       "package": "com.velder.soft",
       "softwareKeyboardLayoutMode": "resize",
+      "useNextNotificationsApi": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/VelderIcon.png",
         "backgroundColor": "#008744"
@@ -41,7 +42,18 @@
     "runtimeVersion": {
       "policy": "appVersion"
     },
-    "plugins": ["expo-web-browser"],
+    "plugins": [
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#008744",
+          "defaultChannel": "default",
+          "sounds": []
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "60063075-7a9b-47f6-ba92-4021b7514fed"

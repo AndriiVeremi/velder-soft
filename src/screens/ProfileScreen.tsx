@@ -17,7 +17,7 @@ import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/fire
 import { signOut } from 'firebase/auth';
 import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
-import { scheduleDailyReminder } from '../utils/notifications';
+import { scheduleDailyReminder, setQuietHoursCache } from '../utils/notifications';
 import { format } from 'date-fns';
 import { StackScreenProps } from '@react-navigation/stack';
 import { User, Shield, LogOut, Edit2 } from 'lucide-react-native';
@@ -61,13 +61,13 @@ const NameContainer = styled.View`
 `;
 
 const NameText = styled(RNText)`
-  font-size: 22px;
+  font-size: ${(props) => props.theme.fontSize.xl}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
 `;
 
 const EmailText = styled(RNText)`
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-bottom: 20px;
 `;
@@ -89,7 +89,7 @@ const RoleBadge = styled.View<{ isAdmin: boolean }>`
 `;
 
 const RoleText = styled(RNText)<{ isAdmin: boolean }>`
-  font-size: 12px;
+  font-size: ${(props) => props.theme.fontSize.f12}px;
   font-weight: bold;
   color: ${(props) =>
     props.isAdmin
@@ -110,7 +110,7 @@ const InfoSection = styled.View`
 `;
 
 const EditInput = styled.TextInput`
-  font-size: 18px;
+  font-size: ${(props) => props.theme.fontSize.lg}px;
   font-weight: bold;
   border-bottom-width: 2px;
   border-bottom-color: ${(props) => props.theme.colors.primary};
@@ -142,12 +142,12 @@ const EditIconButton = styled.TouchableOpacity`
 const SectionTitleText = styled(RNText)`
   font-weight: bold;
   margin-bottom: 15px;
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
   color: ${(props) => props.theme.colors.text};
 `;
 
 const SectionLabel = styled(RNText)`
-  font-size: 12px;
+  font-size: ${(props) => props.theme.fontSize.f12}px;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-bottom: 8px;
 `;
@@ -164,14 +164,14 @@ const LogoutButtonText = styled(RNText)`
   color: ${(props) => props.theme.colors.error};
   font-weight: bold;
   margin-left: 10px;
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
 `;
 
 type Props = StackScreenProps<any, 'Profile'>;
 
 const ProfileScreen = ({ navigation }: Props) => {
   const { user, userData, role } = useAuth();
-  const { theme, isDark, toggleTheme } = useAppTheme();
+  const { theme, isDark, toggleTheme, fontScale, setFontScale } = useAppTheme();
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
@@ -183,30 +183,24 @@ const ProfileScreen = ({ navigation }: Props) => {
   useEffect(() => {
     if (!userData) return;
 
-    const timer = setTimeout(() => {
-      if (userData.name && name === '') {
-        setName(userData.name);
-      }
+    if (userData.name && name === '') {
+      setName(userData.name);
+    }
 
-      if (userData.notificationStart) {
-        const [h, m] = userData.notificationStart.split(':');
-        const newH = parseInt(h);
-        const newM = parseInt(m);
-        if (startH !== newH) setStartH(newH);
-        if (startM !== newM) setStartM(newM);
-      }
+    if (userData.notificationStart) {
+      const [h, m] = userData.notificationStart.split(':');
+      setStartH(parseInt(h));
+      setStartM(parseInt(m));
+    }
 
-      if (userData.notificationEnd) {
-        const [h, m] = userData.notificationEnd.split(':');
-        const newEH = parseInt(h);
-        const newEM = parseInt(m);
-        if (endH !== newEH) setEndH(newEH);
-        if (endM !== newEM) setEndM(newEM);
-      }
-    }, 0);
+    if (userData.notificationEnd) {
+      const [h, m] = userData.notificationEnd.split(':');
+      setEndH(parseInt(h));
+      setEndM(parseInt(m));
+    }
 
-    return () => clearTimeout(timer);
-  }, [userData, name, startH, startM, endH, endM]);
+    setQuietHoursCache(userData.notificationStart, userData.notificationEnd);
+  }, [userData]);
 
   const saveSettings = async () => {
     if (!user) return;
@@ -228,6 +222,7 @@ const ProfileScreen = ({ navigation }: Props) => {
       );
       const snap = await getDocs(q);
       await scheduleDailyReminder(snap.size, start);
+      setQuietHoursCache(start, end);
 
       notify.success('Ustawienia zapisane');
       setIsEditing(false);
@@ -314,7 +309,9 @@ const ProfileScreen = ({ navigation }: Props) => {
                 {loading ? (
                   <ActivityIndicator color="white" />
                 ) : (
-                  <RNText style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>
+                  <RNText
+                    style={{ color: 'white', fontWeight: 'bold', fontSize: theme.fontSize.f16 }}
+                  >
                     Zapisz zmiany
                   </RNText>
                 )}
@@ -346,10 +343,16 @@ const ProfileScreen = ({ navigation }: Props) => {
                   alignItems: 'center',
                 }}
               >
-                <RNText style={{ fontSize: 18 }}>{isDark ? '🌙' : '☀️'}</RNText>
+                <RNText style={{ fontSize: theme.fontSize.lg }}>{isDark ? '🌙' : '☀️'}</RNText>
               </View>
               <View>
-                <RNText style={{ fontWeight: '600', color: theme.colors.text, fontSize: 15 }}>
+                <RNText
+                  style={{
+                    fontWeight: '600',
+                    color: theme.colors.text,
+                    fontSize: theme.fontSize.md,
+                  }}
+                >
                   {isDark ? 'Tryb ciemny' : 'Tryb jasny'}
                 </RNText>
               </View>
@@ -360,6 +363,66 @@ const ProfileScreen = ({ navigation }: Props) => {
               trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
               thumbColor={isDark ? theme.colors.surface : '#f4f3f4'}
             />
+          </View>
+
+          <View
+            style={{
+              backgroundColor: theme.colors.surface,
+              borderRadius: theme.borderRadius.lg,
+              padding: theme.spacing.lg,
+              marginTop: theme.spacing.md,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+            }}
+          >
+            <RNText
+              style={{
+                fontWeight: '600',
+                color: theme.colors.text,
+                fontSize: theme.fontSize.md,
+                marginBottom: 12,
+              }}
+            >
+              Rozmiar czcionki
+            </RNText>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              {([1, 1.2, 1.4] as const).map((scale) => {
+                const labels: Record<number, string> = { 1: 'A', 1.2: 'A+', 1.4: 'A++' };
+                const selected = fontScale === scale;
+                return (
+                  <TouchableOpacity
+                    key={scale}
+                    onPress={() => setFontScale(scale)}
+                    style={{
+                      flex: 1,
+                      padding: 12,
+                      borderRadius: 8,
+                      borderWidth: 2,
+                      borderColor: selected ? theme.colors.primary : theme.colors.border,
+                      backgroundColor: selected
+                        ? theme.colors.primary + '20'
+                        : theme.colors.background,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <RNText
+                      style={{
+                        fontSize:
+                          scale === 1
+                            ? theme.fontSize.md
+                            : scale === 1.2
+                              ? theme.fontSize.lg
+                              : theme.fontSize.xl,
+                        fontWeight: 'bold',
+                        color: selected ? theme.colors.primary : theme.colors.text,
+                      }}
+                    >
+                      {labels[scale]}
+                    </RNText>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
 
           <LogoutButton theme={theme} onPress={handleLogout}>

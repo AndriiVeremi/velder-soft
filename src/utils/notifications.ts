@@ -2,22 +2,72 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 
+let _quietStart: string | undefined;
+let _quietEnd: string | undefined;
+
+export function setQuietHoursCache(start?: string, end?: string) {
+  _quietStart = start;
+  _quietEnd = end;
+}
+
+export function isQuietHours(start?: string, end?: string): boolean {
+  const s = start ?? _quietStart;
+  const e = end ?? _quietEnd;
+  if (!s || !e) return false;
+
+  const now = new Date();
+  const cur = now.getHours() * 60 + now.getMinutes();
+  const [sh, sm] = s.split(':').map(Number);
+  const [eh, em] = e.split(':').map(Number);
+  const startMin = sh * 60 + sm;
+  const endMin = eh * 60 + em;
+
+  if (startMin <= endMin) {
+    return cur < startMin || cur >= endMin;
+  } else {
+    return cur >= endMin && cur < startMin;
+  }
+}
+
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
+  handleNotification: async (notification) => {
+    const data = notification.request.content.data;
+    const isPersonalReminder = !!data?.reminderId;
+    const shouldPlaySound = isPersonalReminder || !isQuietHours();
+    return {
+      shouldShowAlert: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound,
+      shouldSetBadge: true,
+    };
+  },
 });
+
+export const REMINDER_REPEAT_COUNT = 5;
+export const REMINDER_INTERVAL_MINUTES = 1;
+
+export async function setupReminderCategory() {
+  if (Platform.OS === 'web') return;
+  await Notifications.setNotificationCategoryAsync('reminder', [
+    {
+      identifier: 'snooze',
+      buttonTitle: 'Za 10 minut',
+      options: { opensAppToForeground: false },
+    },
+    {
+      identifier: 'dismiss',
+      buttonTitle: 'Wyłącz',
+      options: { isDestructive: true, opensAppToForeground: false },
+    },
+  ]);
+}
 
 export async function registerForPushNotificationsAsync() {
   if (Platform.OS === 'web') return;
 
   try {
     if (Platform.OS === 'android') {
-      // Канал за замовчуванням
       await Notifications.setNotificationChannelAsync('default', {
         name: 'default',
         importance: Notifications.AndroidImportance.MAX,
@@ -28,7 +78,6 @@ export async function registerForPushNotificationsAsync() {
         sound: 'default',
       });
 
-      // Спеціальний канал для термінових сповіщень (Запити/Оголошення)
       await Notifications.setNotificationChannelAsync('alerts', {
         name: 'Alerts',
         importance: Notifications.AndroidImportance.MAX,
@@ -38,7 +87,20 @@ export async function registerForPushNotificationsAsync() {
         sound: 'default',
         lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
       });
+
+      await Notifications.setNotificationChannelAsync('reminders', {
+        name: 'Przypomnienia',
+        importance: Notifications.AndroidImportance.MAX,
+        enableVibrate: true,
+        vibrationPattern: [0, 500, 500, 500, 500, 500],
+        showBadge: true,
+        sound: 'default',
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+        bypassDnd: false,
+      });
     }
+
+    await setupReminderCategory();
 
     if (!Device.isDevice) return;
 
@@ -54,7 +116,7 @@ export async function registerForPushNotificationsAsync() {
     try {
       const token = (
         await Notifications.getExpoPushTokenAsync({
-          projectId: '60063075-7a9b-47f6-ba92-4021b7514fed', // Ваш ID з app.json
+          projectId: '60063075-7a9b-47f6-ba92-4021b7514fed',
         })
       ).data;
       console.log('Push Token acquired:', token);
@@ -85,11 +147,43 @@ export function setupNotificationListeners() {
   const subscription = Notifications.addNotificationResponseReceivedListener(async (response) => {
     const data = response.notification.request.content.data;
     const reminderId = data?.reminderId;
+    const actionId = response.actionIdentifier;
 
-    if (reminderId) {
-      for (let i = 0; i < 3; i++) {
+    if (!reminderId) return;
+
+    if (actionId === 'dismiss' || actionId === Notifications.DEFAULT_ACTION_IDENTIFIER) {
+      for (let i = 0; i < REMINDER_REPEAT_COUNT; i++) {
         try {
           await Notifications.cancelScheduledNotificationAsync(`${reminderId}_${i}`);
+        } catch (e) {}
+      }
+    }
+
+    if (actionId === 'snooze') {
+      for (let i = 0; i < REMINDER_REPEAT_COUNT; i++) {
+        try {
+          await Notifications.cancelScheduledNotificationAsync(`${reminderId}_${i}`);
+        } catch (e) {}
+      }
+      const snoozeBase = new Date(Date.now() + 10 * 60 * 1000);
+      for (let i = 0; i < REMINDER_REPEAT_COUNT; i++) {
+        const scheduleDate = new Date(snoozeBase.getTime() + i * REMINDER_INTERVAL_MINUTES * 60000);
+        try {
+          await Notifications.scheduleNotificationAsync({
+            identifier: `${reminderId}_${i}`,
+            content: {
+              title: `Przypomnienie (powrót) 🔔`,
+              body: (data?.title as string) || '',
+              sound: 'default',
+              categoryIdentifier: 'reminder',
+              data: { reminderId, title: data?.title },
+            },
+            trigger: {
+              type: Notifications.SchedulableTriggerInputTypes.DATE,
+              date: scheduleDate,
+              channelId: 'reminders',
+            },
+          });
         } catch (e) {}
       }
     }
@@ -98,19 +192,36 @@ export function setupNotificationListeners() {
   return () => subscription.remove();
 }
 
-export async function sendPushNotification(tokens: string[], title: string, body: string) {
-  if (tokens.length === 0) return;
+type PushRecipient =
+  | string
+  | { token: string; notificationStart?: string; notificationEnd?: string };
 
-  const messages = tokens.map((token) => ({
-    to: token,
-    sound: 'default',
-    title: title,
-    body: body,
-    priority: 'high',
-  }));
+export async function sendPushNotification(
+  recipients: PushRecipient[],
+  title: string,
+  body: string
+) {
+  if (recipients.length === 0) return;
+
+  const messages = recipients.map((r) => {
+    const token = typeof r === 'string' ? r : r.token;
+    const start = typeof r === 'string' ? undefined : r.notificationStart;
+    const end = typeof r === 'string' ? undefined : r.notificationEnd;
+    const silent = isQuietHours(start, end);
+    return {
+      to: token,
+      sound: silent ? null : 'default',
+      title,
+      body,
+      priority: 'high',
+      channelId: 'alerts',
+      _displayInForeground: true,
+      ttl: 3600, // 1 година життя сповіщення, якщо пристрій офлайн
+    };
+  });
 
   try {
-    await fetch('https://exp.host/--/api/v2/push/send', {
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -119,6 +230,8 @@ export async function sendPushNotification(tokens: string[], title: string, body
       },
       body: JSON.stringify(messages),
     });
+    const result = await response.json();
+    console.log('Push notification result:', result);
   } catch (error) {
     console.error('Error sending push notification:', error);
   }
@@ -142,13 +255,14 @@ export async function scheduleDailyReminder(taskCount: number, startTime: string
     content: {
       title: 'Dzień dobry! Masz zadania 📋',
       body: `Dziś na liście: ${taskCount} zadań. Powodzenia!`,
-      sound: true,
+      sound: 'default',
       badge: taskCount,
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
       hour: hour,
       minute: minute,
+      channelId: 'default',
     },
   });
 }

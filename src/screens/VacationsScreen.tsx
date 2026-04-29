@@ -69,7 +69,7 @@ const Section = styled.View`
 `;
 
 const Title = styled(RNText)`
-  font-size: 20px;
+  font-size: ${(props) => props.theme.fontSize.f20}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
   margin-bottom: 15px;
@@ -100,7 +100,7 @@ const StatusBadge = styled.View<{ status: string }>`
 
 const BadgeText = styled(RNText)`
   color: white;
-  font-size: 10px;
+  font-size: ${(props) => props.theme.fontSize.f10}px;
   font-weight: bold;
 `;
 
@@ -123,7 +123,7 @@ const ListHeader = styled.View`
 `;
 
 const VacationText = styled(RNText)`
-  font-size: 14px;
+  font-size: ${(props) => props.theme.fontSize.f14}px;
   color: ${(props) => props.theme.colors.text};
 `;
 
@@ -136,14 +136,14 @@ const DaysLeftBadge = styled.View`
 `;
 
 const DaysLeftText = styled(RNText)`
-  font-size: 11px;
+  font-size: ${(props) => props.theme.fontSize.f11}px;
   color: ${(props) => props.theme.colors.primary};
   font-weight: bold;
 `;
 
 const EmployeeName = styled(RNText)`
   font-weight: bold;
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
   color: ${(props) => props.theme.colors.primary};
 `;
 
@@ -167,13 +167,13 @@ const CountdownCard = styled.View`
 `;
 
 const CountdownValue = styled(RNText)`
-  font-size: 32px;
+  font-size: ${(props) => props.theme.fontSize.f32}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.primary};
 `;
 
 const CountdownLabel = styled(RNText)`
-  font-size: 14px;
+  font-size: ${(props) => props.theme.fontSize.f14}px;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-top: 5px;
 `;
@@ -255,7 +255,7 @@ const VacationsScreen = ({ route, navigation }: Props) => {
               content: {
                 title: 'Urlop za 5 dni! 🏖️',
                 body: 'Przygotuj się na odpoczynek.',
-                sound: true,
+                sound: 'default',
               },
               trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: trig },
             }).catch(() => {});
@@ -268,7 +268,7 @@ const VacationsScreen = ({ route, navigation }: Props) => {
               content: {
                 title: 'Urlop już jutro! ☀️',
                 body: 'Pamiętaj o dokończeniu zadań.',
-                sound: true,
+                sound: 'default',
               },
               trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: trig },
             }).catch(() => {});
@@ -307,10 +307,16 @@ const VacationsScreen = ({ route, navigation }: Props) => {
         const directorsSnap = await getDocs(
           query(collection(db, 'users'), where('role', '==', 'DIRECTOR'))
         );
-        const tokens: string[] = [];
+        const tokens: { token: string; notificationStart?: string; notificationEnd?: string }[] =
+          [];
         directorsSnap.forEach((d) => {
           const data = d.data();
-          if (data.pushToken) tokens.push(data.pushToken);
+          if (data.pushToken)
+            tokens.push({
+              token: data.pushToken,
+              notificationStart: data.notificationStart,
+              notificationEnd: data.notificationEnd,
+            });
         });
 
         if (tokens.length > 0) {
@@ -347,7 +353,13 @@ const VacationsScreen = ({ route, navigation }: Props) => {
             const userData = userSnap.docs[0].data();
             if (userData.pushToken) {
               await sendPushNotification(
-                [userData.pushToken],
+                [
+                  {
+                    token: userData.pushToken,
+                    notificationStart: userData.notificationStart,
+                    notificationEnd: userData.notificationEnd,
+                  },
+                ],
                 status === 'APPROVED' ? 'Urlop zatwierdzony! ✅' : 'Wniosek odrzucony ❌',
                 status === 'APPROVED'
                   ? `Twój urlop (${request.startDate}) został zaakceptowany.`

@@ -13,8 +13,33 @@ const baseBorderRadius = {
   xl: 20,
 };
 
+export type FontScale = 1 | 1.2 | 1.4;
+
+export function buildFontSize(scale: FontScale) {
+  return {
+    xs: Math.round(11 * scale),
+    sm: Math.round(13 * scale),
+    md: Math.round(15 * scale),
+    lg: Math.round(18 * scale),
+    xl: Math.round(22 * scale),
+    xxl: Math.round(28 * scale),
+    f8: Math.round(8 * scale),
+    f10: Math.round(10 * scale),
+    f11: Math.round(11 * scale),
+    f12: Math.round(12 * scale),
+    f14: Math.round(14 * scale),
+    f15: Math.round(15 * scale),
+    f16: Math.round(16 * scale),
+    f20: Math.round(20 * scale),
+    f24: Math.round(24 * scale),
+    f32: Math.round(32 * scale),
+  };
+}
+
 export const lightTheme = {
   isDark: false,
+  fontScale: 1 as FontScale,
+  fontSize: buildFontSize(1),
   colors: {
     primary: '#008744',
     secondary: '#005c2d',
@@ -35,6 +60,8 @@ export const lightTheme = {
 
 export const darkTheme = {
   isDark: true,
+  fontScale: 1 as FontScale,
+  fontSize: buildFontSize(1),
   colors: {
     primary: '#00b35a',
     secondary: '#00cc66',

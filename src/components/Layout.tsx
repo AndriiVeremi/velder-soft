@@ -27,6 +27,7 @@ import {
   Inbox,
   Info,
   MessageSquare,
+  BookOpen,
 } from 'lucide-react-native';
 import { useAppTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -76,7 +77,7 @@ const NavItem = styled.TouchableOpacity<{ active?: boolean }>`
 
 const NavText = styled(RNText)<{ active?: boolean }>`
   margin-left: 12px;
-  font-size: 15px;
+  font-size: ${(props) => props.theme.fontSize.md}px;
   font-weight: ${(props) => (props.active ? 'bold' : '500')};
   color: ${(props) => (props.active ? props.theme.colors.primary : props.theme.colors.text)};
 `;
@@ -114,7 +115,7 @@ const BadgeDot = styled.View`
 `;
 
 const TabLabel = styled(RNText)<{ active?: boolean }>`
-  font-size: 11px;
+  font-size: ${(props) => props.theme.fontSize.xs}px;
   margin-top: 4px;
   font-weight: ${(props) => (props.active ? 'bold' : 'normal')};
   color: ${(props) =>
@@ -139,7 +140,7 @@ const MoreMenuContent = styled.View`
 `;
 
 const MoreMenuTitle = styled(RNText)`
-  font-size: 20px;
+  font-size: ${(props) => props.theme.fontSize.xl}px;
   font-weight: bold;
   margin-bottom: 20px;
   color: ${(props) => props.theme.colors.text};
@@ -155,7 +156,7 @@ const MoreMenuItem = styled.TouchableOpacity`
 
 const MoreMenuText = styled(RNText)`
   flex: 1;
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.lg}px;
   margin-left: 15px;
   color: ${(props) => props.theme.colors.text};
 `;
@@ -169,7 +170,7 @@ const LogoutNavText = styled(NavText)`
 `;
 
 const SectionHeader = styled(RNText)`
-  font-size: 11px;
+  font-size: ${(props) => props.theme.fontSize.xs}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.textSecondary};
   text-transform: uppercase;
@@ -251,6 +252,7 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
           { name: 'Tasks', label: 'Zadania', icon: CheckSquare, badge: badges.tasks },
           { name: 'Dashboard', label: 'Projekty', icon: LayoutGrid },
           { name: 'Service', label: 'Serwis', icon: Wrench, badge: badges.service },
+          { name: 'Docs', label: 'Dokumentacja', icon: BookOpen },
           ...(role !== 'DIRECTOR'
             ? [{ name: 'ReportProblem', label: 'Zgłoś problem', icon: AlertTriangle }]
             : []),
@@ -323,11 +325,7 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
                       />
                       {(item as any).badge > 0 && <BadgeDot theme={theme} />}
                     </IconContainer>
-                    <NavText
-                      theme={theme}
-                      active={currentRoute === item.name}
-                      style={{ fontSize: 14 }}
-                    >
+                    <NavText theme={theme} active={currentRoute === item.name}>
                       {item.label}
                     </NavText>
                   </NavItem>
@@ -346,9 +344,7 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
             }}
           >
             <LogOut size={18} color={theme.colors.error} />
-            <LogoutNavText theme={theme} style={{ fontSize: 14 }}>
-              Wyloguj się
-            </LogoutNavText>
+            <LogoutNavText theme={theme}>Wyloguj się</LogoutNavText>
           </NavItem>
         </Sidebar>
         <ContentArea>{children}</ContentArea>

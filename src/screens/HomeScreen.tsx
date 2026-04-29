@@ -44,7 +44,6 @@ import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { notify } from '../utils/notify';
 import { runWeeklyCleanup } from '../utils/cleanup';
-import * as Notifications from 'expo-notifications';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Task, Announcement, VacationInfo, UserRequest } from '../types';
 import { RootStackParamList } from '../config/navigationTypes';
@@ -124,7 +123,7 @@ const Card = styled.View`
 `;
 
 const SectionTitle = styled(RNText)`
-  font-size: 18px;
+  font-size: ${(props) => props.theme.fontSize.lg}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
   margin-bottom: ${(props) => props.theme.spacing.md}px;
@@ -144,14 +143,14 @@ const TaskRow = styled.TouchableOpacity`
 const TaskText = styled(RNText)<{ done?: boolean }>`
   flex: 1;
   margin-left: 12px;
-  font-size: 15px;
+  font-size: ${(props) => props.theme.fontSize.md}px;
   color: ${(props) => (props.done ? props.theme.colors.textSecondary : props.theme.colors.text)};
   text-decoration: ${(props) => (props.done ? 'line-through' : 'none')};
   font-weight: ${(props) => (props.done ? '400' : '600')};
 `;
 
 const TaskTime = styled(RNText)`
-  font-size: 12px;
+  font-size: ${(props) => props.theme.fontSize.sm}px;
   color: ${(props) => props.theme.colors.primary};
   font-weight: bold;
   margin-left: 34px;
@@ -175,13 +174,13 @@ const DateBanner = styled.View`
 
 const BannerDate = styled(RNText)`
   color: white;
-  font-size: 22px;
+  font-size: ${(props) => props.theme.fontSize.xl}px;
   font-weight: bold;
 `;
 
 const BannerDay = styled(RNText)`
   color: rgba(255, 255, 255, 0.8);
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.md}px;
   text-transform: capitalize;
 `;
 
@@ -239,13 +238,13 @@ const VacationTextWrapper = styled.View`
 `;
 
 const VacationMainText = styled(RNText)`
-  font-size: 15px;
+  font-size: ${(props) => props.theme.fontSize.md}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
 `;
 
 const VacationSubText = styled(RNText)`
-  font-size: 12px;
+  font-size: ${(props) => props.theme.fontSize.f12}px;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-top: 2px;
 `;
@@ -260,13 +259,13 @@ const DaysBadge = styled.View`
 
 const DaysValue = styled(RNText)`
   color: white;
-  font-size: 18px;
+  font-size: ${(props) => props.theme.fontSize.lg}px;
   font-weight: bold;
 `;
 
 const DaysLabel = styled(RNText)`
   color: white;
-  font-size: 8px;
+  font-size: ${(props) => props.theme.fontSize.f8}px;
   text-transform: uppercase;
   font-weight: bold;
 `;
@@ -335,13 +334,13 @@ const RequestContent = styled.View`
 const RequestSender = styled(RNText)`
   font-weight: bold;
   color: #ff9800;
-  font-size: 13px;
+  font-size: ${(props) => props.theme.fontSize.sm}px;
 `;
 
 const RequestText = styled(RNText)`
   color: ${(props) => (props.theme.isDark ? '#ffcc80' : '#663c00')};
   margin-top: 4px;
-  font-size: 14px;
+  font-size: ${(props) => props.theme.fontSize.f14}px;
   font-weight: 600;
 `;
 
@@ -375,27 +374,6 @@ const HomeScreen = ({ navigation }: Props) => {
     return onSnapshot(q, (snap) => {
       const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as UserRequest);
 
-      snap.docChanges().forEach((change) => {
-        if (change.type === 'added') {
-          const newReq = change.doc.data() as UserRequest;
-          const now = Date.now();
-          const created = newReq.createdAt?.toMillis() || now;
-          if (now - created < 30000 && Platform.OS !== 'web') {
-            Notifications.scheduleNotificationAsync({
-              content: {
-                title: 'Nowa prośba od pracownika! 📩',
-                body: `${newReq.senderName}: ${newReq.text}`,
-                sound: true,
-                vibrate: [0, 250, 250, 250],
-                priority: Notifications.AndroidNotificationPriority.MAX,
-                categoryIdentifier: 'alerts',
-              },
-              trigger: null,
-            });
-          }
-        }
-      });
-
       const sorted = data.sort(
         (a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)
       );
@@ -419,26 +397,6 @@ const HomeScreen = ({ navigation }: Props) => {
       if (!snap.empty) {
         const annData = { id: snap.docs[0].id, ...snap.docs[0].data() } as Announcement;
         setLatestAnnouncement(annData);
-
-        snap.docChanges().forEach((change) => {
-          if (change.type === 'added' && role !== 'DIRECTOR') {
-            const now = Date.now();
-            const created = annData.createdAt?.toMillis() || now;
-            if (now - created < 30000 && Platform.OS !== 'web') {
-              Notifications.scheduleNotificationAsync({
-                content: {
-                  title: 'Nowe ogłoszenie od Dyrektora! 📢',
-                  body: annData.text,
-                  sound: true,
-                  vibrate: [0, 500, 200, 500],
-                  priority: Notifications.AndroidNotificationPriority.MAX,
-                  categoryIdentifier: 'alerts',
-                },
-                trigger: null,
-              });
-            }
-          }
-        });
 
         if (user) {
           const readDoc = await getDocs(
@@ -655,7 +613,7 @@ const HomeScreen = ({ navigation }: Props) => {
                       fontWeight: 'bold',
                       marginLeft: 8,
                       color: theme.colors.primary,
-                      fontSize: 14,
+                      fontSize: theme.fontSize.f14,
                     }}
                   >
                     Nadchodzące urlopy zespołu
@@ -664,7 +622,9 @@ const HomeScreen = ({ navigation }: Props) => {
                 {teamUpcomingVacations.map((v) => (
                   <TeamVacationItem key={v.id}>
                     <TeamVacationName theme={theme}>{v.userName}</TeamVacationName>
-                    <RNText style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
+                    <RNText
+                      style={{ color: theme.colors.textSecondary, fontSize: theme.fontSize.f12 }}
+                    >
                       {v.startDate} (
                       {Math.ceil(
                         (new Date(v.startDate).getTime() - new Date().setHours(0, 0, 0, 0)) /

@@ -31,6 +31,7 @@ import PendingApprovalScreen from './src/screens/PendingApprovalScreen';
 import ReportProblemScreen from './src/screens/ReportProblemScreen';
 import DirectorReportsScreen from './src/screens/DirectorReportsScreen';
 import AboutCompanyScreen from './src/screens/AboutCompanyScreen';
+import DocsScreen from './src/screens/DocsScreen';
 import SendRequestScreen from './src/screens/SendRequestScreen';
 import { RootStackParamList } from './src/config/navigationTypes';
 
@@ -140,6 +141,11 @@ const AuthenticatedStack = () => {
         name="About"
         component={withLayout(AboutCompanyScreen, 'About')}
         options={{ title: 'O firmie' }}
+      />
+      <Stack.Screen
+        name="Docs"
+        component={withLayout(DocsScreen, 'Docs')}
+        options={{ title: 'Dokumentacja' }}
       />
       <Stack.Screen
         name="AddProject"

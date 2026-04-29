@@ -32,22 +32,21 @@ const Content = styled.View`
   width: 100%;
   align-self: center;
 `;
-
 const Title = styled(RNText)`
-  font-size: 24px;
+  font-size: ${(props) => props.theme.fontSize.f24}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
   margin-bottom: 10px;
 `;
 
 const Subtitle = styled(RNText)`
-  font-size: 14px;
+  font-size: ${(props) => props.theme.fontSize.f14}px;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-bottom: 25px;
 `;
 
 const Label = styled(RNText)`
-  font-size: 14px;
+  font-size: ${(props) => props.theme.fontSize.f14}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-bottom: 8px;
@@ -58,18 +57,12 @@ const StyledTextInput = styled.TextInput`
   background-color: ${(props) => props.theme.colors.surface};
   border-radius: 12px;
   padding: 15px;
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
   border-width: 1px;
   border-color: ${(props) => props.theme.colors.border};
   color: ${(props) => props.theme.colors.text};
   margin-bottom: 25px;
   min-height: 120px;
-`;
-
-const MediaGrid = styled.View`
-  flex-direction: row;
-  flex-wrap: wrap;
-  margin-bottom: 20px;
 `;
 
 const MediaItem = styled.View`
@@ -98,6 +91,12 @@ const RemoveMediaButton = styled.TouchableOpacity`
 const AddMediaRow = styled.View`
   flex-direction: row;
   margin-bottom: 30px;
+`;
+
+const MediaGrid = styled.View`
+  flex-direction: row;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
 `;
 
 const AddMediaButton = styled.TouchableOpacity`
@@ -133,7 +132,7 @@ const SubmitButton = styled.TouchableOpacity<{ disabled?: boolean }>`
 const SubmitButtonText = styled(RNText)`
   color: white;
   font-weight: bold;
-  font-size: 18px;
+  font-size: ${(props) => props.theme.fontSize.lg}px;
   margin-left: 10px;
 `;
 
@@ -231,10 +230,16 @@ const ReportProblemScreen = ({ navigation }: Props) => {
         const directorsSnap = await getDocs(
           query(collection(db, 'users'), where('role', '==', 'DIRECTOR'))
         );
-        const tokens: string[] = [];
+        const tokens: { token: string; notificationStart?: string; notificationEnd?: string }[] =
+          [];
         directorsSnap.forEach((d) => {
           const data = d.data();
-          if (data.pushToken) tokens.push(data.pushToken);
+          if (data.pushToken)
+            tokens.push({
+              token: data.pushToken,
+              notificationStart: data.notificationStart,
+              notificationEnd: data.notificationEnd,
+            });
         });
 
         if (tokens.length > 0) {

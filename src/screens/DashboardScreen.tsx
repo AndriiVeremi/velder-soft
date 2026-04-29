@@ -65,7 +65,7 @@ const Header = styled.View`
 `;
 
 const BreadcrumbText = styled(RNText)`
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
   font-weight: 600;
   color: ${(props) => props.theme.colors.primary};
   margin-left: 10px;
@@ -87,13 +87,13 @@ const ItemInfo = styled.View`
 `;
 
 const ItemTitle = styled(RNText)`
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
 `;
 
 const ItemSubtitle = styled(RNText)`
-  font-size: 12px;
+  font-size: ${(props) => props.theme.fontSize.f12}px;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-top: 2px;
 `;
@@ -107,7 +107,7 @@ const PhotoGallery = styled.View`
 `;
 
 const PhotoTitle = styled(RNText)`
-  font-size: 14px;
+  font-size: ${(props) => props.theme.fontSize.f14}px;
   font-weight: bold;
   margin-bottom: 10px;
   color: ${(props) => props.theme.colors.textSecondary};
@@ -160,7 +160,7 @@ const ActionBtnText = styled(RNText)`
 `;
 
 const HintText = styled(RNText)`
-  font-size: 11px;
+  font-size: ${(props) => props.theme.fontSize.xs}px;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-top: 8px;
   text-align: center;
@@ -240,7 +240,7 @@ const FolderActionText = styled(RNText)`
   color: ${(props) => props.theme.colors.primary};
   font-weight: bold;
   margin-left: 8px;
-  font-size: 13px;
+  font-size: ${(props) => props.theme.fontSize.sm}px;
 `;
 
 const StyledInput = styled.TextInput`
@@ -249,7 +249,7 @@ const StyledInput = styled.TextInput`
   border-color: ${(props) => props.theme.colors.border};
   border-radius: 8px;
   padding: 12px 16px;
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
   margin-bottom: 20px;
   color: ${(props) => props.theme.colors.text};
 `;
@@ -272,7 +272,7 @@ const ModalBtnText = styled(RNText)<{ primary?: boolean }>`
 `;
 
 const ModalTitle = styled(RNText)`
-  font-size: 20px;
+  font-size: ${(props) => props.theme.fontSize.f20}px;
   font-weight: bold;
   margin-bottom: 20px;
   color: ${(props) => props.theme.colors.text};

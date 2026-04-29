@@ -23,6 +23,7 @@ import { db } from '../config/firebase';
 import { useAppTheme } from '../context/ThemeContext';
 import { User, Shield, Trash2, Mail, CheckCircle, XCircle } from 'lucide-react-native';
 import { notify } from '../utils/notify';
+import { sendPushNotification } from '../utils/notifications';
 import { StackScreenProps } from '@react-navigation/stack';
 
 interface UserData {
@@ -31,6 +32,7 @@ interface UserData {
   email: string;
   role: 'DIRECTOR' | 'EMPLOYEE';
   isActive: boolean;
+  pushToken?: string;
   createdAt?: any;
 }
 
@@ -47,7 +49,7 @@ const Header = styled.View`
 `;
 
 const Title = styled(RNText)`
-  font-size: 22px;
+  font-size: ${(props) => props.theme.fontSize.xl}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
 `;
@@ -83,13 +85,13 @@ const Info = styled.View`
 `;
 
 const UserName = styled(RNText)`
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
 `;
 
 const UserEmail = styled(RNText)`
-  font-size: 13px;
+  font-size: ${(props) => props.theme.fontSize.sm}px;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-top: 2px;
 `;
@@ -112,7 +114,7 @@ const RoleBadge = styled.View<{ isAdmin: boolean }>`
 `;
 
 const RoleText = styled(RNText)<{ isAdmin: boolean }>`
-  font-size: 10px;
+  font-size: ${(props) => props.theme.fontSize.f10}px;
   font-weight: bold;
   color: ${(props) =>
     props.isAdmin
@@ -136,7 +138,7 @@ const Controls = styled.View`
 `;
 
 const StatusLabel = styled(RNText)`
-  font-size: 14px;
+  font-size: ${(props) => props.theme.fontSize.f14}px;
   font-weight: 500;
   color: ${(props) => props.theme.colors.text};
 `;
@@ -170,6 +172,28 @@ const UsersScreen = ({ navigation, route }: Props) => {
   const toggleStatus = async (userId: string, currentStatus: boolean) => {
     try {
       await updateDoc(doc(db, 'users', userId), { isActive: !currentStatus });
+
+      if (!currentStatus) {
+        try {
+          const activatedUser = users.find((u) => u.id === userId);
+          if (activatedUser?.pushToken) {
+            await sendPushNotification(
+              [
+                {
+                  token: activatedUser.pushToken,
+                  notificationStart: (activatedUser as any).notificationStart,
+                  notificationEnd: (activatedUser as any).notificationEnd,
+                },
+              ],
+              'Konto aktywowane! 🎉',
+              'Twoje konto zostało aktywowane. Możesz teraz korzystać z aplikacji.'
+            );
+          }
+        } catch (pushErr) {
+          console.warn('Failed to notify user:', pushErr);
+        }
+      }
+
       notify.success(!currentStatus ? 'Konto aktywowane' : 'Konto deaktywowane');
     } catch (e) {
       notify.error('Błąd aktualizacji');

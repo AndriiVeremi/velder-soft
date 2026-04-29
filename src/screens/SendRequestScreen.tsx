@@ -15,6 +15,7 @@ import { db } from '../config/firebase';
 import {
   collection,
   addDoc,
+  getDocs,
   serverTimestamp,
   query,
   where,
@@ -28,6 +29,7 @@ import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
 import { Send, Trash2, MessageSquare, CheckCircle2, Clock } from 'lucide-react-native';
 import { StackScreenProps } from '@react-navigation/stack';
+import { sendPushNotification } from '../utils/notifications';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { RootStackParamList } from '../config/navigationTypes';
@@ -45,7 +47,7 @@ const Header = styled.View`
 `;
 
 const Title = styled(RNText)`
-  font-size: 24px;
+  font-size: ${(props) => props.theme.fontSize.f24}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
 `;
@@ -60,7 +62,7 @@ const InputCard = styled.View`
 `;
 
 const SectionLabel = styled(RNText)`
-  font-size: 12px;
+  font-size: ${(props) => props.theme.fontSize.f12}px;
   font-weight: bold;
   color: #ff9800;
   margin-bottom: 10px;
@@ -73,7 +75,7 @@ const StyledInput = styled.TextInput`
   border-radius: 10px;
   min-height: 100px;
   text-align-vertical: top;
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
   margin-bottom: 15px;
   color: ${(props) => props.theme.colors.text};
 `;
@@ -91,7 +93,7 @@ const PostButtonText = styled(RNText)`
   color: white;
   font-weight: bold;
   margin-left: 10px;
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
 `;
 
 const RequestCard = styled.View`
@@ -119,7 +121,7 @@ const StatusRow = styled.View`
 `;
 
 const StatusText = styled(RNText)<{ confirmed: boolean }>`
-  font-size: 11px;
+  font-size: ${(props) => props.theme.fontSize.f11}px;
   font-weight: bold;
   color: ${(props) => (props.confirmed ? props.theme.colors.success : '#ff9800')};
   text-transform: uppercase;
@@ -127,14 +129,14 @@ const StatusText = styled(RNText)<{ confirmed: boolean }>`
 `;
 
 const ContentText = styled(RNText)`
-  font-size: 15px;
+  font-size: ${(props) => props.theme.fontSize.f15}px;
   color: ${(props) => props.theme.colors.text};
   line-height: 22px;
   padding-right: 30px;
 `;
 
 const DateText = styled(RNText)`
-  font-size: 11px;
+  font-size: ${(props) => props.theme.fontSize.f11}px;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-top: 10px;
   text-align: right;
@@ -189,6 +191,33 @@ const SendRequestScreen = ({ navigation }: Props) => {
         status: 'PENDING',
         createdAt: serverTimestamp(),
       });
+
+      try {
+        const directorsSnap = await getDocs(
+          query(collection(db, 'users'), where('role', '==', 'DIRECTOR'))
+        );
+        const tokens: { token: string; notificationStart?: string; notificationEnd?: string }[] =
+          [];
+        directorsSnap.forEach((d) => {
+          const data = d.data();
+          if (data.pushToken)
+            tokens.push({
+              token: data.pushToken,
+              notificationStart: data.notificationStart,
+              notificationEnd: data.notificationEnd,
+            });
+        });
+        if (tokens.length > 0) {
+          await sendPushNotification(
+            tokens,
+            'Nowa wiadomość od pracownika! 📩',
+            `${userData?.name || 'Pracownik'}: ${text.trim().length > 50 ? text.trim().substring(0, 50) + '...' : text.trim()}`
+          );
+        }
+      } catch (pushErr) {
+        console.warn('Failed to notify director:', pushErr);
+      }
+
       setText('');
       notify.success('Wysłano do Szefa');
     } catch (e) {
