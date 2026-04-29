@@ -6,8 +6,6 @@ import {
   ActivityIndicator,
   Switch,
   TouchableOpacity,
-  Alert,
-  Platform,
 } from 'react-native';
 import styled from 'styled-components/native';
 import {
@@ -23,6 +21,8 @@ import { db } from '../config/firebase';
 import { useAppTheme } from '../context/ThemeContext';
 import { User, Shield, Trash2, Mail, CheckCircle, XCircle } from 'lucide-react-native';
 import { notify } from '../utils/notify';
+import { confirmDelete } from '../utils/confirm';
+import { ScreenHeader, ScreenTitle } from '../components/CommonUI';
 import { sendPushNotification } from '../utils/notifications';
 import { StackScreenProps } from '@react-navigation/stack';
 
@@ -39,19 +39,6 @@ interface UserData {
 const Container = styled.View`
   flex: 1;
   background-color: ${(props) => props.theme.colors.background};
-`;
-
-const Header = styled.View`
-  padding: ${(props) => props.theme.spacing.lg}px;
-  background-color: ${(props) => props.theme.colors.surface};
-  border-bottom-width: 1px;
-  border-bottom-color: ${(props) => props.theme.colors.border};
-`;
-
-const Title = styled(RNText)`
-  font-size: ${(props) => props.theme.fontSize.xl}px;
-  font-weight: bold;
-  color: ${(props) => props.theme.colors.text};
 `;
 
 const UserCard = styled.View`
@@ -211,19 +198,15 @@ const UsersScreen = ({ navigation, route }: Props) => {
   };
 
   const deleteUser = (userId: string) => {
-    const performDelete = async () => {
-      await deleteDoc(doc(db, 'users', userId));
-      notify.success('Użytkownik usunięty');
-    };
-
-    if (Platform.OS === 'web') {
-      if (window.confirm('Czy na pewno chcesz usunąć tego użytkownika?')) performDelete();
-    } else {
-      Alert.alert('Usuń użytkownika', 'Czy na pewno chcesz usunąć tego użytkownika?', [
-        { text: 'Anuluj', style: 'cancel' },
-        { text: 'Usuń', style: 'destructive', onPress: performDelete },
-      ]);
-    }
+    confirmDelete(
+      'Czy na pewno chcesz usunąć tego użytkownika?',
+      async () => {
+        await deleteDoc(doc(db, 'users', userId));
+        notify.success('Użytkownik usunięty');
+      },
+      'Usuń użytkownika',
+      'Usuń'
+    );
   };
 
   if (loading) {
@@ -236,9 +219,9 @@ const UsersScreen = ({ navigation, route }: Props) => {
 
   return (
     <Container theme={theme}>
-      <Header theme={theme}>
-        <Title theme={theme}>Pracownicy i Uprawnienia</Title>
-      </Header>
+      <ScreenHeader theme={theme}>
+        <ScreenTitle theme={theme}>Pracownicy i Uprawnienia</ScreenTitle>
+      </ScreenHeader>
 
       <FlatList
         data={users}

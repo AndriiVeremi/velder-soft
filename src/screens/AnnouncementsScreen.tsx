@@ -6,8 +6,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   TextInput,
-  Alert,
-  Platform,
 } from 'react-native';
 import styled from 'styled-components/native';
 import {
@@ -28,6 +26,8 @@ import { useAppTheme } from '../context/ThemeContext';
 import { Megaphone, Trash2, Send, Bell } from 'lucide-react-native';
 import { format } from 'date-fns';
 import { notify } from '../utils/notify';
+import { confirmDelete } from '../utils/confirm';
+import { ScreenHeader, ScreenTitle } from '../components/CommonUI';
 import { StackScreenProps } from '@react-navigation/stack';
 import { sendPushNotification } from '../utils/notifications';
 
@@ -42,19 +42,6 @@ interface Announcement {
 const Container = styled.View`
   flex: 1;
   background-color: ${(props) => props.theme.colors.background};
-`;
-
-const Header = styled.View`
-  padding: 20px;
-  background-color: ${(props) => props.theme.colors.surface};
-  border-bottom-width: 1px;
-  border-bottom-color: ${(props) => props.theme.colors.border};
-`;
-
-const Title = styled(RNText)`
-  font-size: 24px;
-  font-weight: bold;
-  color: ${(props) => props.theme.colors.text};
 `;
 
 const InputCard = styled.View`
@@ -200,23 +187,19 @@ const AnnouncementsScreen = ({ navigation, route }: Props) => {
   };
 
   const deleteAnnouncement = (id: string) => {
-    const performDelete = async () => {
-      try {
-        await deleteDoc(doc(db, 'announcements', id));
-        notify.success('Usunięto ogłoszenie');
-      } catch (e) {
-        notify.error('Błąd usuwania');
-      }
-    };
-
-    if (Platform.OS === 'web') {
-      if (window.confirm('Czy na pewno chcesz usunąć to ogłoszenie?')) performDelete();
-    } else {
-      Alert.alert('Usuń', 'Czy na pewno chcesz usunąć to ogłoszenie?', [
-        { text: 'Anuluj' },
-        { text: 'Usuń', style: 'destructive', onPress: performDelete },
-      ]);
-    }
+    confirmDelete(
+      'Czy na pewno chcesz usunąć to ogłoszenie?',
+      async () => {
+        try {
+          await deleteDoc(doc(db, 'announcements', id));
+          notify.success('Usunięto ogłoszenie');
+        } catch (e) {
+          notify.error('Błąd usuwania');
+        }
+      },
+      'Usuń',
+      'Usuń'
+    );
   };
 
   if (loading)
@@ -228,9 +211,9 @@ const AnnouncementsScreen = ({ navigation, route }: Props) => {
 
   return (
     <Container theme={theme}>
-      <Header theme={theme}>
-        <Title theme={theme}>Ogłoszenia i Komunikaty</Title>
-      </Header>
+      <ScreenHeader theme={theme}>
+        <ScreenTitle theme={theme}>Ogłoszenia i Komunikaty</ScreenTitle>
+      </ScreenHeader>
 
       <FlatList
         data={announcements}

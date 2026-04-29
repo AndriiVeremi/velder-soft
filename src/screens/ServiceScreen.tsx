@@ -10,7 +10,6 @@ import {
   Platform,
   Dimensions,
   TextInput,
-  Alert,
 } from 'react-native';
 import styled from 'styled-components/native';
 import {
@@ -33,7 +32,9 @@ import { useAuth } from '../context/AuthContext';
 import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
 import { pickAndUploadPhoto } from '../utils/upload';
-import { TimePicker, ModalOverlay, ModalContent } from '../components/CommonUI';
+import { confirmDelete } from '../utils/confirm';
+import { useMarkAsRead } from '../hooks/useMarkAsRead';
+import { TimePicker, ModalOverlay, ModalContent, UploadOverlay, Fab } from '../components/CommonUI';
 import {
   Wrench,
   Plus,
@@ -126,19 +127,6 @@ const ActionBtn = styled.TouchableOpacity`
   margin-left: 10px;
 `;
 
-const Fab = styled.TouchableOpacity`
-  position: absolute;
-  bottom: 25px;
-  right: 25px;
-  width: 60px;
-  height: 60px;
-  border-radius: 30px;
-  background-color: ${(props) => props.theme.colors.primary};
-  justify-content: center;
-  align-items: center;
-  elevation: 5;
-`;
-
 const StyledInput = styled.TextInput`
   background-color: ${(props) => props.theme.colors.background};
   border-radius: 8px;
@@ -171,6 +159,7 @@ interface Service {
   status: 'PENDING' | 'DONE';
   photoUrl?: string;
   photoPath?: string;
+  isNew?: boolean;
   createdAt: Timestamp | null;
   createdBy: string;
   authorName: string;
@@ -183,6 +172,7 @@ const ServiceScreen = () => {
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const scheduleMarkAsRead = useMarkAsRead('services');
 
   // Form state
   const [hospital, setHospital] = useState('');
@@ -195,8 +185,10 @@ const ServiceScreen = () => {
       const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Service);
       setServices(data);
       setLoading(false);
+
+      scheduleMarkAsRead(data.filter((s) => s.isNew).map((s) => s.id));
     });
-    return () => unsubscribe();
+    return unsubscribe;
   }, []);
 
   const handleAddService = async () => {
@@ -210,6 +202,7 @@ const ServiceScreen = () => {
         department: department.trim(),
         description: description.trim(),
         status: 'PENDING',
+        isNew: true,
         createdBy: user?.uid,
         authorName: userData?.name || 'Pracownik',
         createdAt: serverTimestamp(),
@@ -291,23 +284,14 @@ const ServiceScreen = () => {
 
   const handleDelete = (id: string) => {
     if (role !== 'DIRECTOR') return;
-    const perform = async () => {
+    confirmDelete('Usunąć zgłoszenie?', async () => {
       try {
         await deleteDoc(doc(db, 'services', id));
         notify.success('Usunięto');
       } catch (e) {
         notify.error('Błąd usuwania');
       }
-    };
-
-    if (Platform.OS === 'web') {
-      if (window.confirm('Usunąć zgłoszenie?')) perform();
-    } else {
-      Alert.alert('Usuń', 'Czy na pewno?', [
-        { text: 'Anuluj' },
-        { text: 'Tak', onPress: perform, style: 'destructive' },
-      ]);
-    }
+    });
   };
 
   const handleAddPhoto = async (service: Service) => {
@@ -365,7 +349,38 @@ const ServiceScreen = () => {
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingVertical: 10 }}
           renderItem={({ item }) => (
-            <ServiceCard theme={theme} status={item.status}>
+            <ServiceCard
+              theme={theme}
+              status={item.status}
+              style={
+                item.isNew
+                  ? {
+                      borderColor: theme.colors.primary,
+                      borderTopWidth: 2,
+                      borderRightWidth: 2,
+                      borderBottomWidth: 2,
+                    }
+                  : undefined
+              }
+            >
+              {item.isNew && (
+                <View
+                  style={{
+                    backgroundColor: theme.colors.primary,
+                    borderRadius: 6,
+                    paddingHorizontal: 8,
+                    paddingVertical: 2,
+                    alignSelf: 'flex-start',
+                    marginBottom: 8,
+                  }}
+                >
+                  <RNText
+                    style={{ color: 'white', fontSize: theme.fontSize.f10, fontWeight: 'bold' }}
+                  >
+                    NOWE
+                  </RNText>
+                </View>
+              )}
               <CardHeader>
                 <View style={{ flex: 1 }}>
                   <HospitalName theme={theme}>{item.hospital}</HospitalName>
@@ -526,20 +541,9 @@ const ServiceScreen = () => {
       </Modal>
 
       {uploading && (
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(255,255,255,0.5)',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
-        >
+        <UploadOverlay>
           <ActivityIndicator size="large" color={theme.colors.primary} />
-        </View>
+        </UploadOverlay>
       )}
     </Container>
   );

@@ -20,8 +20,9 @@ import { Camera, Video, X, Send, Trash2, Image as ImageIcon } from 'lucide-react
 import { useAuth } from '../context/AuthContext';
 import { StackScreenProps } from '@react-navigation/stack';
 import { sendPushNotification } from '../utils/notifications';
+import { ScreenHeader, ScreenTitle } from '../components/CommonUI';
 
-const Container = styled.ScrollView`
+const Container = styled.View`
   flex: 1;
   background-color: ${(props) => props.theme.colors.background};
 `;
@@ -31,18 +32,6 @@ const Content = styled.View`
   max-width: 600px;
   width: 100%;
   align-self: center;
-`;
-const Title = styled(RNText)`
-  font-size: ${(props) => props.theme.fontSize.f24}px;
-  font-weight: bold;
-  color: ${(props) => props.theme.colors.text};
-  margin-bottom: 10px;
-`;
-
-const Subtitle = styled(RNText)`
-  font-size: ${(props) => props.theme.fontSize.f14}px;
-  color: ${(props) => props.theme.colors.textSecondary};
-  margin-bottom: 25px;
 `;
 
 const Label = styled(RNText)`
@@ -224,6 +213,7 @@ const ReportProblemScreen = ({ navigation }: Props) => {
         description,
         media: uploadedMedia,
         createdAt: serverTimestamp(),
+        isNew: true,
       });
 
       try {
@@ -264,77 +254,81 @@ const ReportProblemScreen = ({ navigation }: Props) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-      style={{ flex: 1 }}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 50}
-    >
-      <Container theme={theme}>
-        <Content>
-          <Title theme={theme}>Zgłoś problem</Title>
-          <Subtitle theme={theme}>Opisz co się stało i dodaj zdjęcia/wideo dla Dyrektora</Subtitle>
+    <Container theme={theme}>
+      <ScreenHeader theme={theme}>
+        <ScreenTitle theme={theme}>Zgłoś problem</ScreenTitle>
+      </ScreenHeader>
 
-          <Label theme={theme}>Opis problemu</Label>
-          <StyledTextInput
-            theme={theme}
-            placeholder="Np. Awaria instalacji, brak materiałów..."
-            multiline
-            numberOfLines={5}
-            textAlignVertical="top"
-            value={description}
-            onChangeText={setDescription}
-            placeholderTextColor={theme.colors.textSecondary}
-          />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 50}
+      >
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+          <Content>
+            <Label theme={theme}>Opis problemu</Label>
 
-          <Label theme={theme}>Załączniki ({media.length}/5)</Label>
-          <MediaGrid>
-            {media.map((item, index) => (
-              <MediaItem key={index} theme={theme}>
-                <RemoveMediaButton onPress={() => removeMedia(index)}>
-                  <X size={16} color="white" />
-                </RemoveMediaButton>
-                {item.type === 'image' ? (
-                  <Image source={{ uri: item.uri }} style={{ width: '100%', height: '100%' }} />
-                ) : (
-                  <View
-                    style={{
-                      flex: 1,
-                      backgroundColor: '#000',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Video size={30} color="white" />
-                  </View>
-                )}
-              </MediaItem>
-            ))}
-          </MediaGrid>
+            <StyledTextInput
+              theme={theme}
+              placeholder="Np. Awaria instalacji, brak materiałów..."
+              multiline
+              numberOfLines={5}
+              textAlignVertical="top"
+              value={description}
+              onChangeText={setDescription}
+              placeholderTextColor={theme.colors.textSecondary}
+            />
 
-          <AddMediaRow>
-            <AddMediaButton theme={theme} onPress={() => pickMedia('image')}>
-              <Camera size={20} color={theme.colors.primary} />
-              <AddMediaText theme={theme}>Zdjęcia</AddMediaText>
-            </AddMediaButton>
-            <AddMediaButton theme={theme} onPress={() => pickMedia('video')}>
-              <Video size={20} color={theme.colors.primary} />
-              <AddMediaText theme={theme}>Wideo</AddMediaText>
-            </AddMediaButton>
-          </AddMediaRow>
+            <Label theme={theme}>Załączniki ({media.length}/5)</Label>
+            <MediaGrid>
+              {media.map((item, index) => (
+                <MediaItem key={index} theme={theme}>
+                  <RemoveMediaButton onPress={() => removeMedia(index)}>
+                    <X size={16} color="white" />
+                  </RemoveMediaButton>
+                  {item.type === 'image' ? (
+                    <Image source={{ uri: item.uri }} style={{ width: '100%', height: '100%' }} />
+                  ) : (
+                    <View
+                      style={{
+                        flex: 1,
+                        backgroundColor: '#000',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Video size={30} color="white" />
+                    </View>
+                  )}
+                </MediaItem>
+              ))}
+            </MediaGrid>
 
-          <SubmitButton theme={theme} onPress={handleSubmit} disabled={uploading}>
-            {uploading ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <>
-                <Send size={20} color="white" />
-                <SubmitButtonText theme={theme}>Wyślij do Dyrektora</SubmitButtonText>
-              </>
-            )}
-          </SubmitButton>
-        </Content>
-      </Container>
-    </KeyboardAvoidingView>
+            <AddMediaRow>
+              <AddMediaButton theme={theme} onPress={() => pickMedia('image')}>
+                <Camera size={20} color={theme.colors.primary} />
+                <AddMediaText theme={theme}>Zdjęcia</AddMediaText>
+              </AddMediaButton>
+              <AddMediaButton theme={theme} onPress={() => pickMedia('video')}>
+                <Video size={20} color={theme.colors.primary} />
+                <AddMediaText theme={theme}>Wideo</AddMediaText>
+              </AddMediaButton>
+            </AddMediaRow>
+
+            <SubmitButton theme={theme} onPress={handleSubmit} disabled={uploading}>
+              {uploading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <>
+                  <Send size={20} color="white" />
+                  <SubmitButtonText theme={theme}>Wyślij do Dyrektora</SubmitButtonText>
+                </>
+              )}
+            </SubmitButton>
+          </Content>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Container>
   );
 };
 

@@ -19,6 +19,7 @@ import { notify } from '../utils/notify';
 import { FileText, Upload, X } from 'lucide-react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { DocumentPickerAsset } from 'expo-document-picker';
+import { Project } from '../types';
 
 const Container = styled(ScrollView)`
   flex: 1;
@@ -97,19 +98,6 @@ const SubmitButtonText = styled(RNText)`
   font-size: ${(props) => props.theme.fontSize.lg}px;
   font-weight: bold;
 `;
-
-interface Project {
-  title: string;
-  hospital: string;
-  department: string;
-  description: string;
-  pdfUrl: string;
-  pdfPath: string;
-  fileName: string;
-  status: 'IN_PROGRESS' | 'DONE';
-  createdBy: string;
-  createdAt: Timestamp | null;
-}
 
 type Props = StackScreenProps<any, 'AddProject'>;
 

@@ -256,6 +256,9 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
           ...(role !== 'DIRECTOR'
             ? [{ name: 'ReportProblem', label: 'Zgłoś problem', icon: AlertTriangle }]
             : []),
+          ...(role !== 'DIRECTOR'
+            ? [{ name: 'LiniaDoSzefa', label: 'Linia do Szefa', icon: MessageSquare }]
+            : []),
         ],
       },
       {
@@ -263,9 +266,6 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
         items: [
           { name: 'Reminders', label: 'Przypomnienia', icon: Bell },
           ...(role !== 'DIRECTOR' ? [{ name: 'Vacations', label: 'Urlop', icon: Palmtree }] : []),
-          ...(role !== 'DIRECTOR'
-            ? [{ name: 'LiniaDoSzefa', label: 'Linia do Szefa', icon: MessageSquare }]
-            : []),
           { name: 'Profile', label: 'Profil', icon: User },
           { name: 'About', label: 'O firmie', icon: Info },
         ],
@@ -297,6 +297,33 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
     ],
     [role, badges]
   );
+
+  const allMobileItems = useMemo(() => {
+    const flat = sections.flatMap((s) => s.items);
+    if (role === 'DIRECTOR') {
+      const orderedNames = [
+        'Home',
+        'Tasks',
+        'DirectorReports',
+        'Reminders',
+        'Dashboard',
+        'Service',
+        'Docs',
+        'Announcements',
+        'Vacations',
+        'Users',
+        'Profile',
+        'About',
+      ];
+      return orderedNames
+        .map((name) => flat.find((i) => i.name === name))
+        .filter(Boolean) as typeof flat;
+    }
+    return flat;
+  }, [sections, role]);
+
+  const visibleItems = allMobileItems.slice(0, 4);
+  const hiddenItems = allMobileItems.slice(4);
 
   if (isDesktop) {
     return (
@@ -352,14 +379,10 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
     );
   }
 
-  const allMobileItems = sections.flatMap((s) => s.items);
-  const visibleItems = allMobileItems.slice(0, 4);
-  const hiddenItems = allMobileItems.slice(4);
-
   return (
     <RootContainer theme={theme} isDesktop={false}>
       <ContentArea>{children}</ContentArea>
-      <SafeAreaView edges={['bottom']} style={{ backgroundColor: theme.colors.surface }}>
+      <SafeAreaView edges={['bottom']} style={{ backgroundColor: theme.colors.primary }}>
         <BottomTabs theme={theme}>
           {visibleItems.map((item) => (
             <TabItem
@@ -398,7 +421,11 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
         <MoreMenuBackdrop activeOpacity={1} onPress={() => setMoreVisible(false)}>
           <SafeAreaView
             edges={['bottom']}
-            style={{ backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
+            style={{
+              backgroundColor: theme.colors.surface,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+            }}
           >
             <MoreMenuContent theme={theme}>
               <View

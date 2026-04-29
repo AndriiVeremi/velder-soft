@@ -52,21 +52,41 @@ const Logo = styled.Image`
   resize-mode: contain;
 `;
 
+const CardTitle = styled(RNText)`
+  font-size: ${(props) => props.theme.fontSize.xl}px;
+  font-weight: bold;
+  color: ${(props) => props.theme.colors.text};
+  text-align: center;
+  margin-bottom: 8px;
+`;
+
+const Subtitle = styled(RNText)`
+  font-size: ${(props) => props.theme.fontSize.sm}px;
+  color: ${(props) => props.theme.colors.textSecondary};
+  text-align: center;
+  margin-bottom: 30px;
+`;
+
 const Input = styled.TextInput`
-  background-color: #f8f9fa;
+  background-color: ${(props) => (props.theme.isDark ? props.theme.colors.background : '#f8f9fa')};
   padding: 14px 16px;
-  border-radius: ${(props) => props.theme.borderRadius.md}px;
-  margin-bottom: ${(props) => props.theme.spacing.md}px;
+  border-radius: 12px;
+  margin-bottom: 16px;
   border: 1px solid ${(props) => props.theme.colors.border};
   font-size: ${(props) => props.theme.fontSize.f16}px;
+  color: ${(props) => props.theme.colors.text};
 `;
 
 const Button = styled.TouchableOpacity`
   background-color: ${(props) => props.theme.colors.primary};
   padding: 16px;
-  border-radius: ${(props) => props.theme.borderRadius.md}px;
+  border-radius: 12px;
   align-items: center;
-  margin-top: ${(props) => props.theme.spacing.sm}px;
+  margin-top: 10px;
+  shadow-color: ${(props) => props.theme.colors.primary};
+  shadow-opacity: 0.3;
+  shadow-radius: 8px;
+  elevation: 4;
 `;
 
 const ButtonText = styled(RNText)`
@@ -116,6 +136,9 @@ const LoginScreen = ({ navigation }: { navigation: { navigate: (screen: string) 
           <LogoContainer>
             <Logo source={require('../../assets/velder.png')} />
           </LogoContainer>
+
+          <CardTitle theme={theme}>Witamy ponownie!</CardTitle>
+          <Subtitle theme={theme}>Zaloguj się, aby kontynuować pracę</Subtitle>
 
           <Input
             theme={theme}

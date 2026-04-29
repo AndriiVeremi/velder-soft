@@ -8,7 +8,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   FlatList,
-  Alert,
 } from 'react-native';
 import styled from 'styled-components/native';
 import { db } from '../config/firebase';
@@ -27,6 +26,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
+import { confirmDelete } from '../utils/confirm';
+import { ScreenHeader, ScreenTitle } from '../components/CommonUI';
 import { Send, Trash2, MessageSquare, CheckCircle2, Clock } from 'lucide-react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { sendPushNotification } from '../utils/notifications';
@@ -37,19 +38,6 @@ import { RootStackParamList } from '../config/navigationTypes';
 const Container = styled.View`
   flex: 1;
   background-color: ${(props) => props.theme.colors.background};
-`;
-
-const Header = styled.View`
-  padding: 20px;
-  background-color: ${(props) => props.theme.colors.surface};
-  border-bottom-width: 1px;
-  border-bottom-color: ${(props) => props.theme.colors.border};
-`;
-
-const Title = styled(RNText)`
-  font-size: ${(props) => props.theme.fontSize.f24}px;
-  font-weight: bold;
-  color: ${(props) => props.theme.colors.text};
 `;
 
 const InputCard = styled.View`
@@ -228,23 +216,19 @@ const SendRequestScreen = ({ navigation }: Props) => {
   };
 
   const deleteRequest = (id: string) => {
-    const performDelete = async () => {
-      try {
-        await deleteDoc(doc(db, 'requests', id));
-        notify.success('Usunięto');
-      } catch (e) {
-        notify.error('Błąd');
-      }
-    };
-
-    if (Platform.OS === 'web') {
-      if (window.confirm('Usunąć wiadomość z historii?')) performDelete();
-    } else {
-      Alert.alert('Usuń', 'Czy na pewno chcesz usunąć tę wiadomość?', [
-        { text: 'Anuluj' },
-        { text: 'Usuń', style: 'destructive', onPress: performDelete },
-      ]);
-    }
+    confirmDelete(
+      'Czy na pewno chcesz usunąć tę wiadomość?',
+      async () => {
+        try {
+          await deleteDoc(doc(db, 'requests', id));
+          notify.success('Usunięto');
+        } catch (e) {
+          notify.error('Błąd');
+        }
+      },
+      'Usuń',
+      'Usuń'
+    );
   };
 
   return (

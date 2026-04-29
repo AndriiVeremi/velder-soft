@@ -173,33 +173,29 @@ const ProfileScreen = ({ navigation }: Props) => {
   const { user, userData, role } = useAuth();
   const { theme, isDark, toggleTheme, fontScale, setFontScale } = useAppTheme();
   const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState('');
+  const [name, setName] = useState(userData?.name || '');
   const [loading, setLoading] = useState(false);
-  const [startH, setStartH] = useState(8);
-  const [startM, setStartM] = useState(0);
-  const [endH, setEndH] = useState(17);
-  const [endM, setEndM] = useState(0);
+  const [startH, setStartH] = useState(() => {
+    if (userData?.notificationStart) return parseInt(userData.notificationStart.split(':')[0]);
+    return 8;
+  });
+  const [startM, setStartM] = useState(() => {
+    if (userData?.notificationStart) return parseInt(userData.notificationStart.split(':')[1]);
+    return 0;
+  });
+  const [endH, setEndH] = useState(() => {
+    if (userData?.notificationEnd) return parseInt(userData.notificationEnd.split(':')[0]);
+    return 17;
+  });
+  const [endM, setEndM] = useState(() => {
+    if (userData?.notificationEnd) return parseInt(userData.notificationEnd.split(':')[1]);
+    return 0;
+  });
 
   useEffect(() => {
-    if (!userData) return;
-
-    if (userData.name && name === '') {
-      setName(userData.name);
+    if (userData) {
+      setQuietHoursCache(userData.notificationStart, userData.notificationEnd);
     }
-
-    if (userData.notificationStart) {
-      const [h, m] = userData.notificationStart.split(':');
-      setStartH(parseInt(h));
-      setStartM(parseInt(m));
-    }
-
-    if (userData.notificationEnd) {
-      const [h, m] = userData.notificationEnd.split(':');
-      setEndH(parseInt(h));
-      setEndM(parseInt(m));
-    }
-
-    setQuietHoursCache(userData.notificationStart, userData.notificationEnd);
   }, [userData]);
 
   const saveSettings = async () => {

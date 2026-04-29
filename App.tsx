@@ -1,4 +1,5 @@
 import 'react-native-gesture-handler';
+import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { NavigationContainer, RouteProp } from '@react-navigation/native';
 import { createStackNavigator, StackNavigationProp } from '@react-navigation/stack';
@@ -35,7 +36,12 @@ import DocsScreen from './src/screens/DocsScreen';
 import SendRequestScreen from './src/screens/SendRequestScreen';
 import { RootStackParamList } from './src/config/navigationTypes';
 
-LogBox.ignoreLogs(['Image: style.tintColor is deprecated', 'Blocked aria-hidden on an element']);
+LogBox.ignoreLogs([
+  'Image: style.tintColor is deprecated',
+  'Blocked aria-hidden on an element',
+  'expo-notifications: Android Push notifications',
+  '`expo-notifications` functionality is not fully supported in Expo Go',
+]);
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -44,6 +50,20 @@ const CenteredContainer = styled.View`
   justify-content: center;
   align-items: center;
   background-color: ${(props) => props.theme.colors.background};
+`;
+
+const SplashLogo = styled.Image`
+  width: 220px;
+  height: 60px;
+  resize-mode: contain;
+  margin-bottom: 20px;
+`;
+
+const LoadingText = styled.Text`
+  font-size: 14px;
+  color: ${(props) => props.theme.colors.textSecondary};
+  margin-top: 10px;
+  font-weight: 500;
 `;
 
 type RouteKey = keyof RootStackParamList;
@@ -70,104 +90,116 @@ const withLayout = <K extends RouteKey>(
 const AuthenticatedStack = () => {
   const { theme } = useAppTheme();
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: true,
-        headerStyle: { backgroundColor: theme.colors.surface },
-        headerTitleStyle: { fontWeight: 'bold', color: theme.colors.text },
-      }}
-    >
-      <Stack.Screen
-        name="Home"
-        component={withLayout(HomeScreen, 'Home')}
-        options={{ title: 'Start' }}
-      />
-      <Stack.Screen
-        name="Tasks"
-        component={withLayout(TasksScreen, 'Tasks')}
-        options={{ title: 'Zadania' }}
-      />
-      <Stack.Screen
-        name="Dashboard"
-        component={withLayout(DashboardScreen, 'Dashboard')}
-        options={{ title: 'Projekty' }}
-      />
-      <Stack.Screen
-        name="Service"
-        component={withLayout(ServiceScreen, 'Service')}
-        options={{ title: 'Serwis' }}
-      />
-      <Stack.Screen
-        name="Users"
-        component={withLayout(UsersScreen, 'Users')}
-        options={{ title: 'Pracownicy' }}
-      />
-      <Stack.Screen
-        name="Vacations"
-        component={withLayout(VacationsScreen, 'Vacations')}
-        options={{ title: 'Urlopy' }}
-      />
-      <Stack.Screen
-        name="Reminders"
-        component={withLayout(RemindersScreen, 'Reminders')}
-        options={{ title: 'Przypomnienia' }}
-      />
-      <Stack.Screen
-        name="Announcements"
-        component={withLayout(AnnouncementsScreen, 'Announcements')}
-        options={{ title: 'Ogłoszenia' }}
-      />
-      <Stack.Screen
-        name="Profile"
-        component={withLayout(ProfileScreen, 'Profile')}
-        options={{ title: 'Profil' }}
-      />
-      <Stack.Screen
-        name="LiniaDoSzefa"
-        component={withLayout(SendRequestScreen, 'LiniaDoSzefa')}
-        options={{ title: 'Linia do Szefa' }}
-      />
-      <Stack.Screen
-        name="ReportProblem"
-        component={withLayout(ReportProblemScreen, 'ReportProblem')}
-        options={{ title: 'Zgłoś problem' }}
-      />
-      <Stack.Screen
-        name="DirectorReports"
-        component={withLayout(DirectorReportsScreen, 'DirectorReports')}
-        options={{ title: 'Zgłoszenia' }}
-      />
-      <Stack.Screen
-        name="About"
-        component={withLayout(AboutCompanyScreen, 'About')}
-        options={{ title: 'O firmie' }}
-      />
-      <Stack.Screen
-        name="Docs"
-        component={withLayout(DocsScreen, 'Docs')}
-        options={{ title: 'Dokumentacja' }}
-      />
-      <Stack.Screen
-        name="AddProject"
-        component={AddProjectScreen}
-        options={{ title: 'Nowy Projekt' }}
-      />
-      <Stack.Screen
-        name="ProjectDetails"
-        component={ProjectDetailsScreen}
-        options={{ title: 'Szczegóły' }}
-      />
-    </Stack.Navigator>
+    <>
+      <StatusBar style="light" backgroundColor={theme.colors.primary} />
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: theme.colors.primary,
+            elevation: 0,
+            shadowOpacity: 0,
+            borderBottomWidth: 0,
+          },
+          headerTitleStyle: { fontWeight: 'bold', color: '#FFFFFF' },
+          headerTintColor: '#FFFFFF',
+        }}
+      >
+        <Stack.Screen
+          name="Home"
+          component={withLayout(HomeScreen, 'Home')}
+          options={{ title: 'Start' }}
+        />
+        <Stack.Screen
+          name="Tasks"
+          component={withLayout(TasksScreen, 'Tasks')}
+          options={{ title: 'Zadania' }}
+        />
+        <Stack.Screen
+          name="Dashboard"
+          component={withLayout(DashboardScreen, 'Dashboard')}
+          options={{ title: 'Projekty' }}
+        />
+        <Stack.Screen
+          name="Service"
+          component={withLayout(ServiceScreen, 'Service')}
+          options={{ title: 'Serwis' }}
+        />
+        <Stack.Screen
+          name="Users"
+          component={withLayout(UsersScreen, 'Users')}
+          options={{ title: 'Pracownicy' }}
+        />
+        <Stack.Screen
+          name="Vacations"
+          component={withLayout(VacationsScreen, 'Vacations')}
+          options={{ title: 'Urlopy' }}
+        />
+        <Stack.Screen
+          name="Reminders"
+          component={withLayout(RemindersScreen, 'Reminders')}
+          options={{ title: 'Przypomnienia' }}
+        />
+        <Stack.Screen
+          name="Announcements"
+          component={withLayout(AnnouncementsScreen, 'Announcements')}
+          options={{ title: 'Ogłoszenia' }}
+        />
+        <Stack.Screen
+          name="Profile"
+          component={withLayout(ProfileScreen, 'Profile')}
+          options={{ title: 'Profil' }}
+        />
+        <Stack.Screen
+          name="LiniaDoSzefa"
+          component={withLayout(SendRequestScreen, 'LiniaDoSzefa')}
+          options={{ title: 'Linia do Szefa' }}
+        />
+        <Stack.Screen
+          name="ReportProblem"
+          component={withLayout(ReportProblemScreen, 'ReportProblem')}
+          options={{ title: 'Zgłoś problem' }}
+        />
+        <Stack.Screen
+          name="DirectorReports"
+          component={withLayout(DirectorReportsScreen, 'DirectorReports')}
+          options={{ title: 'Zgłoszenia' }}
+        />
+        <Stack.Screen
+          name="About"
+          component={withLayout(AboutCompanyScreen, 'About')}
+          options={{ title: 'O firmie' }}
+        />
+        <Stack.Screen
+          name="Docs"
+          component={withLayout(DocsScreen, 'Docs')}
+          options={{ title: 'Dokumentacja' }}
+        />
+        <Stack.Screen
+          name="AddProject"
+          component={AddProjectScreen}
+          options={{ title: 'Nowy Projekt' }}
+        />
+        <Stack.Screen
+          name="ProjectDetails"
+          component={ProjectDetailsScreen}
+          options={{ title: 'Szczegóły' }}
+        />
+      </Stack.Navigator>
+    </>
   );
 };
 
 const RootNavigation = () => {
   const { user, isActive, loading } = useAuth();
+  const { theme } = useAppTheme();
 
   if (loading) {
     return (
-      <CenteredContainer>
-        <ActivityIndicator size="large" color="#008744" />
+      <CenteredContainer theme={theme}>
+        <SplashLogo source={require('./assets/velder.png')} />
+        <ActivityIndicator size="small" color={theme.colors.primary} />
+        <LoadingText theme={theme}>Inicjalizacja systemu...</LoadingText>
       </CenteredContainer>
     );
   }

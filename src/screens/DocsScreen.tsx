@@ -7,8 +7,6 @@ import {
   ActivityIndicator,
   Modal,
   TextInput,
-  Alert,
-  Platform,
   Image,
 } from 'react-native';
 import styled from 'styled-components/native';
@@ -29,6 +27,8 @@ import { db, storage } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
+import { confirmDelete } from '../utils/confirm';
+import { Fab, ModalOverlay } from '../components/CommonUI';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import * as WebBrowser from 'expo-web-browser';
@@ -113,26 +113,6 @@ const ItemName = styled(RNText)`
   color: ${(props) => props.theme.colors.text};
   flex: 1;
   margin-left: 12px;
-`;
-
-const Fab = styled.TouchableOpacity`
-  position: absolute;
-  bottom: 25px;
-  right: 25px;
-  width: 60px;
-  height: 60px;
-  border-radius: 30px;
-  background-color: ${(props) => props.theme.colors.primary};
-  justify-content: center;
-  align-items: center;
-  elevation: 5;
-`;
-
-const ModalOverlay = styled.View`
-  flex: 1;
-  background-color: rgba(0, 0, 0, 0.5);
-  justify-content: center;
-  align-items: center;
 `;
 
 const ModalBox = styled.View`
@@ -367,17 +347,21 @@ const DocsScreen = ({ navigation }: Props) => {
   };
 
   const deleteCategory = (id: string) => {
-    const perform = async () => {
-      const foldersSnap = await getDocs(
-        query(collection(db, 'docs_folders'), where('categoryId', '==', id))
-      );
-      for (const f of foldersSnap.docs) {
-        await deleteFolder(f.id, true);
-      }
-      await deleteDoc(doc(db, 'docs_categories', id));
-      notify.success('Usunięto');
-    };
-    confirmDelete(perform);
+    confirmDelete(
+      'Czy na pewno chcesz usunąć?',
+      async () => {
+        const foldersSnap = await getDocs(
+          query(collection(db, 'docs_folders'), where('categoryId', '==', id))
+        );
+        for (const f of foldersSnap.docs) {
+          await deleteFolder(f.id, true);
+        }
+        await deleteDoc(doc(db, 'docs_categories', id));
+        notify.success('Usunięto');
+      },
+      'Usuń',
+      'Usuń'
+    );
   };
 
   const deleteFolder = async (id: string, silent = false) => {
@@ -395,7 +379,8 @@ const DocsScreen = ({ navigation }: Props) => {
     if (!silent) notify.success('Usunięto');
   };
 
-  const deleteFolderConfirm = (id: string) => confirmDelete(() => deleteFolder(id));
+  const deleteFolderConfirm = (id: string) =>
+    confirmDelete('Czy na pewno chcesz usunąć?', () => deleteFolder(id), 'Usuń', 'Usuń');
 
   const deleteFile = (file: DocsFile) => {
     const perform = async () => {
@@ -405,18 +390,7 @@ const DocsScreen = ({ navigation }: Props) => {
       await deleteDoc(doc(db, 'docs_files', file.id));
       notify.success('Usunięto');
     };
-    confirmDelete(perform);
-  };
-
-  const confirmDelete = (action: () => void) => {
-    if (Platform.OS === 'web') {
-      if (window.confirm('Czy na pewno chcesz usunąć?')) action();
-    } else {
-      Alert.alert('Usuń', 'Czy na pewno chcesz usunąć?', [
-        { text: 'Anuluj', style: 'cancel' },
-        { text: 'Usuń', style: 'destructive', onPress: action },
-      ]);
-    }
+    confirmDelete('Czy na pewno chcesz usunąć?', perform, 'Usuń', 'Usuń');
   };
 
   const openFile = async (file: DocsFile) => {

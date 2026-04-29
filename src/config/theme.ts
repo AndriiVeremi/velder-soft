@@ -83,3 +83,25 @@ export const darkTheme = {
 export type ThemeType = typeof lightTheme;
 
 export const theme = lightTheme;
+
+export function getCalendarTheme(t: ThemeType) {
+  return {
+    backgroundColor: t.colors.surface,
+    calendarBackground: t.colors.surface,
+    textSectionTitleColor: t.colors.textSecondary,
+    selectedDayBackgroundColor: t.colors.primary,
+    selectedDayTextColor: '#ffffff',
+    todayTextColor: t.colors.primary,
+    dayTextColor: t.colors.text,
+    textDisabledColor: t.colors.border,
+    dotColor: t.colors.primary,
+    selectedDotColor: '#ffffff',
+    arrowColor: t.colors.primary,
+    disabledArrowColor: t.colors.border,
+    monthTextColor: t.colors.text,
+    indicatorColor: t.colors.primary,
+    textDayFontWeight: '400' as const,
+    textMonthFontWeight: 'bold' as const,
+    textDayHeaderFontWeight: '400' as const,
+  };
+}

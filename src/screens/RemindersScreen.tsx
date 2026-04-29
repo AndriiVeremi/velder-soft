@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   Modal,
   TextInput,
-  Alert,
   ScrollView,
   Platform,
   KeyboardAvoidingView,
@@ -28,7 +27,10 @@ import {
 import { db, auth } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { useAppTheme } from '../context/ThemeContext';
+import { getCalendarTheme } from '../config/theme';
 import { notify } from '../utils/notify';
+import { confirmDelete } from '../utils/confirm';
+import { Fab, ModalOverlay, ScreenHeader, ScreenTitle } from '../components/CommonUI';
 import {
   Bell,
   Plus,
@@ -47,19 +49,6 @@ import { REMINDER_REPEAT_COUNT, REMINDER_INTERVAL_MINUTES } from '../utils/notif
 const Container = styled.View`
   flex: 1;
   background-color: ${(props) => props.theme.colors.background};
-`;
-
-const Header = styled.View`
-  padding: 20px;
-  background-color: ${(props) => props.theme.colors.surface};
-  border-bottom-width: 1px;
-  border-bottom-color: ${(props) => props.theme.colors.border};
-`;
-
-const Title = styled(RNText)`
-  font-size: ${(props) => props.theme.fontSize.f24}px;
-  font-weight: bold;
-  color: ${(props) => props.theme.colors.text};
 `;
 
 const ReminderCard = styled.View<{ done: boolean }>`
@@ -94,19 +83,6 @@ const ReminderTime = styled(RNText)`
   margin-top: 4px;
 `;
 
-const AddButton = styled.TouchableOpacity`
-  background-color: ${(props) => props.theme.colors.primary};
-  width: 60px;
-  height: 60px;
-  border-radius: 30px;
-  position: absolute;
-  right: 20px;
-  bottom: 20px;
-  justify-content: center;
-  align-items: center;
-  elevation: 5;
-`;
-
 const ModalContent = styled.View`
   background-color: ${(props) => props.theme.colors.surface};
   padding: 25px;
@@ -138,13 +114,6 @@ const EmptyText = styled(RNText)`
   text-align: center;
   margin-top: 50px;
   color: ${(props) => props.theme.colors.textSecondary};
-`;
-
-const ModalOverlay = styled.View`
-  flex: 1;
-  background-color: rgba(0, 0, 0, 0.5);
-  justify-content: center;
-  align-items: center;
 `;
 
 const ModalHeader = styled.View`
@@ -330,15 +299,16 @@ const RemindersScreen = ({ navigation, route }: Props) => {
   };
 
   const deleteReminder = (id: string) => {
-    const performDelete = async () => {
-      await deleteDoc(doc(db, 'reminders', id));
-      await cancelReminderSequence(id);
-      notify.success('Usunięto');
-    };
-    Alert.alert('Usuń', 'Czy na pewno?', [
-      { text: 'Anuluj' },
-      { text: 'Usuń', onPress: performDelete },
-    ]);
+    confirmDelete(
+      'Czy na pewno?',
+      async () => {
+        await deleteDoc(doc(db, 'reminders', id));
+        await cancelReminderSequence(id);
+        notify.success('Usunięto');
+      },
+      'Usuń',
+      'Usuń'
+    );
   };
 
   if (loading)
@@ -381,9 +351,9 @@ const RemindersScreen = ({ navigation, route }: Props) => {
         ListEmptyComponent={<EmptyText theme={theme}>Nie masz jeszcze przypomnień.</EmptyText>}
       />
 
-      <AddButton theme={theme} onPress={() => setModalVisible(true)}>
+      <Fab theme={theme} onPress={() => setModalVisible(true)}>
         <Plus size={30} color="white" />
-      </AddButton>
+      </Fab>
 
       <Modal visible={modalVisible} transparent animationType="slide">
         <ModalOverlay>
@@ -430,25 +400,7 @@ const RemindersScreen = ({ navigation, route }: Props) => {
                 <Calendar
                   onDayPress={(day) => setSelectedDate(day.dateString)}
                   markedDates={{ [date]: { selected: true, selectedColor: theme.colors.primary } }}
-                  theme={{
-                    backgroundColor: theme.colors.surface,
-                    calendarBackground: theme.colors.surface,
-                    textSectionTitleColor: theme.colors.textSecondary,
-                    selectedDayBackgroundColor: theme.colors.primary,
-                    selectedDayTextColor: '#ffffff',
-                    todayTextColor: theme.colors.primary,
-                    dayTextColor: theme.colors.text,
-                    textDisabledColor: theme.colors.border,
-                    dotColor: theme.colors.primary,
-                    selectedDotColor: '#ffffff',
-                    arrowColor: theme.colors.primary,
-                    disabledArrowColor: theme.colors.border,
-                    monthTextColor: theme.colors.text,
-                    indicatorColor: theme.colors.primary,
-                    textDayFontWeight: '400',
-                    textMonthFontWeight: 'bold',
-                    textDayHeaderFontWeight: '400',
-                  }}
+                  theme={getCalendarTheme(theme)}
                 />
 
                 <Label theme={theme}>GODZINA (HH:MM)</Label>
