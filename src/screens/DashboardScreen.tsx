@@ -8,7 +8,6 @@ import {
   View,
   ScrollView,
   Dimensions,
-  Alert,
   Platform,
   Modal,
 } from 'react-native';
@@ -41,10 +40,13 @@ import {
   X,
   CheckCircle,
   Clock,
+  Download,
 } from 'lucide-react-native';
 import { notify } from '../utils/notify';
+import { downloadImage } from '../utils/download';
 import { pickAndUploadPhoto } from '../utils/upload';
-import { ModalOverlay, ModalContent } from '../components/CommonUI';
+import { confirmDelete } from '../utils/confirm';
+import { ModalOverlay, ModalContent, UploadOverlay, Fab } from '../components/CommonUI';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Project, Hospital, Department, ServiceRecord } from '../types';
 
@@ -57,7 +59,7 @@ const Container = styled.View`
 
 const Header = styled.View`
   padding: ${(props) => props.theme.spacing.md}px;
-  background-color: ${(props) => props.theme.colors.surface};
+  background-color: ${(props) => props.theme.colors.accent};
   border-bottom-width: 1px;
   border-bottom-color: ${(props) => props.theme.colors.border};
   flex-direction: row;
@@ -65,20 +67,27 @@ const Header = styled.View`
 `;
 
 const BreadcrumbText = styled(RNText)`
-  font-size: 16px;
-  font-weight: 600;
+  font-size: ${(props) => props.theme.fontSize.f14}px;
+  font-weight: bold;
   color: ${(props) => props.theme.colors.primary};
   margin-left: 10px;
+  flex: 1;
 `;
 
 const ItemCard = styled.TouchableOpacity`
   background-color: ${(props) => props.theme.colors.surface};
   padding: ${(props) => props.theme.spacing.md}px;
-  margin: 4px ${(props) => props.theme.spacing.md}px;
-  border-radius: ${(props) => props.theme.borderRadius.md}px;
+  margin: 6px ${(props) => props.theme.spacing.md}px;
+  border-radius: ${(props) => props.theme.borderRadius.lg}px;
   flex-direction: row;
   align-items: center;
   border: 1px solid ${(props) => props.theme.colors.border};
+
+  shadow-color: #000;
+  shadow-offset: 0px 1px;
+  shadow-opacity: 0.1;
+  shadow-radius: 3px;
+  elevation: 2;
 `;
 
 const ItemInfo = styled.View`
@@ -87,13 +96,13 @@ const ItemInfo = styled.View`
 `;
 
 const ItemTitle = styled(RNText)`
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
 `;
 
 const ItemSubtitle = styled(RNText)`
-  font-size: 12px;
+  font-size: ${(props) => props.theme.fontSize.f12}px;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-top: 2px;
 `;
@@ -107,7 +116,7 @@ const PhotoGallery = styled.View`
 `;
 
 const PhotoTitle = styled(RNText)`
-  font-size: 14px;
+  font-size: ${(props) => props.theme.fontSize.f14}px;
   font-weight: bold;
   margin-bottom: 10px;
   color: ${(props) => props.theme.colors.textSecondary};
@@ -131,8 +140,17 @@ const DeleteBtn = styled.TouchableOpacity`
   position: absolute;
   bottom: 4px;
   right: 4px;
-  background-color: rgba(0, 0, 0, 0.5);
-  padding: 4px;
+  background-color: rgba(220, 53, 69, 0.8);
+  padding: 6px;
+  border-radius: 12px;
+`;
+
+const DownloadBtn = styled.TouchableOpacity`
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  background-color: rgba(0, 135, 68, 0.8);
+  padding: 6px;
   border-radius: 12px;
 `;
 
@@ -160,7 +178,7 @@ const ActionBtnText = styled(RNText)`
 `;
 
 const HintText = styled(RNText)`
-  font-size: 11px;
+  font-size: ${(props) => props.theme.fontSize.xs}px;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-top: 8px;
   text-align: center;
@@ -182,29 +200,10 @@ const StatusRow = styled.View`
   margin-top: 2px;
 `;
 
-const AddButton = styled.TouchableOpacity`
-  background-color: ${(props) => props.theme.colors.primary};
-  width: 60px;
-  height: 60px;
-  border-radius: 30px;
-  position: absolute;
-  right: 20px;
-  bottom: 20px;
-  justify-content: center;
-  align-items: center;
-  elevation: 5;
-`;
-
 const LoaderContainer = styled.View`
   flex: 1;
   justify-content: center;
   align-items: center;
-`;
-
-const AbsoluteLoader = styled(ActivityIndicator)`
-  position: absolute;
-  top: 50%;
-  align-self: center;
 `;
 
 const EmptyRecordsText = styled(RNText)`
@@ -218,38 +217,13 @@ const CenterWrapper = styled.View`
   width: 100%;
 `;
 
-const FolderActionRow = styled.View`
-  flex-direction: row;
-  justify-content: space-around;
-  padding: 10px;
-  background-color: ${(props) => props.theme.colors.surface};
-  border-bottom-width: 1px;
-  border-bottom-color: ${(props) => props.theme.colors.border};
-`;
-
-const FolderActionBtn = styled.TouchableOpacity`
-  flex-direction: row;
-  align-items: center;
-  padding: 8px 16px;
-  border-radius: 20px;
-  background-color: ${(props) => props.theme.colors.accent};
-  border: 1px solid ${(props) => props.theme.colors.primary};
-`;
-
-const FolderActionText = styled(RNText)`
-  color: ${(props) => props.theme.colors.primary};
-  font-weight: bold;
-  margin-left: 8px;
-  font-size: 13px;
-`;
-
 const StyledInput = styled.TextInput`
   background-color: ${(props) => props.theme.colors.background};
   border-width: 1px;
   border-color: ${(props) => props.theme.colors.border};
   border-radius: 8px;
   padding: 12px 16px;
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
   margin-bottom: 20px;
   color: ${(props) => props.theme.colors.text};
 `;
@@ -272,7 +246,7 @@ const ModalBtnText = styled(RNText)<{ primary?: boolean }>`
 `;
 
 const ModalTitle = styled(RNText)`
-  font-size: 20px;
+  font-size: ${(props) => props.theme.fontSize.f20}px;
   font-weight: bold;
   margin-bottom: 20px;
   color: ${(props) => props.theme.colors.text};
@@ -457,15 +431,7 @@ const DashboardScreen = ({ navigation }: Props) => {
       }
     };
 
-    const msg = `Usunąć "${hosp.name}"?`;
-    if (Platform.OS === 'web') {
-      if (window.confirm(msg)) perform();
-    } else {
-      Alert.alert('Usuń', msg, [
-        { text: 'Nie' },
-        { text: 'Tak', onPress: perform, style: 'destructive' },
-      ]);
-    }
+    confirmDelete(`Usunąć "${hosp.name}"?`, perform);
   };
 
   const handleDeleteDepartment = (dept: Department) => {
@@ -488,15 +454,7 @@ const DashboardScreen = ({ navigation }: Props) => {
       }
     };
 
-    const msg = `Usunąć oddział "${dept.name}"?`;
-    if (Platform.OS === 'web') {
-      if (window.confirm(msg)) perform();
-    } else {
-      Alert.alert('Usuń', msg, [
-        { text: 'Nie' },
-        { text: 'Tak', onPress: perform, style: 'destructive' },
-      ]);
-    }
+    confirmDelete(`Usunąć oddział "${dept.name}"?`, perform);
   };
 
   const uploadPhoto = async () => {
@@ -548,23 +506,9 @@ const DashboardScreen = ({ navigation }: Props) => {
     if (!selectedHospital) {
       return (
         <View style={{ flex: 1 }}>
-          {role === 'DIRECTOR' && (
-            <FolderActionRow theme={theme}>
-              <FolderActionBtn
-                theme={theme}
-                onPress={() => {
-                  setModalType('HOSPITAL');
-                  setIsModalVisible(true);
-                }}
-              >
-                <Plus size={18} color={theme.colors.primary} />
-                <FolderActionText theme={theme}>Nowy Szpital (Folder)</FolderActionText>
-              </FolderActionBtn>
-            </FolderActionRow>
-          )}
           <FlatList
             data={hospitalsList}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => item.id || ''}
             renderItem={({ item }) => (
               <ItemCard onPress={() => setSelectedHospital(item)} theme={theme}>
                 <Folder
@@ -604,23 +548,9 @@ const DashboardScreen = ({ navigation }: Props) => {
     if (!selectedDepartment) {
       return (
         <View style={{ flex: 1 }}>
-          {role === 'DIRECTOR' && (
-            <FolderActionRow theme={theme}>
-              <FolderActionBtn
-                theme={theme}
-                onPress={() => {
-                  setModalType('DEPARTMENT');
-                  setIsModalVisible(true);
-                }}
-              >
-                <Plus size={18} color={theme.colors.primary} />
-                <FolderActionText theme={theme}>Nowy Oddział (Podfolder)</FolderActionText>
-              </FolderActionBtn>
-            </FolderActionRow>
-          )}
           <FlatList
             data={departmentsList}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => item.id || ''}
             renderItem={({ item }) => (
               <ItemCard onPress={() => setSelectedDepartment(item)} theme={theme}>
                 <Folder
@@ -703,9 +633,12 @@ const DashboardScreen = ({ navigation }: Props) => {
               {records.map((r) => (
                 <PhotoItemContainer key={r.id} theme={theme}>
                   <ProjectImage source={{ uri: r.photoUrl }} />
+                  <DownloadBtn onPress={() => downloadImage(r.photoUrl, `photo_${r.id}.jpg`)}>
+                    <Download size={14} color="white" />
+                  </DownloadBtn>
                   {role === 'DIRECTOR' && (
                     <DeleteBtn onPress={() => deletePhoto(r)}>
-                      <Trash2 size={12} color="white" />
+                      <Trash2 size={14} color="white" />
                     </DeleteBtn>
                   )}
                 </PhotoItemContainer>
@@ -715,7 +648,7 @@ const DashboardScreen = ({ navigation }: Props) => {
         )}
         <FlatList
           data={projects}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id || ''}
           renderItem={({ item }) => (
             <ItemCard
               onPress={() => navigation.navigate('ProjectDetails', { project: item })}
@@ -735,6 +668,23 @@ const DashboardScreen = ({ navigation }: Props) => {
     );
   };
 
+  const handleFabPress = () => {
+    if (!selectedHospital) {
+      setModalType('HOSPITAL');
+      setIsModalVisible(true);
+    } else if (!selectedDepartment) {
+      setModalType('DEPARTMENT');
+      setIsModalVisible(true);
+    } else {
+      navigation.navigate('AddProject', {
+        hospitalId: selectedHospital.id.startsWith('legacy_') ? null : selectedHospital.id,
+        departmentId: selectedDepartment.id.startsWith('legacy_') ? null : selectedDepartment.id,
+        hospitalName: selectedHospital.name,
+        departmentName: selectedDepartment.name,
+      });
+    }
+  };
+
   return (
     <Container theme={theme}>
       {(selectedHospital || selectedDepartment) && (
@@ -749,22 +699,10 @@ const DashboardScreen = ({ navigation }: Props) => {
       )}
       {renderContent()}
 
-      {role === 'DIRECTOR' && selectedHospital && selectedDepartment && (
-        <AddButton
-          onPress={() =>
-            navigation.navigate('AddProject', {
-              hospitalId: selectedHospital.id.startsWith('legacy_') ? null : selectedHospital.id,
-              departmentId: selectedDepartment.id.startsWith('legacy_')
-                ? null
-                : selectedDepartment.id,
-              hospitalName: selectedHospital.name,
-              departmentName: selectedDepartment.name,
-            })
-          }
-          theme={theme}
-        >
+      {role === 'DIRECTOR' && (
+        <Fab theme={theme} onPress={handleFabPress}>
           <Plus size={30} color="white" />
-        </AddButton>
+        </Fab>
       )}
 
       <Modal visible={isModalVisible} transparent animationType="fade">
@@ -806,7 +744,11 @@ const DashboardScreen = ({ navigation }: Props) => {
         </ModalOverlay>
       </Modal>
 
-      {uploading && <AbsoluteLoader size="large" color={theme.colors.primary} />}
+      {uploading && (
+        <UploadOverlay>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </UploadOverlay>
+      )}
     </Container>
   );
 };

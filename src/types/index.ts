@@ -1,5 +1,21 @@
 import { Timestamp } from 'firebase/firestore';
 
+export interface Project {
+  id?: string;
+  title: string;
+  hospital: string;
+  hospitalId?: string;
+  department: string;
+  departmentId?: string;
+  description: string;
+  pdfUrl: string;
+  pdfPath: string;
+  fileName: string;
+  status: 'IN_PROGRESS' | 'DONE';
+  createdBy: string;
+  createdAt: Timestamp | null;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -11,6 +27,7 @@ export interface Task {
   photoPath?: string;
   wasMoved?: boolean;
   assignedTo?: string;
+  isNew?: boolean;
   createdAt?: Timestamp | null;
 }
 

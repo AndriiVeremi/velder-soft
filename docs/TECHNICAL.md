@@ -7,27 +7,38 @@ Niniejszy dokument zawiera szczegółowe informacje na temat struktury techniczn
 - **Frontend:** React Native (Expo SDK 54)
 - **Język:** TypeScript (Pełna typizacja interfaces/types)
 - **Backend:** Firebase (Firestore, Auth, Storage)
-- **Stylizacja:** styled-components/native
+- **Stylizacja:** styled-components/native з підтримкою динамічного масштабування шрифтів (FontScale).
 - **Ikony:** lucide-react-native
-- **Powiadomienia:** expo-notifications + Expo Push API
+- **Powiadomienia:** expo-notifications + Expo Push API (obsługa kanałów Android, priorytetów oraz godzin ciszy).
 
 ## 🏛 Architektura Systemu
 
 ### Struktura Danych (Firestore)
 
-System wykorzystuje zoptymalizowaną strukturę hierarchiczną dla projektów:
+System wykorzystuje zoptymalizowaną strukturę hierarchiczną:
 
 - **Hospitals (`hospitals`):** Główny folder projektu.
 - **Departments (`departments`):** Podfoldery przypisane do szpitala. Przechowują stan prac (`status`: IN_PROGRESS / COMPLETED).
-- **Projects/Documents (`projects`):** Pliki PDF przypisane do konkretnego oddziału. Obsługują metadane `contentType: application/pdf` dla poprawnego wyświetlania w przeglądarkach.
+- **Projects/Documents (`projects`):** Pliki PDF przypisane do konkretnego oddziału.
+- **Documentation (`docs_categories`, `docs_folders`, `docs_files`):** Nowy moduł bazy wiedzy z trójpoziomową strukturą: Kategoria -> Folder -> Plik.
 - **Requests (`requests`):** System "Linia do Szefa". Dokumenty przechowują stan `PENDING` lub `CONFIRMED`.
 
-### System Powiadomień i Sygnalizacji
+### Dynamiczne Skalowanie Interfejsu
 
-- **Kanały Android (Alerts):** Specjalny kanał o wysokim priorytecie zapewniający dźwięk i wibrację dla krytycznych zdarzeń.
-- **Linia do Szefa:** Real-time monitoring nowych zgłoszeń z natychmiastowym powiadomieniem dźwiękowym dla Dyrektora.
-- **Ogłoszenia:** Powiadomienia dźwiękowe dla pracowników przy publikacji nowych komunikatów.
-- **Optimistic UI:** Natychmiastowe znikanie potwierdzonych elementów z interfejsu przed zakończeniem operacji sieciowej.
+Wprowadzono system `FontScale` (1x, 1.2x, 1.4x), który jest zintegrowany z `ThemeContext`.
+
+- **Mechanizm:** Rozmiary шрифтів definiowane są w `src/config/theme.ts` za pomocą funkcji `buildFontSize`.
+- **Zasada działania:** Wszystkie komponenty UI korzystają z kluczy `theme.fontSize.fXX`, co pozwala na natychmiastową zmianę rozmiaru w całej aplikacji bez restartu.
+- **Persystencja:** Wybrany profil skalowania jest zapisywany lokalnie przez `AsyncStorage`.
+
+### Zaawansowany System Powiadomień
+
+- **Kanały Android:**
+  - `Alerts`: Wysoki priorytet, specyficzny sygnał wibracyjny dla zgłoszeń problemów.
+  - `Przypomnienia`: Długi wzór wibracji, obsługa interaktywnych kategorii.
+- **Tryb Ciszy (Quiet Hours):** Użytkownik może zdefiniować godziny pracy w profilu. Powiadomienia PUSH wysyłane w tych godzinach są automatycznie wyciszane po stronie serwera/klienta.
+- **Interaktywne Przypomnienia:** Kategoria `reminder` pozwala na "Uśpienie" (Snooze) powiadomienia na 10 minut bezpośrednio z poziomu paska powiadomień.
+- **Daily Reminders:** Automatyczne planowanie lokalnego powiadomienia z podsumowaniem zadań na dany dzień.
 
 ### Automatyzacja i Cleanup
 

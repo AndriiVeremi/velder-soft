@@ -42,7 +42,7 @@ const Card = styled.View`
 `;
 
 const Title = styled(RNText)`
-  font-size: 24px;
+  font-size: ${(props) => props.theme.fontSize.f24}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
   text-align: center;
@@ -67,7 +67,7 @@ const Button = styled.TouchableOpacity`
 const ButtonText = styled(RNText)`
   color: white;
   font-weight: bold;
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
 `;
 
 const SecondaryButton = styled.TouchableOpacity`

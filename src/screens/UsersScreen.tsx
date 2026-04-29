@@ -6,8 +6,6 @@ import {
   ActivityIndicator,
   Switch,
   TouchableOpacity,
-  Alert,
-  Platform,
 } from 'react-native';
 import styled from 'styled-components/native';
 import {
@@ -23,6 +21,9 @@ import { db } from '../config/firebase';
 import { useAppTheme } from '../context/ThemeContext';
 import { User, Shield, Trash2, Mail, CheckCircle, XCircle } from 'lucide-react-native';
 import { notify } from '../utils/notify';
+import { confirmDelete } from '../utils/confirm';
+import { ScreenHeader, ScreenTitle } from '../components/CommonUI';
+import { sendPushNotification } from '../utils/notifications';
 import { StackScreenProps } from '@react-navigation/stack';
 
 interface UserData {
@@ -31,25 +32,13 @@ interface UserData {
   email: string;
   role: 'DIRECTOR' | 'EMPLOYEE';
   isActive: boolean;
+  pushToken?: string;
   createdAt?: any;
 }
 
 const Container = styled.View`
   flex: 1;
   background-color: ${(props) => props.theme.colors.background};
-`;
-
-const Header = styled.View`
-  padding: ${(props) => props.theme.spacing.lg}px;
-  background-color: ${(props) => props.theme.colors.surface};
-  border-bottom-width: 1px;
-  border-bottom-color: ${(props) => props.theme.colors.border};
-`;
-
-const Title = styled(RNText)`
-  font-size: 22px;
-  font-weight: bold;
-  color: ${(props) => props.theme.colors.text};
 `;
 
 const UserCard = styled.View`
@@ -83,13 +72,13 @@ const Info = styled.View`
 `;
 
 const UserName = styled(RNText)`
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
 `;
 
 const UserEmail = styled(RNText)`
-  font-size: 13px;
+  font-size: ${(props) => props.theme.fontSize.sm}px;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-top: 2px;
 `;
@@ -112,7 +101,7 @@ const RoleBadge = styled.View<{ isAdmin: boolean }>`
 `;
 
 const RoleText = styled(RNText)<{ isAdmin: boolean }>`
-  font-size: 10px;
+  font-size: ${(props) => props.theme.fontSize.f10}px;
   font-weight: bold;
   color: ${(props) =>
     props.isAdmin
@@ -136,7 +125,7 @@ const Controls = styled.View`
 `;
 
 const StatusLabel = styled(RNText)`
-  font-size: 14px;
+  font-size: ${(props) => props.theme.fontSize.f14}px;
   font-weight: 500;
   color: ${(props) => props.theme.colors.text};
 `;
@@ -170,6 +159,28 @@ const UsersScreen = ({ navigation, route }: Props) => {
   const toggleStatus = async (userId: string, currentStatus: boolean) => {
     try {
       await updateDoc(doc(db, 'users', userId), { isActive: !currentStatus });
+
+      if (!currentStatus) {
+        try {
+          const activatedUser = users.find((u) => u.id === userId);
+          if (activatedUser?.pushToken) {
+            await sendPushNotification(
+              [
+                {
+                  token: activatedUser.pushToken,
+                  notificationStart: (activatedUser as any).notificationStart,
+                  notificationEnd: (activatedUser as any).notificationEnd,
+                },
+              ],
+              'Konto aktywowane! 🎉',
+              'Twoje konto zostało aktywowane. Możesz teraz korzystać z aplikacji.'
+            );
+          }
+        } catch (pushErr) {
+          console.warn('Failed to notify user:', pushErr);
+        }
+      }
+
       notify.success(!currentStatus ? 'Konto aktywowane' : 'Konto deaktywowane');
     } catch (e) {
       notify.error('Błąd aktualizacji');
@@ -187,19 +198,15 @@ const UsersScreen = ({ navigation, route }: Props) => {
   };
 
   const deleteUser = (userId: string) => {
-    const performDelete = async () => {
-      await deleteDoc(doc(db, 'users', userId));
-      notify.success('Użytkownik usunięty');
-    };
-
-    if (Platform.OS === 'web') {
-      if (window.confirm('Czy na pewno chcesz usunąć tego użytkownika?')) performDelete();
-    } else {
-      Alert.alert('Usuń użytkownika', 'Czy na pewno chcesz usunąć tego użytkownika?', [
-        { text: 'Anuluj', style: 'cancel' },
-        { text: 'Usuń', style: 'destructive', onPress: performDelete },
-      ]);
-    }
+    confirmDelete(
+      'Czy na pewno chcesz usunąć tego użytkownika?',
+      async () => {
+        await deleteDoc(doc(db, 'users', userId));
+        notify.success('Użytkownik usunięty');
+      },
+      'Usuń użytkownika',
+      'Usuń'
+    );
   };
 
   if (loading) {
@@ -212,9 +219,9 @@ const UsersScreen = ({ navigation, route }: Props) => {
 
   return (
     <Container theme={theme}>
-      <Header theme={theme}>
-        <Title theme={theme}>Pracownicy i Uprawnienia</Title>
-      </Header>
+      <ScreenHeader theme={theme}>
+        <ScreenTitle theme={theme}>Pracownicy i Uprawnienia</ScreenTitle>
+      </ScreenHeader>
 
       <FlatList
         data={users}

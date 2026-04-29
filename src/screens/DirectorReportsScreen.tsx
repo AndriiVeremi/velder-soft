@@ -5,7 +5,6 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   Image,
   Modal,
   ScrollView,
@@ -27,6 +26,9 @@ import { ref, deleteObject } from 'firebase/storage';
 import { db, storage } from '../config/firebase';
 import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
+import { confirmDelete } from '../utils/confirm';
+import { ScreenHeader, ScreenTitle } from '../components/CommonUI';
+import { useMarkAsRead } from '../hooks/useMarkAsRead';
 import {
   Trash2,
   Calendar,
@@ -43,19 +45,6 @@ import { WebView } from 'react-native-webview';
 const Container = styled.View`
   flex: 1;
   background-color: ${(props) => props.theme.colors.background};
-`;
-
-const Header = styled.View`
-  padding: 20px;
-  background-color: ${(props) => props.theme.colors.surface};
-  border-bottom-width: 1px;
-  border-bottom-color: ${(props) => props.theme.colors.border};
-`;
-
-const Title = styled(RNText)`
-  font-size: 24px;
-  font-weight: bold;
-  color: ${(props) => props.theme.colors.text};
 `;
 
 const ReportCard = styled.View`
@@ -82,18 +71,18 @@ const AuthorRow = styled.View`
 
 const AuthorName = styled(RNText)`
   font-weight: bold;
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
   margin-left: 8px;
   color: ${(props) => props.theme.colors.text};
 `;
 
 const DateText = styled(RNText)`
-  font-size: 12px;
+  font-size: ${(props) => props.theme.fontSize.f12}px;
   color: ${(props) => props.theme.colors.textSecondary};
 `;
 
 const Description = styled(RNText)`
-  font-size: 15px;
+  font-size: ${(props) => props.theme.fontSize.f15}px;
   color: ${(props) => props.theme.colors.text};
   margin-bottom: 15px;
   line-height: 22px;
@@ -116,10 +105,26 @@ const MediaThumbnail = styled.TouchableOpacity`
 `;
 
 const DeletionInfo = styled(RNText)`
-  font-size: 11px;
+  font-size: ${(props) => props.theme.fontSize.f11}px;
   color: ${(props) => props.theme.colors.error};
   font-style: italic;
   margin-top: 10px;
+`;
+
+const NewBadge = styled.View`
+  background-color: ${(props) => props.theme.colors.primary};
+  border-radius: 6px;
+  padding: 2px 8px;
+  align-self: flex-start;
+  margin-bottom: 6px;
+`;
+
+const NewBadgeText = styled(RNText)`
+  color: white;
+  font-size: ${(props) => props.theme.fontSize.f11}px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 `;
 
 const ModalOverlay = styled.View`
@@ -149,6 +154,7 @@ interface Report {
   description: string;
   media: ReportMedia[];
   createdAt: Timestamp;
+  isNew?: boolean;
 }
 
 const DirectorReportsScreen = () => {
@@ -157,6 +163,7 @@ const DirectorReportsScreen = () => {
   const [loading, setLoading] = useState(true);
   const [viewerVisible, setViewerVisible] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<ReportMedia | null>(null);
+  const scheduleMarkAsRead = useMarkAsRead('reports');
 
   useEffect(() => {
     const cleanup = async () => {
@@ -192,9 +199,11 @@ const DirectorReportsScreen = () => {
       const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Report);
       setReports(data);
       setLoading(false);
+
+      scheduleMarkAsRead(data.filter((r) => r.isNew).map((r) => r.id));
     });
 
-    return () => unsubscribe();
+    return unsubscribe;
   }, []);
 
   const handleDelete = (report: Report) => {
@@ -218,17 +227,12 @@ const DirectorReportsScreen = () => {
       }
     };
 
-    if (Platform.OS === 'web') {
-      if (window.confirm('Czy na pewno chcesz trwale usunąć to zgłoszenie wraz z plikami?')) {
-        performDelete();
-      }
-    } else {
-      Alert.alert(
-        'Usuń zgłoszenie',
-        'Czy na pewno chcesz trwale usunąć to zgłoszenie wraz z plikami?',
-        [{ text: 'Anuluj' }, { text: 'Usuń', style: 'destructive', onPress: performDelete }]
-      );
-    }
+    confirmDelete(
+      'Czy na pewno chcesz trwale usunąć to zgłoszenie wraz z plikami?',
+      performDelete,
+      'Usuń zgłoszenie',
+      'Usuń'
+    );
   };
 
   const openViewer = (item: ReportMedia) => {
@@ -245,18 +249,26 @@ const DirectorReportsScreen = () => {
 
   return (
     <Container theme={theme}>
-      <Header theme={theme}>
-        <Title theme={theme}>Zgłoszenia problemów</Title>
-        <RNText style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
+      <ScreenHeader theme={theme}>
+        <ScreenTitle theme={theme}>Zgłoszenia problemów</ScreenTitle>
+        <RNText style={{ color: theme.colors.textSecondary, fontSize: theme.fontSize.f12 }}>
           Automatyczne usuwanie po 7 dniach
         </RNText>
-      </Header>
+      </ScreenHeader>
 
       <FlatList
         data={reports}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <ReportCard theme={theme}>
+          <ReportCard
+            theme={theme}
+            style={item.isNew ? { borderColor: theme.colors.primary, borderWidth: 2 } : undefined}
+          >
+            {item.isNew && (
+              <NewBadge theme={theme}>
+                <NewBadgeText theme={theme}>Nowe</NewBadgeText>
+              </NewBadge>
+            )}
             <ReportHeader>
               <AuthorRow>
                 <User size={18} color={theme.colors.primary} />

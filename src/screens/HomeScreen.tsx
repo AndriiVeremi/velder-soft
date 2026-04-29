@@ -31,6 +31,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { db, storage } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { useAppTheme } from '../context/ThemeContext';
+import { getCalendarTheme } from '../config/theme';
 import {
   CheckCircle2,
   Camera,
@@ -39,12 +40,16 @@ import {
   Palmtree,
   X,
   CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  Download,
 } from 'lucide-react-native';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { notify } from '../utils/notify';
+import { downloadImage } from '../utils/download';
+import { UploadOverlay } from '../components/CommonUI';
 import { runWeeklyCleanup } from '../utils/cleanup';
-import * as Notifications from 'expo-notifications';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Task, Announcement, VacationInfo, UserRequest } from '../types';
 import { RootStackParamList } from '../config/navigationTypes';
@@ -115,16 +120,45 @@ const RightColumn = styled.View<{ isDesktop: boolean }>`
   margin-top: ${(props) => (props.isDesktop ? 0 : props.theme.spacing.lg)}px;
 `;
 
+const WelcomeHeader = styled.View`
+  background-color: ${(props) => props.theme.colors.primary};
+  padding: 20px;
+  padding-bottom: 30px;
+  border-bottom-left-radius: 30px;
+  border-bottom-right-radius: 30px;
+  margin-bottom: 10px;
+`;
+
+const WelcomeTitle = styled(RNText)`
+  font-size: ${(props) => props.theme.fontSize.xl}px;
+  font-weight: bold;
+  color: #ffffff;
+`;
+
+const WelcomeSub = styled(RNText)`
+  font-size: ${(props) => props.theme.fontSize.md}px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 4px;
+`;
+
 const Card = styled.View`
   background-color: ${(props) => props.theme.colors.surface};
   padding: ${(props) => props.theme.spacing.lg}px;
   border-radius: ${(props) => props.theme.borderRadius.lg}px;
   border: 1px solid ${(props) => props.theme.colors.border};
   margin-bottom: ${(props) => props.theme.spacing.md}px;
+
+  /* Shadow for iOS */
+  shadow-color: #000;
+  shadow-offset: 0px 2px;
+  shadow-opacity: 0.1;
+  shadow-radius: 4px;
+  /* Elevation for Android */
+  elevation: 3;
 `;
 
 const SectionTitle = styled(RNText)`
-  font-size: 18px;
+  font-size: ${(props) => props.theme.fontSize.lg}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
   margin-bottom: ${(props) => props.theme.spacing.md}px;
@@ -144,14 +178,14 @@ const TaskRow = styled.TouchableOpacity`
 const TaskText = styled(RNText)<{ done?: boolean }>`
   flex: 1;
   margin-left: 12px;
-  font-size: 15px;
+  font-size: ${(props) => props.theme.fontSize.md}px;
   color: ${(props) => (props.done ? props.theme.colors.textSecondary : props.theme.colors.text)};
   text-decoration: ${(props) => (props.done ? 'line-through' : 'none')};
   font-weight: ${(props) => (props.done ? '400' : '600')};
 `;
 
 const TaskTime = styled(RNText)`
-  font-size: 12px;
+  font-size: ${(props) => props.theme.fontSize.sm}px;
   color: ${(props) => props.theme.colors.primary};
   font-weight: bold;
   margin-left: 34px;
@@ -166,42 +200,12 @@ const TaskImagePreview = styled.Image`
   max-width: 250px;
 `;
 
-const DateBanner = styled.View`
-  background-color: ${(props) => props.theme.colors.primary};
-  padding: ${(props) => props.theme.spacing.lg}px;
-  border-radius: ${(props) => props.theme.borderRadius.lg}px;
-  margin-bottom: ${(props) => props.theme.spacing.md}px;
-`;
-
-const BannerDate = styled(RNText)`
-  color: white;
-  font-size: 22px;
-  font-weight: bold;
-`;
-
-const BannerDay = styled(RNText)`
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 16px;
-  text-transform: capitalize;
-`;
-
 const ShowAllButton = styled.TouchableOpacity`
   flex-direction: row;
   align-items: center;
   justify-content: center;
   margin-top: 15px;
   padding: 10px;
-`;
-
-const UploadOverlay = styled.View`
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background-color: rgba(255, 255, 255, 0.7);
-  justify-content: center;
-  align-items: center;
 `;
 
 const CameraIconButton = styled.TouchableOpacity`
@@ -222,15 +226,21 @@ const ShowAllText = styled(RNText)`
 
 const VacationCountdownCard = styled.TouchableOpacity`
   background-color: ${(props) => props.theme.colors.accent};
-  padding: 15px;
-  border-radius: 12px;
-  border-left-width: 5px;
-  border-left-color: ${(props) => props.theme.colors.primary};
+  padding: 16px;
+  border-radius: ${(props) => props.theme.borderRadius.lg}px;
   margin-bottom: 20px;
   flex-direction: row;
   align-items: center;
+  border-left-width: 6px;
+  border-left-color: ${(props) => props.theme.colors.primary};
   border-width: 1px;
   border-color: ${(props) => props.theme.colors.border};
+
+  shadow-color: #000;
+  shadow-offset: 0px 2px;
+  shadow-opacity: 0.1;
+  shadow-radius: 4px;
+  elevation: 3;
 `;
 
 const VacationTextWrapper = styled.View`
@@ -239,13 +249,13 @@ const VacationTextWrapper = styled.View`
 `;
 
 const VacationMainText = styled(RNText)`
-  font-size: 15px;
+  font-size: ${(props) => props.theme.fontSize.md}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
 `;
 
 const VacationSubText = styled(RNText)`
-  font-size: 12px;
+  font-size: ${(props) => props.theme.fontSize.f12}px;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-top: 2px;
 `;
@@ -253,20 +263,20 @@ const VacationSubText = styled(RNText)`
 const DaysBadge = styled.View`
   background-color: ${(props) => props.theme.colors.primary};
   padding: 8px 12px;
-  border-radius: 10px;
+  border-radius: 12px;
   align-items: center;
   justify-content: center;
 `;
 
 const DaysValue = styled(RNText)`
   color: white;
-  font-size: 18px;
+  font-size: ${(props) => props.theme.fontSize.lg}px;
   font-weight: bold;
 `;
 
 const DaysLabel = styled(RNText)`
   color: white;
-  font-size: 8px;
+  font-size: ${(props) => props.theme.fontSize.f8}px;
   text-transform: uppercase;
   font-weight: bold;
 `;
@@ -299,16 +309,22 @@ const TeamVacationName = styled(RNText)`
 `;
 
 const AnnouncementCard = styled.View`
-  background-color: ${(props) => (props.theme.isDark ? '#2c1e00' : '#fff4e5')};
-  padding: 15px;
-  border-radius: 12px;
-  border-left-width: 5px;
+  background-color: ${(props) => (props.theme.isDark ? '#2c1e00' : '#fff9f0')};
+  padding: 16px;
+  border-radius: ${(props) => props.theme.borderRadius.lg}px;
+  border-left-width: 6px;
   border-left-color: #ff9800;
   margin-bottom: 20px;
   flex-direction: row;
   align-items: center;
   border-width: 1px;
   border-color: ${(props) => (props.theme.isDark ? '#4d3a00' : '#ffe0b2')};
+
+  shadow-color: #000;
+  shadow-offset: 0px 2px;
+  shadow-opacity: 0.1;
+  shadow-radius: 3px;
+  elevation: 2;
 `;
 
 const RequestsSection = styled.View`
@@ -316,15 +332,21 @@ const RequestsSection = styled.View`
 `;
 
 const RequestItem = styled.View`
-  background-color: ${(props) => (props.theme.isDark ? '#2c1e00' : '#fff4e5')};
-  padding: 15px;
-  border-radius: 12px;
+  background-color: ${(props) => (props.theme.isDark ? '#2c1e00' : '#fff9f0')};
+  padding: 16px;
+  border-radius: ${(props) => props.theme.borderRadius.lg}px;
   border: 1px solid ${(props) => (props.theme.isDark ? '#4d3a00' : '#ffe0b2')};
-  border-left-width: 5px;
+  border-left-width: 6px;
   border-left-color: #ff9800;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   flex-direction: row;
   align-items: center;
+
+  shadow-color: #000;
+  shadow-offset: 0px 2px;
+  shadow-opacity: 0.1;
+  shadow-radius: 3px;
+  elevation: 2;
 `;
 
 const RequestContent = styled.View`
@@ -335,13 +357,13 @@ const RequestContent = styled.View`
 const RequestSender = styled(RNText)`
   font-weight: bold;
   color: #ff9800;
-  font-size: 13px;
+  font-size: ${(props) => props.theme.fontSize.sm}px;
 `;
 
 const RequestText = styled(RNText)`
   color: ${(props) => (props.theme.isDark ? '#ffcc80' : '#663c00')};
   margin-top: 4px;
-  font-size: 14px;
+  font-size: ${(props) => props.theme.fontSize.f14}px;
   font-weight: 600;
 `;
 
@@ -375,27 +397,6 @@ const HomeScreen = ({ navigation }: Props) => {
     return onSnapshot(q, (snap) => {
       const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as UserRequest);
 
-      snap.docChanges().forEach((change) => {
-        if (change.type === 'added') {
-          const newReq = change.doc.data() as UserRequest;
-          const now = Date.now();
-          const created = newReq.createdAt?.toMillis() || now;
-          if (now - created < 30000 && Platform.OS !== 'web') {
-            Notifications.scheduleNotificationAsync({
-              content: {
-                title: 'Nowa prośba od pracownika! 📩',
-                body: `${newReq.senderName}: ${newReq.text}`,
-                sound: true,
-                vibrate: [0, 250, 250, 250],
-                priority: Notifications.AndroidNotificationPriority.MAX,
-                categoryIdentifier: 'alerts',
-              },
-              trigger: null,
-            });
-          }
-        }
-      });
-
       const sorted = data.sort(
         (a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)
       );
@@ -419,26 +420,6 @@ const HomeScreen = ({ navigation }: Props) => {
       if (!snap.empty) {
         const annData = { id: snap.docs[0].id, ...snap.docs[0].data() } as Announcement;
         setLatestAnnouncement(annData);
-
-        snap.docChanges().forEach((change) => {
-          if (change.type === 'added' && role !== 'DIRECTOR') {
-            const now = Date.now();
-            const created = annData.createdAt?.toMillis() || now;
-            if (now - created < 30000 && Platform.OS !== 'web') {
-              Notifications.scheduleNotificationAsync({
-                content: {
-                  title: 'Nowe ogłoszenie od Dyrektora! 📢',
-                  body: annData.text,
-                  sound: true,
-                  vibrate: [0, 500, 200, 500],
-                  priority: Notifications.AndroidNotificationPriority.MAX,
-                  categoryIdentifier: 'alerts',
-                },
-                trigger: null,
-              });
-            }
-          }
-        });
 
         if (user) {
           const readDoc = await getDocs(
@@ -588,6 +569,14 @@ const HomeScreen = ({ navigation }: Props) => {
   return (
     <Container theme={theme}>
       <Content theme={theme}>
+        {!isDesktop && (
+          <WelcomeHeader theme={theme}>
+            <WelcomeTitle theme={theme}>Cześć, {userData?.name || 'Użytkowniku'}!</WelcomeTitle>
+            <WelcomeSub theme={theme}>
+              {format(new Date(), 'EEEE, d MMMM', { locale: pl })}
+            </WelcomeSub>
+          </WelcomeHeader>
+        )}
         <MainWrapper theme={theme} isDesktop={isDesktop}>
           <LeftColumn theme={theme} isDesktop={isDesktop}>
             {role === 'DIRECTOR' && pendingRequests.length > 0 && (
@@ -655,7 +644,7 @@ const HomeScreen = ({ navigation }: Props) => {
                       fontWeight: 'bold',
                       marginLeft: 8,
                       color: theme.colors.primary,
-                      fontSize: 14,
+                      fontSize: theme.fontSize.f14,
                     }}
                   >
                     Nadchodzące urlopy zespołu
@@ -664,7 +653,9 @@ const HomeScreen = ({ navigation }: Props) => {
                 {teamUpcomingVacations.map((v) => (
                   <TeamVacationItem key={v.id}>
                     <TeamVacationName theme={theme}>{v.userName}</TeamVacationName>
-                    <RNText style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
+                    <RNText
+                      style={{ color: theme.colors.textSecondary, fontSize: theme.fontSize.f12 }}
+                    >
                       {v.startDate} (
                       {Math.ceil(
                         (new Date(v.startDate).getTime() - new Date().setHours(0, 0, 0, 0)) /
@@ -677,14 +668,6 @@ const HomeScreen = ({ navigation }: Props) => {
               </TeamVacationSection>
             )}
 
-            <DateBanner theme={theme}>
-              <BannerDate theme={theme}>
-                {format(new Date(selectedDate), 'd MMMM yyyy', { locale: pl })}
-              </BannerDate>
-              <BannerDay theme={theme}>
-                {format(new Date(selectedDate), 'EEEE', { locale: pl })}
-              </BannerDay>
-            </DateBanner>
             <Card theme={theme}>
               <SectionTitle theme={theme}>Kalendarz</SectionTitle>
               <Calendar
@@ -692,25 +675,17 @@ const HomeScreen = ({ navigation }: Props) => {
                   setLoading(true);
                   setSelectedDate(day.dateString);
                 }}
+                renderArrow={(direction: string) =>
+                  direction === 'left' ? (
+                    <ChevronLeft size={24} color={theme.colors.primary} />
+                  ) : (
+                    <ChevronRight size={24} color={theme.colors.primary} />
+                  )
+                }
                 markedDates={{
                   [selectedDate]: { selected: true, selectedColor: theme.colors.primary },
                 }}
-                theme={{
-                  backgroundColor: theme.colors.surface,
-                  calendarBackground: theme.colors.surface,
-                  textSectionTitleColor: theme.colors.textSecondary,
-                  selectedDayBackgroundColor: theme.colors.primary,
-                  selectedDayTextColor: '#ffffff',
-                  todayTextColor: theme.colors.primary,
-                  dayTextColor: theme.colors.text,
-                  textDisabledColor: theme.colors.border,
-                  dotColor: theme.colors.primary,
-                  selectedDotColor: '#ffffff',
-                  arrowColor: theme.colors.primary,
-                  disabledArrowColor: theme.colors.border,
-                  monthTextColor: theme.colors.text,
-                  indicatorColor: theme.colors.primary,
-                }}
+                theme={getCalendarTheme(theme)}
               />
             </Card>
           </LeftColumn>
@@ -738,7 +713,35 @@ const HomeScreen = ({ navigation }: Props) => {
                       </CameraIconButton>
                     </TaskRow>
                     {task.time && <TaskTime theme={theme}>{task.time}</TaskTime>}
-                    {task.photoUrl && <TaskImagePreview source={{ uri: task.photoUrl }} />}
+                    {task.photoUrl && (
+                      <View
+                        style={{
+                          position: 'relative',
+                          width: '100%',
+                          maxWidth: 250,
+                          marginLeft: 34,
+                          marginTop: 10,
+                        }}
+                      >
+                        <TaskImagePreview
+                          source={{ uri: task.photoUrl }}
+                          style={{ marginLeft: 0 }}
+                        />
+                        <TouchableOpacity
+                          onPress={() => downloadImage(task.photoUrl!, `task_${task.id}.jpg`)}
+                          style={{
+                            position: 'absolute',
+                            bottom: 8,
+                            right: 8,
+                            backgroundColor: 'rgba(0, 135, 68, 0.8)',
+                            padding: 6,
+                            borderRadius: 8,
+                          }}
+                        >
+                          <Download size={14} color="white" />
+                        </TouchableOpacity>
+                      </View>
+                    )}
                   </TaskItemContainer>
                 ))
               )}

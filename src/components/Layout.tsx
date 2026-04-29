@@ -27,6 +27,7 @@ import {
   Inbox,
   Info,
   MessageSquare,
+  BookOpen,
 } from 'lucide-react-native';
 import { useAppTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -76,7 +77,7 @@ const NavItem = styled.TouchableOpacity<{ active?: boolean }>`
 
 const NavText = styled(RNText)<{ active?: boolean }>`
   margin-left: 12px;
-  font-size: 15px;
+  font-size: ${(props) => props.theme.fontSize.md}px;
   font-weight: ${(props) => (props.active ? 'bold' : '500')};
   color: ${(props) => (props.active ? props.theme.colors.primary : props.theme.colors.text)};
 `;
@@ -114,7 +115,7 @@ const BadgeDot = styled.View`
 `;
 
 const TabLabel = styled(RNText)<{ active?: boolean }>`
-  font-size: 11px;
+  font-size: ${(props) => props.theme.fontSize.xs}px;
   margin-top: 4px;
   font-weight: ${(props) => (props.active ? 'bold' : 'normal')};
   color: ${(props) =>
@@ -139,7 +140,7 @@ const MoreMenuContent = styled.View`
 `;
 
 const MoreMenuTitle = styled(RNText)`
-  font-size: 20px;
+  font-size: ${(props) => props.theme.fontSize.xl}px;
   font-weight: bold;
   margin-bottom: 20px;
   color: ${(props) => props.theme.colors.text};
@@ -155,7 +156,7 @@ const MoreMenuItem = styled.TouchableOpacity`
 
 const MoreMenuText = styled(RNText)`
   flex: 1;
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.lg}px;
   margin-left: 15px;
   color: ${(props) => props.theme.colors.text};
 `;
@@ -169,7 +170,7 @@ const LogoutNavText = styled(NavText)`
 `;
 
 const SectionHeader = styled(RNText)`
-  font-size: 11px;
+  font-size: ${(props) => props.theme.fontSize.xs}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.textSecondary};
   text-transform: uppercase;
@@ -251,8 +252,12 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
           { name: 'Tasks', label: 'Zadania', icon: CheckSquare, badge: badges.tasks },
           { name: 'Dashboard', label: 'Projekty', icon: LayoutGrid },
           { name: 'Service', label: 'Serwis', icon: Wrench, badge: badges.service },
+          { name: 'Docs', label: 'Dokumentacja', icon: BookOpen },
           ...(role !== 'DIRECTOR'
             ? [{ name: 'ReportProblem', label: 'Zgłoś problem', icon: AlertTriangle }]
+            : []),
+          ...(role !== 'DIRECTOR'
+            ? [{ name: 'LiniaDoSzefa', label: 'Linia do Szefa', icon: MessageSquare }]
             : []),
         ],
       },
@@ -261,9 +266,6 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
         items: [
           { name: 'Reminders', label: 'Przypomnienia', icon: Bell },
           ...(role !== 'DIRECTOR' ? [{ name: 'Vacations', label: 'Urlop', icon: Palmtree }] : []),
-          ...(role !== 'DIRECTOR'
-            ? [{ name: 'LiniaDoSzefa', label: 'Linia do Szefa', icon: MessageSquare }]
-            : []),
           { name: 'Profile', label: 'Profil', icon: User },
           { name: 'About', label: 'O firmie', icon: Info },
         ],
@@ -296,6 +298,33 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
     [role, badges]
   );
 
+  const allMobileItems = useMemo(() => {
+    const flat = sections.flatMap((s) => s.items);
+    if (role === 'DIRECTOR') {
+      const orderedNames = [
+        'Home',
+        'Tasks',
+        'DirectorReports',
+        'Reminders',
+        'Dashboard',
+        'Service',
+        'Docs',
+        'Announcements',
+        'Vacations',
+        'Users',
+        'Profile',
+        'About',
+      ];
+      return orderedNames
+        .map((name) => flat.find((i) => i.name === name))
+        .filter(Boolean) as typeof flat;
+    }
+    return flat;
+  }, [sections, role]);
+
+  const visibleItems = allMobileItems.slice(0, 4);
+  const hiddenItems = allMobileItems.slice(4);
+
   if (isDesktop) {
     return (
       <RootContainer theme={theme} isDesktop={true}>
@@ -323,11 +352,7 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
                       />
                       {(item as any).badge > 0 && <BadgeDot theme={theme} />}
                     </IconContainer>
-                    <NavText
-                      theme={theme}
-                      active={currentRoute === item.name}
-                      style={{ fontSize: 14 }}
-                    >
+                    <NavText theme={theme} active={currentRoute === item.name}>
                       {item.label}
                     </NavText>
                   </NavItem>
@@ -346,9 +371,7 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
             }}
           >
             <LogOut size={18} color={theme.colors.error} />
-            <LogoutNavText theme={theme} style={{ fontSize: 14 }}>
-              Wyloguj się
-            </LogoutNavText>
+            <LogoutNavText theme={theme}>Wyloguj się</LogoutNavText>
           </NavItem>
         </Sidebar>
         <ContentArea>{children}</ContentArea>
@@ -356,14 +379,10 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
     );
   }
 
-  const allMobileItems = sections.flatMap((s) => s.items);
-  const visibleItems = allMobileItems.slice(0, 4);
-  const hiddenItems = allMobileItems.slice(4);
-
   return (
     <RootContainer theme={theme} isDesktop={false}>
       <ContentArea>{children}</ContentArea>
-      <SafeAreaView edges={['bottom']} style={{ backgroundColor: theme.colors.surface }}>
+      <SafeAreaView edges={['bottom']} style={{ backgroundColor: theme.colors.primary }}>
         <BottomTabs theme={theme}>
           {visibleItems.map((item) => (
             <TabItem
@@ -402,7 +421,11 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
         <MoreMenuBackdrop activeOpacity={1} onPress={() => setMoreVisible(false)}>
           <SafeAreaView
             edges={['bottom']}
-            style={{ backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
+            style={{
+              backgroundColor: theme.colors.surface,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+            }}
           >
             <MoreMenuContent theme={theme}>
               <View

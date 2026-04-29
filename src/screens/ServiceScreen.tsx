@@ -10,7 +10,6 @@ import {
   Platform,
   Dimensions,
   TextInput,
-  Alert,
 } from 'react-native';
 import styled from 'styled-components/native';
 import {
@@ -19,18 +18,23 @@ import {
   orderBy,
   onSnapshot,
   addDoc,
+  getDocs,
   serverTimestamp,
   doc,
   deleteDoc,
   updateDoc,
+  where,
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { sendPushNotification } from '../utils/notifications';
 import { useAuth } from '../context/AuthContext';
 import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
 import { pickAndUploadPhoto } from '../utils/upload';
-import { TimePicker, ModalOverlay, ModalContent } from '../components/CommonUI';
+import { confirmDelete } from '../utils/confirm';
+import { useMarkAsRead } from '../hooks/useMarkAsRead';
+import { TimePicker, ModalOverlay, ModalContent, UploadOverlay, Fab } from '../components/CommonUI';
 import {
   Wrench,
   Plus,
@@ -72,20 +76,20 @@ const CardHeader = styled.View`
 `;
 
 const HospitalName = styled(RNText)`
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
   flex: 1;
 `;
 
 const DeptName = styled(RNText)`
-  font-size: 14px;
+  font-size: ${(props) => props.theme.fontSize.f14}px;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-top: 2px;
 `;
 
 const Description = styled(RNText)`
-  font-size: 14px;
+  font-size: ${(props) => props.theme.fontSize.f14}px;
   color: ${(props) => props.theme.colors.text};
   margin-top: 10px;
   line-height: 20px;
@@ -104,7 +108,7 @@ const MetaItem = styled.View`
 `;
 
 const MetaText = styled(RNText)`
-  font-size: 12px;
+  font-size: ${(props) => props.theme.fontSize.f12}px;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-left: 5px;
 `;
@@ -123,19 +127,6 @@ const ActionBtn = styled.TouchableOpacity`
   margin-left: 10px;
 `;
 
-const Fab = styled.TouchableOpacity`
-  position: absolute;
-  bottom: 25px;
-  right: 25px;
-  width: 60px;
-  height: 60px;
-  border-radius: 30px;
-  background-color: ${(props) => props.theme.colors.primary};
-  justify-content: center;
-  align-items: center;
-  elevation: 5;
-`;
-
 const StyledInput = styled.TextInput`
   background-color: ${(props) => props.theme.colors.background};
   border-radius: 8px;
@@ -147,7 +138,7 @@ const StyledInput = styled.TextInput`
 `;
 
 const Label = styled(RNText)`
-  font-size: 14px;
+  font-size: ${(props) => props.theme.fontSize.f14}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-bottom: 8px;
@@ -168,6 +159,7 @@ interface Service {
   status: 'PENDING' | 'DONE';
   photoUrl?: string;
   photoPath?: string;
+  isNew?: boolean;
   createdAt: Timestamp | null;
   createdBy: string;
   authorName: string;
@@ -180,6 +172,7 @@ const ServiceScreen = () => {
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const scheduleMarkAsRead = useMarkAsRead('services');
 
   // Form state
   const [hospital, setHospital] = useState('');
@@ -192,8 +185,10 @@ const ServiceScreen = () => {
       const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Service);
       setServices(data);
       setLoading(false);
+
+      scheduleMarkAsRead(data.filter((s) => s.isNew).map((s) => s.id));
     });
-    return () => unsubscribe();
+    return unsubscribe;
   }, []);
 
   const handleAddService = async () => {
@@ -207,10 +202,38 @@ const ServiceScreen = () => {
         department: department.trim(),
         description: description.trim(),
         status: 'PENDING',
+        isNew: true,
         createdBy: user?.uid,
         authorName: userData?.name || 'Pracownik',
         createdAt: serverTimestamp(),
       });
+
+      try {
+        const directorsSnap = await getDocs(
+          query(collection(db, 'users'), where('role', '==', 'DIRECTOR'))
+        );
+        const tokens: { token: string; notificationStart?: string; notificationEnd?: string }[] =
+          [];
+        directorsSnap.forEach((d) => {
+          const data = d.data();
+          if (data.pushToken)
+            tokens.push({
+              token: data.pushToken,
+              notificationStart: data.notificationStart,
+              notificationEnd: data.notificationEnd,
+            });
+        });
+        if (tokens.length > 0) {
+          await sendPushNotification(
+            tokens,
+            'Nowe zgłoszenie serwisowe! 🔧',
+            `${userData?.name || 'Pracownik'}: ${hospital.trim()} — ${department.trim()}`
+          );
+        }
+      } catch (pushErr) {
+        console.warn('Failed to notify director:', pushErr);
+      }
+
       setModalVisible(false);
       setHospital('');
       setDepartment('');
@@ -226,6 +249,33 @@ const ServiceScreen = () => {
     const newStatus = service.status === 'DONE' ? 'PENDING' : 'DONE';
     try {
       await updateDoc(doc(db, 'services', service.id), { status: newStatus });
+
+      if (newStatus === 'DONE') {
+        try {
+          const workerSnap = await getDocs(
+            query(collection(db, 'users'), where('__name__', '==', service.createdBy))
+          );
+          if (!workerSnap.empty) {
+            const workerData = workerSnap.docs[0].data();
+            if (workerData.pushToken) {
+              await sendPushNotification(
+                [
+                  {
+                    token: workerData.pushToken,
+                    notificationStart: workerData.notificationStart,
+                    notificationEnd: workerData.notificationEnd,
+                  },
+                ],
+                'Zgłoszenie serwisowe zakończone! ✅',
+                `${service.hospital} — ${service.department} zostało zakończone.`
+              );
+            }
+          }
+        } catch (pushErr) {
+          console.warn('Failed to notify worker:', pushErr);
+        }
+      }
+
       notify.success('Status zaktualizowany');
     } catch (e) {
       notify.error('Błąd aktualizacji');
@@ -234,23 +284,14 @@ const ServiceScreen = () => {
 
   const handleDelete = (id: string) => {
     if (role !== 'DIRECTOR') return;
-    const perform = async () => {
+    confirmDelete('Usunąć zgłoszenie?', async () => {
       try {
         await deleteDoc(doc(db, 'services', id));
         notify.success('Usunięto');
       } catch (e) {
         notify.error('Błąd usuwania');
       }
-    };
-
-    if (Platform.OS === 'web') {
-      if (window.confirm('Usunąć zgłoszenie?')) perform();
-    } else {
-      Alert.alert('Usuń', 'Czy na pewno?', [
-        { text: 'Anuluj' },
-        { text: 'Tak', onPress: perform, style: 'destructive' },
-      ]);
-    }
+    });
   };
 
   const handleAddPhoto = async (service: Service) => {
@@ -263,6 +304,33 @@ const ServiceScreen = () => {
           photoPath: result.photoPath,
           status: 'DONE',
         });
+
+        try {
+          const directorsSnap = await getDocs(
+            query(collection(db, 'users'), where('role', '==', 'DIRECTOR'))
+          );
+          const tokens: { token: string; notificationStart?: string; notificationEnd?: string }[] =
+            [];
+          directorsSnap.forEach((d) => {
+            const data = d.data();
+            if (data.pushToken)
+              tokens.push({
+                token: data.pushToken,
+                notificationStart: data.notificationStart,
+                notificationEnd: data.notificationEnd,
+              });
+          });
+          if (tokens.length > 0) {
+            await sendPushNotification(
+              tokens,
+              'Serwis zakończony ze zdjęciem! 📸',
+              `${service.authorName}: ${service.hospital} — ${service.department}`
+            );
+          }
+        } catch (pushErr) {
+          console.warn('Failed to notify director:', pushErr);
+        }
+
         notify.success('Zdjęcie dodane i status zmieniony');
       } catch (e) {
         notify.error('Błąd zapisu');
@@ -281,7 +349,38 @@ const ServiceScreen = () => {
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingVertical: 10 }}
           renderItem={({ item }) => (
-            <ServiceCard theme={theme} status={item.status}>
+            <ServiceCard
+              theme={theme}
+              status={item.status}
+              style={
+                item.isNew
+                  ? {
+                      borderColor: theme.colors.primary,
+                      borderTopWidth: 2,
+                      borderRightWidth: 2,
+                      borderBottomWidth: 2,
+                    }
+                  : undefined
+              }
+            >
+              {item.isNew && (
+                <View
+                  style={{
+                    backgroundColor: theme.colors.primary,
+                    borderRadius: 6,
+                    paddingHorizontal: 8,
+                    paddingVertical: 2,
+                    alignSelf: 'flex-start',
+                    marginBottom: 8,
+                  }}
+                >
+                  <RNText
+                    style={{ color: 'white', fontSize: theme.fontSize.f10, fontWeight: 'bold' }}
+                  >
+                    NOWE
+                  </RNText>
+                </View>
+              )}
               <CardHeader>
                 <View style={{ flex: 1 }}>
                   <HospitalName theme={theme}>{item.hospital}</HospitalName>
@@ -296,7 +395,7 @@ const ServiceScreen = () => {
                 >
                   <RNText
                     style={{
-                      fontSize: 10,
+                      fontSize: theme.fontSize.f10,
                       fontWeight: 'bold',
                       color: item.status === 'DONE' ? '#2e7d32' : '#e65100',
                     }}
@@ -318,7 +417,13 @@ const ServiceScreen = () => {
                   </MetaText>
                 </MetaItem>
                 <MetaItem>
-                  <RNText style={{ fontSize: 12, color: theme.colors.primary, fontWeight: 'bold' }}>
+                  <RNText
+                    style={{
+                      fontSize: theme.fontSize.f12,
+                      color: theme.colors.primary,
+                      fontWeight: 'bold',
+                    }}
+                  >
                     {item.authorName}
                   </RNText>
                 </MetaItem>
@@ -361,9 +466,11 @@ const ServiceScreen = () => {
         />
       )}
 
-      <Fab theme={theme} onPress={() => setModalVisible(true)}>
-        <Plus size={30} color="white" />
-      </Fab>
+      {role === 'DIRECTOR' && (
+        <Fab theme={theme} onPress={() => setModalVisible(true)}>
+          <Plus size={30} color="white" />
+        </Fab>
+      )}
 
       <Modal visible={modalVisible} transparent animationType="slide">
         <ModalOverlay>
@@ -371,7 +478,13 @@ const ServiceScreen = () => {
             <View
               style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}
             >
-              <RNText style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.text }}>
+              <RNText
+                style={{
+                  fontSize: theme.fontSize.f20,
+                  fontWeight: 'bold',
+                  color: theme.colors.text,
+                }}
+              >
                 Nowe zgłoszenie
               </RNText>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
@@ -419,7 +532,7 @@ const ServiceScreen = () => {
                 alignItems: 'center',
               }}
             >
-              <RNText style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>
+              <RNText style={{ color: 'white', fontWeight: 'bold', fontSize: theme.fontSize.f16 }}>
                 Wyślij zgłoszenie
               </RNText>
             </TouchableOpacity>
@@ -428,20 +541,9 @@ const ServiceScreen = () => {
       </Modal>
 
       {uploading && (
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(255,255,255,0.5)',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
-        >
+        <UploadOverlay>
           <ActivityIndicator size="large" color={theme.colors.primary} />
-        </View>
+        </UploadOverlay>
       )}
     </Container>
   );

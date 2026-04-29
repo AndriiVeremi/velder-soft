@@ -19,6 +19,7 @@ import { notify } from '../utils/notify';
 import { FileText, Upload, X } from 'lucide-react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { DocumentPickerAsset } from 'expo-document-picker';
+import { Project } from '../types';
 
 const Container = styled(ScrollView)`
   flex: 1;
@@ -33,7 +34,7 @@ const FormWrapper = styled.View`
 `;
 
 const Label = styled(RNText)`
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
   font-weight: 600;
   color: ${(props) => props.theme.colors.text};
   margin-bottom: ${(props) => props.theme.spacing.xs}px;
@@ -45,7 +46,7 @@ const Input = styled.TextInput`
   padding: 12px 16px;
   border-radius: ${(props) => props.theme.borderRadius.md}px;
   border: 1px solid ${(props) => props.theme.colors.border};
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
   color: ${(props) => props.theme.colors.text};
 `;
 
@@ -94,22 +95,9 @@ const SubmitButton = styled.TouchableOpacity<{ disabled?: boolean }>`
 
 const SubmitButtonText = styled(RNText)`
   color: white;
-  font-size: 18px;
+  font-size: ${(props) => props.theme.fontSize.lg}px;
   font-weight: bold;
 `;
-
-interface Project {
-  title: string;
-  hospital: string;
-  department: string;
-  description: string;
-  pdfUrl: string;
-  pdfPath: string;
-  fileName: string;
-  status: 'IN_PROGRESS' | 'DONE';
-  createdBy: string;
-  createdAt: Timestamp | null;
-}
 
 type Props = StackScreenProps<any, 'AddProject'>;
 
@@ -130,7 +118,7 @@ const SuggestionChip = styled.TouchableOpacity`
 `;
 
 const SuggestionText = styled(RNText)`
-  font-size: 12px;
+  font-size: ${(props) => props.theme.fontSize.f12}px;
   color: ${(props) => props.theme.colors.text};
 `;
 
@@ -139,7 +127,7 @@ const DescriptionInput = styled(Input)`
 `;
 
 const MaxFileSizeText = styled(RNText)`
-  font-size: 12px;
+  font-size: ${(props) => props.theme.fontSize.f12}px;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-top: 5px;
 `;

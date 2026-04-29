@@ -23,7 +23,7 @@ const IconWrapper = styled.View`
 `;
 
 const Title = styled.Text`
-  font-size: 22px;
+  font-size: ${(props) => props.theme.fontSize.xl}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
   text-align: center;
@@ -31,7 +31,7 @@ const Title = styled.Text`
 `;
 
 const Message = styled.Text`
-  font-size: 16px;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
   color: ${(props) => props.theme.colors.textSecondary};
   text-align: center;
   margin-top: ${(props) => props.theme.spacing.md}px;
