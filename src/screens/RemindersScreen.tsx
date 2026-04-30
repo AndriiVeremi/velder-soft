@@ -39,12 +39,15 @@ import {
   Clock,
   Calendar as CalendarIcon,
   CheckCircle2,
+  Mic,
 } from 'lucide-react-native';
 import { Calendar } from 'react-native-calendars';
 import { format } from 'date-fns';
 import * as Notifications from 'expo-notifications';
 import { SchedulableTriggerInputTypes } from 'expo-notifications';
 import { REMINDER_REPEAT_COUNT, REMINDER_INTERVAL_MINUTES } from '../utils/notifications';
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
+import { parseVoiceReminder } from '../utils/voiceParser';
 
 const Container = styled.View`
   flex: 1;
@@ -140,6 +143,13 @@ const ReminderInput = styled.TextInput`
   color: ${(props) => props.theme.colors.text};
 `;
 
+const MicButton = styled.TouchableOpacity<{ active: boolean }>`
+  padding: 10px;
+  background-color: ${(props) => (props.active ? props.theme.colors.error : 'transparent')};
+  border-radius: 20px;
+  margin-right: 5px;
+`;
+
 const Label = styled(RNText)`
   font-size: ${(props) => props.theme.fontSize.f12}px;
   font-weight: bold;
@@ -173,6 +183,42 @@ const RemindersScreen = ({ navigation, route }: Props) => {
   const [date, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [hour, setHour] = useState(10);
   const [minute, setMinute] = useState(0);
+
+  const [isListening, setIsListening] = useState(false);
+
+  useSpeechRecognitionEvent('result', (event) => {
+    if (event.results[0]?.transcript) {
+      const transcript = event.results[0].transcript;
+      const parsed = parseVoiceReminder(transcript);
+      setTitle(parsed.title);
+      setSelectedDate(parsed.date);
+      setHour(parsed.hour);
+      setMinute(parsed.minute);
+    }
+  });
+
+  useSpeechRecognitionEvent('end', () => {
+    setIsListening(false);
+  });
+
+  const handleMicPress = async () => {
+    if (isListening) {
+      ExpoSpeechRecognitionModule.stop();
+      return;
+    }
+
+    const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!result.granted) {
+      return notify.error('Brak uprawnień do mikrofonu');
+    }
+
+    setIsListening(true);
+    ExpoSpeechRecognitionModule.start({
+      lang: 'pl-PL',
+      interimResults: true,
+      continuous: false,
+    });
+  };
 
   useEffect(() => {
     if (!auth.currentUser) return;
@@ -383,7 +429,22 @@ const RemindersScreen = ({ navigation, route }: Props) => {
                     onChangeText={setTitle}
                     placeholderTextColor={theme.colors.textSecondary}
                   />
+                  <MicButton active={isListening} theme={theme} onPress={handleMicPress}>
+                    <Mic size={24} color={isListening ? 'white' : theme.colors.primary} />
+                  </MicButton>
                 </InputContainer>
+                {isListening && (
+                  <RNText
+                    style={{
+                      color: theme.colors.error,
+                      textAlign: 'center',
+                      marginBottom: 10,
+                      fontWeight: 'bold',
+                    }}
+                  >
+                    Słucham...
+                  </RNText>
+                )}
                 <Label theme={theme}>DATA</Label>
                 <Calendar
                   onDayPress={(day) => setSelectedDate(day.dateString)}

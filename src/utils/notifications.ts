@@ -266,4 +266,3 @@ export async function scheduleDailyReminder(taskCount: number, startTime: string
     },
   });
 }
-}

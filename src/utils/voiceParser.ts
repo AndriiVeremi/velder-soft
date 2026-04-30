@@ -57,12 +57,12 @@ export const parseVoiceReminder = (text: string): ParsedReminder => {
     lowerText = lowerText.replace(timeMatch[0], '');
   }
 
-  // Handle "rano" / "wieczorem" if no specific hour was found or to adjust
-  if (lowerText.includes('wieczorem') && resultHour < 12) {
+  // Handle "rano" / "popołudniu" / "wieczorem"
+  if ((lowerText.includes('wieczorem') || lowerText.includes('po południu')) && resultHour < 12) {
     resultHour += 12;
-    lowerText = lowerText.replace('wieczorem', '');
+    lowerText = lowerText.replace(/wieczorem|po południu/g, '');
   } else if (lowerText.includes('rano') && resultHour > 12) {
-    // maybe they meant 8 AM but said 20? unlikely but for safety
+    resultHour -= 12;
     lowerText = lowerText.replace('rano', '');
   }
 
