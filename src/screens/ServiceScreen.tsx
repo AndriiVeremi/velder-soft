@@ -34,7 +34,15 @@ import { notify } from '../utils/notify';
 import { pickAndUploadPhoto } from '../utils/upload';
 import { confirmDelete } from '../utils/confirm';
 import { useMarkAsRead } from '../hooks/useMarkAsRead';
-import { TimePicker, ModalOverlay, ModalContent, UploadOverlay, Fab } from '../components/CommonUI';
+import {
+  TimePicker,
+  ModalOverlay,
+  ModalContent,
+  UploadOverlay,
+  Fab,
+  ScreenHeader,
+  ScreenTitle,
+} from '../components/CommonUI';
 import {
   Wrench,
   Plus,
@@ -165,6 +173,8 @@ interface Service {
   authorName: string;
 }
 
+import permissions from '../utils/permissions';
+
 const ServiceScreen = () => {
   const { user, role, userData } = useAuth();
   const { theme } = useAppTheme();
@@ -192,6 +202,7 @@ const ServiceScreen = () => {
   }, []);
 
   const handleAddService = async () => {
+    if (!permissions.canCreateServiceRecord(role)) return; 
     if (!hospital.trim() || !department.trim() || !description.trim()) {
       return notify.error('Wypełnij wszystkie pola');
     }
@@ -204,48 +215,50 @@ const ServiceScreen = () => {
         status: 'PENDING',
         isNew: true,
         createdBy: user?.uid,
-        authorName: userData?.name || 'Pracownik',
+        authorName: userData?.name || 'Director',
         createdAt: serverTimestamp(),
       });
 
       try {
-        const directorsSnap = await getDocs(
-          query(collection(db, 'users'), where('role', '==', 'DIRECTOR'))
+        const usersSnap = await getDocs(
+          query(collection(db, 'users'), where('role', '==', 'EMPLOYEE'), where('isActive', '==', true))
         );
         const tokens: { token: string; notificationStart?: string; notificationEnd?: string }[] =
           [];
-        directorsSnap.forEach((d) => {
+        usersSnap.forEach((d) => {
           const data = d.data();
-          if (data.pushToken)
+          if (data.pushToken) {
             tokens.push({
               token: data.pushToken,
               notificationStart: data.notificationStart,
               notificationEnd: data.notificationEnd,
             });
+          }
         });
+
         if (tokens.length > 0) {
           await sendPushNotification(
             tokens,
-            'Nowe zgłoszenie serwisowe! 🔧',
-            `${userData?.name || 'Pracownik'}: ${hospital.trim()} — ${department.trim()}`
+            'Nowe zlecenie serwisowe! 🔧',
+            `Nowe zadanie w: ${hospital.trim()} — ${department.trim()}`
           );
         }
       } catch (pushErr) {
-        console.warn('Failed to notify director:', pushErr);
+        console.warn('Failed to notify workers:', pushErr);
       }
 
       setModalVisible(false);
       setHospital('');
       setDepartment('');
       setDescription('');
-      notify.success('Zgłoszenie dodane');
+      notify.success('Zlecenie dodane');
     } catch (e) {
       notify.error('Błąd zapisu');
     }
   };
 
   const toggleStatus = async (service: Service) => {
-    if (role !== 'DIRECTOR') return;
+    if (!permissions.canToggleServiceStatus(role)) return;
     const newStatus = service.status === 'DONE' ? 'PENDING' : 'DONE';
     try {
       await updateDoc(doc(db, 'services', service.id), { status: newStatus });
@@ -278,12 +291,12 @@ const ServiceScreen = () => {
 
       notify.success('Status zaktualizowany');
     } catch (e) {
-      notify.error('Błąd aktualizacji');
+      notify.error('Błąd актуалізації');
     }
   };
 
   const handleDelete = (id: string) => {
-    if (role !== 'DIRECTOR') return;
+    if (!permissions.canDeleteServiceRecord(role)) return;
     confirmDelete('Usunąć zgłoszenie?', async () => {
       try {
         await deleteDoc(doc(db, 'services', id));
@@ -341,6 +354,10 @@ const ServiceScreen = () => {
 
   return (
     <Container theme={theme}>
+      <ScreenHeader theme={theme}>
+        <ScreenTitle theme={theme}>Serwis</ScreenTitle>
+      </ScreenHeader>
+
       {loading ? (
         <ActivityIndicator style={{ marginTop: 50 }} color={theme.colors.primary} />
       ) : (
@@ -432,7 +449,7 @@ const ServiceScreen = () => {
               {item.photoUrl && <PhotoPreview source={{ uri: item.photoUrl }} />}
 
               <ActionButtons theme={theme}>
-                {role === 'DIRECTOR' && (
+                {permissions.canToggleServiceStatus(role) && (
                   <ActionBtn onPress={() => toggleStatus(item)}>
                     <CheckCircle2
                       size={20}
@@ -448,7 +465,7 @@ const ServiceScreen = () => {
                     color={item.photoUrl ? theme.colors.success : theme.colors.textSecondary}
                   />
                 </ActionBtn>
-                {role === 'DIRECTOR' && (
+                {permissions.canDeleteServiceRecord(role) && (
                   <ActionBtn onPress={() => handleDelete(item.id)}>
                     <Trash2 size={20} color={theme.colors.error} opacity={0.6} />
                   </ActionBtn>
@@ -466,7 +483,7 @@ const ServiceScreen = () => {
         />
       )}
 
-      {role === 'DIRECTOR' && (
+      {permissions.canCreateServiceRecord(role) && (
         <Fab theme={theme} onPress={() => setModalVisible(true)}>
           <Plus size={30} color="white" />
         </Fab>

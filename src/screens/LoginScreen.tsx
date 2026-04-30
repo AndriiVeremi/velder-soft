@@ -116,7 +116,6 @@ const LoginScreen = ({ navigation }: { navigation: { navigate: (screen: string) 
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      notify.success('Zalogowano pomyślnie');
     } catch (error: unknown) {
       notify.error('Nieprawidłowy e-mail lub hasło');
       console.error(error);

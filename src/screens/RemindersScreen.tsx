@@ -30,7 +30,7 @@ import { useAppTheme } from '../context/ThemeContext';
 import { getCalendarTheme } from '../config/theme';
 import { notify } from '../utils/notify';
 import { confirmDelete } from '../utils/confirm';
-import { Fab, ModalOverlay, ScreenHeader, ScreenTitle } from '../components/CommonUI';
+import { Fab, ModalOverlay, ScreenHeader, ScreenTitle, TimePicker } from '../components/CommonUI';
 import {
   Bell,
   Plus,
@@ -150,17 +150,6 @@ const Label = styled(RNText)`
   letter-spacing: 1px;
 `;
 
-const TimeInput = styled.TextInput`
-  background-color: ${(props) => props.theme.colors.background};
-  padding: 12px;
-  border-radius: 8px;
-  font-size: ${(props) => props.theme.fontSize.f16}px;
-  border-width: 1px;
-  border-color: ${(props) => props.theme.colors.border};
-  color: ${(props) => props.theme.colors.text};
-  margin-bottom: 10px;
-`;
-
 const SetReminderButton = styled.TouchableOpacity`
   background-color: ${(props) => props.theme.colors.primary};
   padding: 18px;
@@ -182,7 +171,8 @@ const RemindersScreen = ({ navigation, route }: Props) => {
 
   const [title, setTitle] = useState('');
   const [date, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [time, setTime] = useState('10:00');
+  const [hour, setHour] = useState(10);
+  const [minute, setMinute] = useState(0);
 
   useEffect(() => {
     if (!auth.currentUser) return;
@@ -214,29 +204,27 @@ const RemindersScreen = ({ navigation, route }: Props) => {
   const handleAdd = async () => {
     if (!title.trim()) return notify.error('Wpisz treść przypomnienia');
 
+    const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+
     const isDuplicate = reminders.some(
-      (r) => r.title === title && r.date === date && r.time === time
+      (r) => r.title === title && r.date === date && r.time === timeStr
     );
     if (isDuplicate) return notify.error('To przypomnienie już istnieje');
-
-    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
-    if (!timeRegex.test(time)) return notify.error('Nieprawidłowy format godziny (HH:MM)');
 
     try {
       const docRef = await addDoc(collection(db, 'reminders'), {
         userId: auth.currentUser?.uid,
         title,
         date,
-        time,
+        time: timeStr,
         done: false,
         createdAt: serverTimestamp(),
       });
 
       if (Platform.OS !== 'web') {
         try {
-          const [h, m] = time.split(':').map(Number);
           const [year, month, day] = date.split('-').map(Number);
-          const baseDate = new Date(year, month - 1, day, h, m, 0);
+          const baseDate = new Date(year, month - 1, day, hour, minute, 0);
 
           for (let i = 0; i < REMINDER_REPEAT_COUNT; i++) {
             const scheduleDate = new Date(
@@ -320,9 +308,9 @@ const RemindersScreen = ({ navigation, route }: Props) => {
 
   return (
     <Container theme={theme}>
-      <Header theme={theme}>
-        <Title theme={theme}>Moje Przypomnienia</Title>
-      </Header>
+      <ScreenHeader theme={theme}>
+        <ScreenTitle theme={theme}>Moje Przypomnienia</ScreenTitle>
+      </ScreenHeader>
 
       <FlatList
         data={reminders}
@@ -403,13 +391,13 @@ const RemindersScreen = ({ navigation, route }: Props) => {
                   theme={getCalendarTheme(theme)}
                 />
 
-                <Label theme={theme}>GODZINA (HH:MM)</Label>
-                <TimeInput
+                <Label theme={theme}>GODZINA</Label>
+                <TimePicker
+                  hour={hour}
+                  minute={minute}
+                  onHourChange={setHour}
+                  onMinuteChange={setMinute}
                   theme={theme}
-                  value={time}
-                  onChangeText={setTime}
-                  placeholder="10:00"
-                  placeholderTextColor={theme.colors.textSecondary}
                 />
 
                 <SetReminderButton onPress={handleAdd} theme={theme}>

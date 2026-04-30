@@ -233,9 +233,9 @@ const SendRequestScreen = ({ navigation }: Props) => {
 
   return (
     <Container theme={theme}>
-      <Header theme={theme}>
-        <Title theme={theme}>Linia do Szefa</Title>
-      </Header>
+      <ScreenHeader theme={theme}>
+        <ScreenTitle theme={theme}>Linia do Szefa</ScreenTitle>
+      </ScreenHeader>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

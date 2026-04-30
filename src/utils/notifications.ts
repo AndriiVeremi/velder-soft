@@ -44,15 +44,15 @@ Notifications.setNotificationHandler({
   },
 });
 
-export const REMINDER_REPEAT_COUNT = 5;
-export const REMINDER_INTERVAL_MINUTES = 1;
+export const REMINDER_REPEAT_COUNT = 3;
+export const REMINDER_INTERVAL_MINUTES = 5;
 
 export async function setupReminderCategory() {
   if (Platform.OS === 'web') return;
   await Notifications.setNotificationCategoryAsync('reminder', [
     {
       identifier: 'snooze',
-      buttonTitle: 'Za 10 minut',
+      buttonTitle: 'Za 5 minut',
       options: { opensAppToForeground: false },
     },
     {
@@ -165,7 +165,7 @@ export function setupNotificationListeners() {
           await Notifications.cancelScheduledNotificationAsync(`${reminderId}_${i}`);
         } catch (e) {}
       }
-      const snoozeBase = new Date(Date.now() + 10 * 60 * 1000);
+      const snoozeBase = new Date(Date.now() + 1 * 60 * 1000);
       for (let i = 0; i < REMINDER_REPEAT_COUNT; i++) {
         const scheduleDate = new Date(snoozeBase.getTime() + i * REMINDER_INTERVAL_MINUTES * 60000);
         try {
@@ -265,4 +265,5 @@ export async function scheduleDailyReminder(taskCount: number, startTime: string
       channelId: 'default',
     },
   });
+}
 }
