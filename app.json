@@ -50,7 +50,18 @@
           "icon": "./assets/notification-icon.png",
           "color": "#008744",
           "defaultChannel": "default",
-          "sounds": []
+          "sounds": [
+            "./assets/sound/alert.wav",
+            "./assets/sound/reminder.wav",
+            "./assets/sound/done.wav"
+          ]
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Dozwól na dostęp do mikrofonu, aby móc dyktować przypomnienia.",
+          "speechRecognitionPermission": "Dozwól na rozpoznawanie mowy, aby zamieniać głos na tekst."
         }
       ]
     ],

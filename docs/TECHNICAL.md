@@ -34,11 +34,23 @@ Wprowadzono system `FontScale` (1x, 1.2x, 1.4x), który jest zintegrowany z `The
 ### Zaawansowany System Powiadomień
 
 - **Kanały Android:**
-  - `Alerts`: Wysoki priorytet, specyficzny sygnał wibracyjny dla zgłoszeń problemów.
-  - `Przypomnienia`: Długi wzór wibracji, obsługa interaktywnych kategorii.
+  - `Alerts_v2`: Wysoki priorytet, niestandardowy dźwięk `alert.wav`.
+  - `Przypomnienia_v2`: Długi wzór wibracji, niestandardowy dźwięk `reminder.wav`, obsługa interaktywnych kategorii.
+- **Własne Dźwięki:** System obsługuje niestandardowe pliki audio (`.wav`) zarejestrowane w `app.json`. Dźwięki są zoptymalizowane pod kątem głośności i długości (maks. 30s dla iOS).
 - **Tryb Ciszy (Quiet Hours):** Użytkownik może zdefiniować godziny pracy w profilu. Powiadomienia PUSH wysyłane w tych godzinach są automatycznie wyciszane po stronie serwera/klienta.
-- **Interaktywne Przypomnienia:** Kategoria `reminder` pozwala na "Uśpienie" (Snooze) powiadomienia na 10 minut bezpośrednio z poziomu paska powiadomień.
+- **Interaktywne Przypomnienia:** Kategoria `reminder` pozwala na "Uśpienie" (Snooze) powiadomienia na 5 minut lub "Wyłączenie" (Dismiss) bezpośrednio z poziomu paska powiadomień. Akcje te automatycznie wybudzają aplikację (`opensAppToForeground: true`), aby zapewnić niezawodne działanie logiki JavaScript.
 - **Daily Reminders:** Automatyczne planowanie lokalnego powiadomienia z podsumowaniem zadań na dany dzień.
+
+### Inteligentne Rozpoznawanie Mowy (Speech-to-Text)
+
+Wprowadzono moduł głosowy oparty na `expo-speech-recognition`, który umożliwia dyktowanie przypomnień w języku polskim.
+
+- **Mechanizm:** Wykorzystuje natywne API urządzenia do zamiany mowy na tekst.
+- **Voice Parser (`src/utils/voiceParser.ts`):** Autorski algorytm przetwarzania języka naturalnego (NLP), który wyodrębnia z tekstu:
+  - **Datę:** Obsługa fraz "jutro", "pojutrze", "dziś", "w poniedziałek" itp.
+  - **Godzinę:** Rozpoznawanie formatów "o 15:30", "godzina 10", obsługa pór dnia (rano, wieczorem).
+  - **Treść:** Automatyczne oczyszczanie tekstu z przyimków czasowych i formatowanie (wielka litera na początku).
+- **Tryb Fallback:** System posiada wbudowane mechanizmy obsługi braku uprawnień do mikrofonu lub braku dostępności modułu natywnego.
 
 ### Automatyzacja i Cleanup
 

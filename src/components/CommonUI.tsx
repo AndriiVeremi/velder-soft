@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text as RNText, View } from 'react-native';
 import styled from 'styled-components/native';
-import { ChevronUp, ChevronDown } from 'lucide-react-native';
+import { ChevronUp, ChevronDown, Mic } from 'lucide-react-native';
 
 const TimePickerContainer = styled.View`
   flex-direction: row;
@@ -137,3 +137,45 @@ export const Fab = styled.TouchableOpacity`
   shadow-radius: 4.65px;
   z-index: 999;
 `;
+
+export const MicButton = styled.TouchableOpacity<{ active: boolean }>`
+  padding: 10px;
+  background-color: ${(props) => (props.active ? props.theme.colors.error : 'transparent')};
+  border-radius: 20px;
+  justify-content: center;
+  align-items: center;
+`;
+
+export const VoiceInputContainer = styled.View`
+  flex-direction: row;
+  align-items: center;
+  background-color: ${(props) => props.theme.colors.background};
+  border-radius: 10px;
+  padding-horizontal: 10px;
+  border-width: 1px;
+  border-color: ${(props) => props.theme.colors.border};
+`;
+
+export const Label = styled(RNText)`
+  font-size: ${(props) => props.theme.fontSize.f14}px;
+  font-weight: bold;
+  color: ${(props) => props.theme.colors.textSecondary};
+  margin-bottom: 8px;
+`;
+
+export const ListeningIndicator = ({ active, theme }: { active: boolean; theme: any }) => {
+  if (!active) return null;
+  return (
+    <RNText
+      style={{
+        color: theme.colors.error,
+        textAlign: 'center',
+        marginVertical: 5,
+        fontWeight: 'bold',
+        fontSize: theme.fontSize.f12,
+      }}
+    >
+      Słucham...
+    </RNText>
+  );
+};

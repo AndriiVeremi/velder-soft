@@ -3,42 +3,58 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     
+    // Перевірка, чи користувач залогінений
     function isSignedIn() {
       return request.auth != null;
     }
 
+    // Перевірка, чи користувач має роль DIRECTOR (через Firestore)
+    // Примітка: Storage правила можуть читати Firestore документи
+    function isDirector() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'DIRECTOR';
+    }
 
-
+    // 1. Проекти та Департаменти (Тільки Директор може додавати/видаляти фото)
     match /projects/{allPaths=**} {
-      allow read: if true;
-      allow write: if isSignedIn();
-    }
-
-    // 2. Фото звітів про проблеми
-    match /reports/{userId}/{allPaths=**} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && request.auth.uid == userId;
-    }
-
-    // 3. Фото завдань та сервісу
-    match /task_photos/{allPaths=**} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
-    }
-    
-    match /service/{allPaths=**} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow write: if isSignedIn() && isDirector();
     }
     
     match /dept_photos/{allPaths=**} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow write: if isSignedIn() && isDirector();
     }
 
-    // Базове правило для всього іншого
+    // 2. Звіти про проблеми (Кожен пише тільки у свою папку)
+    match /reports/{userId}/{allPaths=**} {
+      allow read: if isSignedIn(); // Всі бачать (або обмежити лише Директором)
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if isSignedIn() && (request.auth.uid == userId || isDirector());
+    }
+
+    // 3. Завдання (Додавати можуть усі, видаляти — тільки Директор або автор)
+    match /task_photos/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow delete: if isSignedIn() && isDirector();
+    }
+
+    // 4. Сервіс (Аналогічно завданням)
+    match /service/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow delete: if isSignedIn() && isDirector();
+    }
+
+    // 5. Документація (Тільки Директор керує файлами)
+    match /docs/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isDirector();
+    }
+
+    // Базове правило безпеки: за замовчуванням все заборонено
     match /{allPaths=**} {
-      allow read, write: if isSignedIn();
+      allow read, write: if false;
     }
   }
 }

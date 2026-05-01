@@ -191,16 +191,21 @@ const DocsScreen = ({ navigation }: Props) => {
   const [saving, setSaving] = useState(false);
   const [previewFile, setPreviewFile] = useState<DocsFile | null>(null);
 
-  // Завантаження категорій
   useEffect(() => {
     const q = query(collection(db, 'docs_categories'), orderBy('createdAt', 'asc'));
-    return onSnapshot(q, (snap) => {
-      setCategories(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as DocsCategory));
-      setLoading(false);
-    });
+    return onSnapshot(
+      q,
+      (snap) => {
+        setCategories(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as DocsCategory));
+        setLoading(false);
+      },
+      (error) => {
+        console.error('DocsScreen Categories Error:', error);
+        setLoading(false);
+      }
+    );
   }, []);
 
-  // Завантаження папок при виборі категорії
   useEffect(() => {
     if (!selectedCategory) return;
     const q = query(
@@ -208,13 +213,19 @@ const DocsScreen = ({ navigation }: Props) => {
       where('categoryId', '==', selectedCategory.id),
       orderBy('createdAt', 'asc')
     );
-    return onSnapshot(q, (snap) => {
-      setFolders(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as DocsFolder));
-      setLoading(false);
-    });
+    return onSnapshot(
+      q,
+      (snap) => {
+        setFolders(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as DocsFolder));
+        setLoading(false);
+      },
+      (error) => {
+        console.error('DocsScreen Folders Error:', error);
+        setLoading(false);
+      }
+    );
   }, [selectedCategory]);
 
-  // Завантаження файлів при виборі папки
   useEffect(() => {
     if (!selectedFolder) return;
     const q = query(
@@ -222,10 +233,17 @@ const DocsScreen = ({ navigation }: Props) => {
       where('folderId', '==', selectedFolder.id),
       orderBy('createdAt', 'asc')
     );
-    return onSnapshot(q, (snap) => {
-      setFiles(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as DocsFile));
-      setLoading(false);
-    });
+    return onSnapshot(
+      q,
+      (snap) => {
+        setFiles(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as DocsFile));
+        setLoading(false);
+      },
+      (error) => {
+        console.error('DocsScreen Files Error:', error);
+        setLoading(false);
+      }
+    );
   }, [selectedFolder]);
 
   const goBack = () => {
@@ -525,7 +543,6 @@ const DocsScreen = ({ navigation }: Props) => {
         </Fab>
       )}
 
-      {/* Модаль для категорій і папок */}
       <Modal visible={modalVisible && level !== 'files'} transparent animationType="slide">
         <ModalOverlay>
           <ModalBox theme={theme}>
@@ -557,7 +574,6 @@ const DocsScreen = ({ navigation }: Props) => {
         </ModalOverlay>
       </Modal>
 
-      {/* Модаль для завантаження файлів */}
       <Modal visible={modalVisible && level === 'files'} transparent animationType="slide">
         <ModalOverlay>
           <ModalBox theme={theme}>
@@ -585,7 +601,6 @@ const DocsScreen = ({ navigation }: Props) => {
         </ModalOverlay>
       </Modal>
 
-      {/* Перегляд фото */}
       <Modal visible={!!previewFile} transparent animationType="fade">
         <View
           style={{

@@ -44,7 +44,7 @@ Notifications.setNotificationHandler({
   },
 });
 
-export const REMINDER_REPEAT_COUNT = 5;
+export const REMINDER_REPEAT_COUNT = 20;
 export const REMINDER_INTERVAL_MINUTES = 1;
 
 export async function setupReminderCategory() {
@@ -52,13 +52,13 @@ export async function setupReminderCategory() {
   await Notifications.setNotificationCategoryAsync('reminder', [
     {
       identifier: 'snooze',
-      buttonTitle: 'Za 10 minut',
-      options: { opensAppToForeground: false },
+      buttonTitle: 'Za 5 minut',
+      options: { opensAppToForeground: true },
     },
     {
       identifier: 'dismiss',
       buttonTitle: 'Wyłącz',
-      options: { isDestructive: true, opensAppToForeground: false },
+      options: { isDestructive: true, opensAppToForeground: true },
     },
   ]);
 }
@@ -78,25 +78,34 @@ export async function registerForPushNotificationsAsync() {
         sound: 'default',
       });
 
-      await Notifications.setNotificationChannelAsync('alerts', {
+      await Notifications.setNotificationChannelAsync('alerts_v2', {
         name: 'Alerts',
         importance: Notifications.AndroidImportance.MAX,
         enableVibrate: true,
         vibrationPattern: [0, 500, 200, 500],
         showBadge: true,
-        sound: 'default',
+        sound: 'alert.wav',
         lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
       });
 
-      await Notifications.setNotificationChannelAsync('reminders', {
+      await Notifications.setNotificationChannelAsync('reminders_v2', {
         name: 'Przypomnienia',
         importance: Notifications.AndroidImportance.MAX,
         enableVibrate: true,
         vibrationPattern: [0, 500, 500, 500, 500, 500],
         showBadge: true,
-        sound: 'default',
+        sound: 'reminder.wav',
         lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
         bypassDnd: false,
+      });
+
+      await Notifications.setNotificationChannelAsync('done_v1', {
+        name: 'Potwierdzenia',
+        importance: Notifications.AndroidImportance.DEFAULT,
+        enableVibrate: true,
+        vibrationPattern: [0, 250],
+        showBadge: true,
+        sound: 'done.wav',
       });
     }
 
@@ -144,29 +153,38 @@ export async function setBadgeCount(count: number) {
 export function setupNotificationListeners() {
   if (Platform.OS === 'web') return;
 
-  const subscription = Notifications.addNotificationResponseReceivedListener(async (response) => {
+  const handleResponse = async (response: Notifications.NotificationResponse) => {
     const data = response.notification.request.content.data;
     const reminderId = data?.reminderId;
     const actionId = response.actionIdentifier;
 
+    console.log('Notification Response Received:', { actionId, reminderId, data });
+
     if (!reminderId) return;
 
     if (actionId === 'dismiss' || actionId === Notifications.DEFAULT_ACTION_IDENTIFIER) {
+      console.log(`Attempting to dismiss reminder: ${reminderId}`);
       for (let i = 0; i < REMINDER_REPEAT_COUNT; i++) {
         try {
-          await Notifications.cancelScheduledNotificationAsync(`${reminderId}_${i}`);
-        } catch (e) {}
+          const idToCancel = `${reminderId}_${i}`;
+          await Notifications.cancelScheduledNotificationAsync(idToCancel);
+          console.log(`Cancelled: ${idToCancel}`);
+        } catch (e) {
+          console.warn(`Failed to cancel ${reminderId}_${i}:`, e);
+        }
       }
     }
 
     if (actionId === 'snooze') {
+      console.log(`Snoozing reminder: ${reminderId}`);
       for (let i = 0; i < REMINDER_REPEAT_COUNT; i++) {
         try {
           await Notifications.cancelScheduledNotificationAsync(`${reminderId}_${i}`);
         } catch (e) {}
       }
-      const snoozeBase = new Date(Date.now() + 10 * 60 * 1000);
-      for (let i = 0; i < REMINDER_REPEAT_COUNT; i++) {
+      const snoozeBase = new Date(Date.now() + 5 * 60 * 1000);
+      const SIGNALS_IN_SNOOZE = 3;
+      for (let i = 0; i < SIGNALS_IN_SNOOZE; i++) {
         const scheduleDate = new Date(snoozeBase.getTime() + i * REMINDER_INTERVAL_MINUTES * 60000);
         try {
           await Notifications.scheduleNotificationAsync({
@@ -174,20 +192,26 @@ export function setupNotificationListeners() {
             content: {
               title: `Przypomnienie (powrót) 🔔`,
               body: (data?.title as string) || '',
-              sound: 'default',
+              sound: 'reminder.wav',
               categoryIdentifier: 'reminder',
               data: { reminderId, title: data?.title },
             },
             trigger: {
               type: Notifications.SchedulableTriggerInputTypes.DATE,
               date: scheduleDate,
-              channelId: 'reminders',
+              channelId: 'reminders_v2',
             },
           });
         } catch (e) {}
       }
     }
+  };
+
+  Notifications.getLastNotificationResponseAsync().then((response) => {
+    if (response) handleResponse(response);
   });
+
+  const subscription = Notifications.addNotificationResponseReceivedListener(handleResponse);
 
   return () => subscription.remove();
 }
@@ -199,9 +223,17 @@ type PushRecipient =
 export async function sendPushNotification(
   recipients: PushRecipient[],
   title: string,
-  body: string
+  body: string,
+  channelId: 'alerts_v2' | 'reminders_v2' | 'done_v1' = 'alerts_v2'
 ) {
   if (recipients.length === 0) return;
+
+  const soundFile =
+    channelId === 'done_v1'
+      ? 'done.wav'
+      : channelId === 'reminders_v2'
+        ? 'reminder.wav'
+        : 'alert.wav';
 
   const messages = recipients.map((r) => {
     const token = typeof r === 'string' ? r : r.token;
@@ -210,13 +242,13 @@ export async function sendPushNotification(
     const silent = isQuietHours(start, end);
     return {
       to: token,
-      sound: silent ? null : 'default',
+      sound: silent ? null : soundFile,
       title,
       body,
       priority: 'high',
-      channelId: 'alerts',
+      channelId: channelId,
       _displayInForeground: true,
-      ttl: 3600, // 1 година життя сповіщення, якщо пристрій офлайн
+      ttl: 3600,
     };
   });
 
@@ -254,8 +286,8 @@ export async function scheduleDailyReminder(taskCount: number, startTime: string
     identifier: DAILY_REMINDER_ID,
     content: {
       title: 'Dzień dobry! Masz zadania 📋',
-      body: `Dziś na liście: ${taskCount} zadań. Powodzenia!`,
-      sound: 'default',
+      body: `Dziś na liście: ${taskCount} zadaң. Powodzenia!`,
+      sound: 'alert.wav',
       badge: taskCount,
     },
     trigger: {

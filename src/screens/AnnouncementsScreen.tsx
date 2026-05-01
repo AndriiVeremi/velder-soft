@@ -23,11 +23,18 @@ import {
 import { db } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { useAppTheme } from '../context/ThemeContext';
-import { Megaphone, Trash2, Send, Bell } from 'lucide-react-native';
+import { Megaphone, Trash2, Send, Bell, Mic } from 'lucide-react-native';
 import { format } from 'date-fns';
 import { notify } from '../utils/notify';
 import { confirmDelete } from '../utils/confirm';
-import { ScreenHeader, ScreenTitle } from '../components/CommonUI';
+import {
+  ScreenHeader,
+  ScreenTitle,
+  MicButton,
+  VoiceInputContainer,
+  ListeningIndicator,
+} from '../components/CommonUI';
+import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
 import { StackScreenProps } from '@react-navigation/stack';
 import { sendPushNotification } from '../utils/notifications';
 
@@ -128,6 +135,12 @@ const AnnouncementsScreen = ({ navigation, route }: Props) => {
   const [text, setText] = useState('');
   const [posting, setPosting] = useState(false);
 
+  const { isListening, toggleListening } = useVoiceRecognition({
+    onResult: (transcript) => {
+      setText(transcript);
+    },
+  });
+
   useEffect(() => {
     const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snap) => {
@@ -170,7 +183,8 @@ const AnnouncementsScreen = ({ navigation, route }: Props) => {
           await sendPushNotification(
             tokens,
             'Nowe ogłoszenie! 📢',
-            text.length > 50 ? `${text.substring(0, 50)}...` : text
+            text.length > 50 ? `${text.substring(0, 50)}...` : text,
+            'alerts_v2'
           );
         }
       } catch (pushErr) {
@@ -222,13 +236,21 @@ const AnnouncementsScreen = ({ navigation, route }: Props) => {
           role === 'DIRECTOR' ? (
             <InputCard theme={theme}>
               <AuthorText>Nowe ogłoszenie do zespołu</AuthorText>
-              <StyledInput
-                placeholder="Wpisz ważną informację dla wszystkich pracowników..."
-                placeholderTextColor={theme.colors.textSecondary}
-                value={text}
-                onChangeText={setText}
-                multiline
-              />
+              <VoiceInputContainer theme={theme} style={{ marginBottom: 15 }}>
+                <StyledInput
+                  placeholder="Wpisz ważną informację dla wszystkich pracowników..."
+                  placeholderTextColor={theme.colors.textSecondary}
+                  value={text}
+                  onChangeText={setText}
+                  multiline
+                  style={{ flex: 1, marginBottom: 0 }}
+                />
+                <MicButton active={isListening} theme={theme} onPress={toggleListening}>
+                  <Mic size={24} color={isListening ? 'white' : theme.colors.primary} />
+                </MicButton>
+              </VoiceInputContainer>
+              <ListeningIndicator active={isListening} theme={theme} />
+
               <PostButton onPress={handlePost} disabled={posting} theme={theme}>
                 {posting ? (
                   <ActivityIndicator color="white" />

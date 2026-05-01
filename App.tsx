@@ -224,6 +224,8 @@ const RootNavigation = () => {
   return <AuthenticatedStack />;
 };
 
+import { RootSiblingParent } from 'react-native-root-siblings';
+
 export default function App() {
   useEffect(() => {
     registerForPushNotificationsAsync();
@@ -235,15 +237,17 @@ export default function App() {
   }, []);
 
   return (
-    <SafeAreaProvider>
-      <AppThemeProvider>
-        <AuthProvider>
-          <NavigationContainer>
-            <RootNavigation />
-          </NavigationContainer>
-          <WebToaster />
-        </AuthProvider>
-      </AppThemeProvider>
-    </SafeAreaProvider>
+    <RootSiblingParent>
+      <SafeAreaProvider>
+        <AppThemeProvider>
+          <AuthProvider>
+            <NavigationContainer>
+              <RootNavigation />
+            </NavigationContainer>
+            <WebToaster />
+          </AuthProvider>
+        </AppThemeProvider>
+      </SafeAreaProvider>
+    </RootSiblingParent>
   );
 }

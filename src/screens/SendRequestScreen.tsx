@@ -27,8 +27,15 @@ import { useAuth } from '../context/AuthContext';
 import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
 import { confirmDelete } from '../utils/confirm';
-import { ScreenHeader, ScreenTitle } from '../components/CommonUI';
-import { Send, Trash2, MessageSquare, CheckCircle2, Clock } from 'lucide-react-native';
+import {
+  ScreenHeader,
+  ScreenTitle,
+  MicButton,
+  VoiceInputContainer,
+  ListeningIndicator,
+} from '../components/CommonUI';
+import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
+import { Send, Trash2, MessageSquare, CheckCircle2, Clock, Mic } from 'lucide-react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { sendPushNotification } from '../utils/notifications';
 import { format } from 'date-fns';
@@ -154,6 +161,12 @@ const SendRequestScreen = ({ navigation }: Props) => {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
 
+  const { isListening, toggleListening } = useVoiceRecognition({
+    onResult: (transcript) => {
+      setText(transcript);
+    },
+  });
+
   useEffect(() => {
     if (!user) return;
     const q = query(collection(db, 'requests'), where('senderId', '==', user.uid));
@@ -199,7 +212,8 @@ const SendRequestScreen = ({ navigation }: Props) => {
           await sendPushNotification(
             tokens,
             'Nowa wiadomość od pracownika! 📩',
-            `${userData?.name || 'Pracownik'}: ${text.trim().length > 50 ? text.trim().substring(0, 50) + '...' : text.trim()}`
+            `${userData?.name || 'Pracownik'}: ${text.trim().length > 50 ? text.trim().substring(0, 50) + '...' : text.trim()}`,
+            'alerts_v2'
           );
         }
       } catch (pushErr) {
@@ -207,6 +221,7 @@ const SendRequestScreen = ({ navigation }: Props) => {
       }
 
       setText('');
+      await playDoneSound();
       notify.success('Wysłano do Szefa');
     } catch (e) {
       notify.error('Błąd wysyłania');
@@ -233,9 +248,9 @@ const SendRequestScreen = ({ navigation }: Props) => {
 
   return (
     <Container theme={theme}>
-      <Header theme={theme}>
-        <Title theme={theme}>Linia do Szefa</Title>
-      </Header>
+      <ScreenHeader theme={theme}>
+        <ScreenTitle theme={theme}>Linia do Szefa</ScreenTitle>
+      </ScreenHeader>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -247,13 +262,21 @@ const SendRequestScreen = ({ navigation }: Props) => {
           ListHeaderComponent={
             <InputCard theme={theme}>
               <SectionLabel>Nowa wiadomość do Szefa</SectionLabel>
-              <StyledInput
-                placeholder="Napisz o co chcesz poprosić lub co zgłosić..."
-                placeholderTextColor={theme.colors.textSecondary}
-                value={text}
-                onChangeText={setText}
-                multiline
-              />
+              <VoiceInputContainer theme={theme} style={{ marginBottom: 15 }}>
+                <StyledInput
+                  placeholder="Napisz o co chcesz poprosić lub co zgłosić..."
+                  placeholderTextColor={theme.colors.textSecondary}
+                  value={text}
+                  onChangeText={setText}
+                  multiline
+                  style={{ flex: 1, marginBottom: 0 }}
+                />
+                <MicButton active={isListening} theme={theme} onPress={toggleListening}>
+                  <Mic size={24} color={isListening ? 'white' : theme.colors.primary} />
+                </MicButton>
+              </VoiceInputContainer>
+              <ListeningIndicator active={isListening} theme={theme} />
+
               <PostButton onPress={handlePost} disabled={loading} theme={theme}>
                 {loading ? (
                   <ActivityIndicator color="white" />
@@ -306,3 +329,4 @@ const SendRequestScreen = ({ navigation }: Props) => {
 };
 
 export default SendRequestScreen;
+SendRequestScreen;

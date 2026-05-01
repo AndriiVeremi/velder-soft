@@ -1,16 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text as RNText,
-  FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
-  Modal,
-  ScrollView,
-  Platform,
-  Dimensions,
-  TextInput,
-} from 'react-native';
+import { FlatList, ActivityIndicator } from 'react-native';
 import styled from 'styled-components/native';
 import {
   collection,
@@ -34,121 +23,16 @@ import { notify } from '../utils/notify';
 import { pickAndUploadPhoto } from '../utils/upload';
 import { confirmDelete } from '../utils/confirm';
 import { useMarkAsRead } from '../hooks/useMarkAsRead';
-import { TimePicker, ModalOverlay, ModalContent, UploadOverlay, Fab } from '../components/CommonUI';
-import {
-  Wrench,
-  Plus,
-  Clock,
-  CheckCircle2,
-  Trash2,
-  Camera,
-  X,
-  ChevronRight,
-  AlertTriangle,
-} from 'lucide-react-native';
-import { format } from 'date-fns';
-import { pl } from 'date-fns/locale';
-import { StackScreenProps } from '@react-navigation/stack';
-
-const { width } = Dimensions.get('window');
+import { Fab, ScreenHeader, ScreenTitle, UploadOverlay } from '../components/CommonUI';
+import { Plus } from 'lucide-react-native';
+import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
+import { ServiceCardComponent } from '../components/service/ServiceCard';
+import { AddServiceModal } from '../components/service/AddServiceModal';
+import permissions from '../utils/permissions';
 
 const Container = styled.View`
   flex: 1;
   background-color: ${(props) => props.theme.colors.background};
-`;
-
-const ServiceCard = styled.View<{ status: string }>`
-  background-color: ${(props) => props.theme.colors.surface};
-  margin: 8px 15px;
-  padding: 16px;
-  border-radius: 12px;
-  border-width: 1px;
-  border-color: ${(props) => props.theme.colors.border};
-  border-left-width: 5px;
-  border-left-color: ${(props) =>
-    props.status === 'DONE' ? props.theme.colors.success : props.theme.colors.warning};
-`;
-
-const CardHeader = styled.View`
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: flex-start;
-`;
-
-const HospitalName = styled(RNText)`
-  font-size: ${(props) => props.theme.fontSize.f16}px;
-  font-weight: bold;
-  color: ${(props) => props.theme.colors.text};
-  flex: 1;
-`;
-
-const DeptName = styled(RNText)`
-  font-size: ${(props) => props.theme.fontSize.f14}px;
-  color: ${(props) => props.theme.colors.textSecondary};
-  margin-top: 2px;
-`;
-
-const Description = styled(RNText)`
-  font-size: ${(props) => props.theme.fontSize.f14}px;
-  color: ${(props) => props.theme.colors.text};
-  margin-top: 10px;
-  line-height: 20px;
-`;
-
-const MetaRow = styled.View`
-  flex-direction: row;
-  align-items: center;
-  margin-top: 12px;
-`;
-
-const MetaItem = styled.View`
-  flex-direction: row;
-  align-items: center;
-  margin-right: 15px;
-`;
-
-const MetaText = styled(RNText)`
-  font-size: ${(props) => props.theme.fontSize.f12}px;
-  color: ${(props) => props.theme.colors.textSecondary};
-  margin-left: 5px;
-`;
-
-const ActionButtons = styled.View`
-  flex-direction: row;
-  justify-content: flex-end;
-  margin-top: 15px;
-  border-top-width: 1px;
-  border-top-color: ${(props) => props.theme.colors.background};
-  padding-top: 10px;
-`;
-
-const ActionBtn = styled.TouchableOpacity`
-  padding: 8px;
-  margin-left: 10px;
-`;
-
-const StyledInput = styled.TextInput`
-  background-color: ${(props) => props.theme.colors.background};
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 15px;
-  color: ${(props) => props.theme.colors.text};
-  border-width: 1px;
-  border-color: ${(props) => props.theme.colors.border};
-`;
-
-const Label = styled(RNText)`
-  font-size: ${(props) => props.theme.fontSize.f14}px;
-  font-weight: bold;
-  color: ${(props) => props.theme.colors.textSecondary};
-  margin-bottom: 8px;
-`;
-
-const PhotoPreview = styled.Image`
-  width: 100%;
-  height: 150px;
-  border-radius: 8px;
-  margin-top: 10px;
 `;
 
 interface Service {
@@ -174,10 +58,15 @@ const ServiceScreen = () => {
   const [uploading, setUploading] = useState(false);
   const scheduleMarkAsRead = useMarkAsRead('services');
 
-  // Form state
   const [hospital, setHospital] = useState('');
   const [department, setDepartment] = useState('');
   const [description, setDescription] = useState('');
+
+  const { isListening, toggleListening } = useVoiceRecognition({
+    onResult: (transcript) => {
+      setDescription(transcript);
+    },
+  });
 
   useEffect(() => {
     const q = query(collection(db, 'services'), orderBy('createdAt', 'desc'));
@@ -185,13 +74,13 @@ const ServiceScreen = () => {
       const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Service);
       setServices(data);
       setLoading(false);
-
       scheduleMarkAsRead(data.filter((s) => s.isNew).map((s) => s.id));
     });
     return unsubscribe;
   }, []);
 
   const handleAddService = async () => {
+    if (!permissions.canCreateServiceRecord(role || 'EMPLOYEE')) return;
     if (!hospital.trim() || !department.trim() || !description.trim()) {
       return notify.error('Wypełnij wszystkie pola');
     }
@@ -204,78 +93,90 @@ const ServiceScreen = () => {
         status: 'PENDING',
         isNew: true,
         createdBy: user?.uid,
-        authorName: userData?.name || 'Pracownik',
+        authorName: userData?.name || 'Director',
         createdAt: serverTimestamp(),
       });
 
       try {
-        const directorsSnap = await getDocs(
-          query(collection(db, 'users'), where('role', '==', 'DIRECTOR'))
+        const usersSnap = await getDocs(
+          query(
+            collection(db, 'users'),
+            where('role', '==', 'EMPLOYEE'),
+            where('isActive', '==', true)
+          )
         );
         const tokens: { token: string; notificationStart?: string; notificationEnd?: string }[] =
           [];
-        directorsSnap.forEach((d) => {
+        usersSnap.forEach((d) => {
           const data = d.data();
-          if (data.pushToken)
+          if (data.pushToken) {
             tokens.push({
               token: data.pushToken,
               notificationStart: data.notificationStart,
               notificationEnd: data.notificationEnd,
             });
+          }
         });
+
         if (tokens.length > 0) {
           await sendPushNotification(
             tokens,
-            'Nowe zgłoszenie serwisowe! 🔧',
-            `${userData?.name || 'Pracownik'}: ${hospital.trim()} — ${department.trim()}`
+            'Nowe zlecenie serwisowe! 🔧',
+            `Nowe zadanie w: ${hospital.trim()} — ${department.trim()}`
           );
         }
       } catch (pushErr) {
-        console.warn('Failed to notify director:', pushErr);
+        console.warn('Failed to notify workers:', pushErr);
       }
 
       setModalVisible(false);
       setHospital('');
       setDepartment('');
       setDescription('');
-      notify.success('Zgłoszenie dodane');
+      await playDoneSound();
+      notify.success('Zlecenie dodane');
     } catch (e) {
       notify.error('Błąd zapisu');
     }
   };
 
   const toggleStatus = async (service: Service) => {
-    if (role !== 'DIRECTOR') return;
+    if (!permissions.canToggleServiceStatus(role || 'EMPLOYEE')) return;
     const newStatus = service.status === 'DONE' ? 'PENDING' : 'DONE';
     try {
       await updateDoc(doc(db, 'services', service.id), { status: newStatus });
 
-      if (newStatus === 'DONE') {
+      if (newStatus === 'DONE' && role === 'EMPLOYEE') {
+        await playDoneSound();
         try {
-          const workerSnap = await getDocs(
-            query(collection(db, 'users'), where('__name__', '==', service.createdBy))
+          const directorsSnap = await getDocs(
+            query(collection(db, 'users'), where('role', '==', 'DIRECTOR'))
           );
-          if (!workerSnap.empty) {
-            const workerData = workerSnap.docs[0].data();
-            if (workerData.pushToken) {
-              await sendPushNotification(
-                [
-                  {
-                    token: workerData.pushToken,
-                    notificationStart: workerData.notificationStart,
-                    notificationEnd: workerData.notificationEnd,
-                  },
-                ],
-                'Zgłoszenie serwisowe zakończone! ✅',
-                `${service.hospital} — ${service.department} zostało zakończone.`
-              );
+          const tokens: { token: string; notificationStart?: string; notificationEnd?: string }[] =
+            [];
+          directorsSnap.forEach((d) => {
+            const data = d.data();
+            if (data.pushToken && d.id !== user?.uid) {
+              tokens.push({
+                token: data.pushToken,
+                notificationStart: data.notificationStart,
+                notificationEnd: data.notificationEnd,
+              });
             }
+          });
+
+          if (tokens.length > 0) {
+            await sendPushNotification(
+              tokens,
+              'Serwis zakończony! ✅',
+              `${userData?.name || 'Pracownik'} oznaczył jako wykonane: ${service.hospital} — ${service.department}`,
+              'done_v1'
+            );
           }
         } catch (pushErr) {
-          console.warn('Failed to notify worker:', pushErr);
+          console.warn('Failed to notify director:', pushErr);
         }
       }
-
       notify.success('Status zaktualizowany');
     } catch (e) {
       notify.error('Błąd aktualizacji');
@@ -283,7 +184,7 @@ const ServiceScreen = () => {
   };
 
   const handleDelete = (id: string) => {
-    if (role !== 'DIRECTOR') return;
+    if (!permissions.canDeleteServiceRecord(role || 'EMPLOYEE')) return;
     confirmDelete('Usunąć zgłoszenie?', async () => {
       try {
         await deleteDoc(doc(db, 'services', id));
@@ -302,36 +203,8 @@ const ServiceScreen = () => {
         await updateDoc(doc(db, 'services', service.id), {
           photoUrl: result.photoUrl,
           photoPath: result.photoPath,
-          status: 'DONE',
         });
-
-        try {
-          const directorsSnap = await getDocs(
-            query(collection(db, 'users'), where('role', '==', 'DIRECTOR'))
-          );
-          const tokens: { token: string; notificationStart?: string; notificationEnd?: string }[] =
-            [];
-          directorsSnap.forEach((d) => {
-            const data = d.data();
-            if (data.pushToken)
-              tokens.push({
-                token: data.pushToken,
-                notificationStart: data.notificationStart,
-                notificationEnd: data.notificationEnd,
-              });
-          });
-          if (tokens.length > 0) {
-            await sendPushNotification(
-              tokens,
-              'Serwis zakończony ze zdjęciem! 📸',
-              `${service.authorName}: ${service.hospital} — ${service.department}`
-            );
-          }
-        } catch (pushErr) {
-          console.warn('Failed to notify director:', pushErr);
-        }
-
-        notify.success('Zdjęcie dodane i status zmieniony');
+        notify.success('Zdjęcie dodane');
       } catch (e) {
         notify.error('Błąd zapisu');
       }
@@ -341,6 +214,10 @@ const ServiceScreen = () => {
 
   return (
     <Container theme={theme}>
+      <ScreenHeader theme={theme}>
+        <ScreenTitle theme={theme}>Serwis</ScreenTitle>
+      </ScreenHeader>
+
       {loading ? (
         <ActivityIndicator style={{ marginTop: 50 }} color={theme.colors.primary} />
       ) : (
@@ -349,196 +226,40 @@ const ServiceScreen = () => {
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingVertical: 10 }}
           renderItem={({ item }) => (
-            <ServiceCard
+            <ServiceCardComponent
+              service={item}
+              role={role || ''}
               theme={theme}
-              status={item.status}
-              style={
-                item.isNew
-                  ? {
-                      borderColor: theme.colors.primary,
-                      borderTopWidth: 2,
-                      borderRightWidth: 2,
-                      borderBottomWidth: 2,
-                    }
-                  : undefined
-              }
-            >
-              {item.isNew && (
-                <View
-                  style={{
-                    backgroundColor: theme.colors.primary,
-                    borderRadius: 6,
-                    paddingHorizontal: 8,
-                    paddingVertical: 2,
-                    alignSelf: 'flex-start',
-                    marginBottom: 8,
-                  }}
-                >
-                  <RNText
-                    style={{ color: 'white', fontSize: theme.fontSize.f10, fontWeight: 'bold' }}
-                  >
-                    NOWE
-                  </RNText>
-                </View>
-              )}
-              <CardHeader>
-                <View style={{ flex: 1 }}>
-                  <HospitalName theme={theme}>{item.hospital}</HospitalName>
-                  <DeptName theme={theme}>{item.department}</DeptName>
-                </View>
-                <View
-                  style={{
-                    backgroundColor: item.status === 'DONE' ? '#e8f5e9' : '#fff3e0',
-                    padding: 4,
-                    borderRadius: 4,
-                  }}
-                >
-                  <RNText
-                    style={{
-                      fontSize: theme.fontSize.f10,
-                      fontWeight: 'bold',
-                      color: item.status === 'DONE' ? '#2e7d32' : '#e65100',
-                    }}
-                  >
-                    {item.status === 'DONE' ? 'ZAKOŃCZONE' : 'OCZEKUJE'}
-                  </RNText>
-                </View>
-              </CardHeader>
-
-              <Description theme={theme}>{item.description}</Description>
-
-              <MetaRow>
-                <MetaItem>
-                  <Clock size={12} color={theme.colors.textSecondary} />
-                  <MetaText theme={theme}>
-                    {item.createdAt
-                      ? format(item.createdAt.toDate(), 'd MMM, HH:mm', { locale: pl })
-                      : '...'}
-                  </MetaText>
-                </MetaItem>
-                <MetaItem>
-                  <RNText
-                    style={{
-                      fontSize: theme.fontSize.f12,
-                      color: theme.colors.primary,
-                      fontWeight: 'bold',
-                    }}
-                  >
-                    {item.authorName}
-                  </RNText>
-                </MetaItem>
-              </MetaRow>
-
-              {item.photoUrl && <PhotoPreview source={{ uri: item.photoUrl }} />}
-
-              <ActionButtons theme={theme}>
-                {role === 'DIRECTOR' && (
-                  <ActionBtn onPress={() => toggleStatus(item)}>
-                    <CheckCircle2
-                      size={20}
-                      color={
-                        item.status === 'DONE' ? theme.colors.success : theme.colors.textSecondary
-                      }
-                    />
-                  </ActionBtn>
-                )}
-                <ActionBtn onPress={() => handleAddPhoto(item)}>
-                  <Camera
-                    size={20}
-                    color={item.photoUrl ? theme.colors.success : theme.colors.textSecondary}
-                  />
-                </ActionBtn>
-                {role === 'DIRECTOR' && (
-                  <ActionBtn onPress={() => handleDelete(item.id)}>
-                    <Trash2 size={20} color={theme.colors.error} opacity={0.6} />
-                  </ActionBtn>
-                )}
-              </ActionButtons>
-            </ServiceCard>
+              permissions={permissions}
+              onToggle={toggleStatus}
+              onAddPhoto={handleAddPhoto}
+              onDelete={handleDelete}
+            />
           )}
-          ListEmptyComponent={
-            <RNText
-              style={{ textAlign: 'center', marginTop: 50, color: theme.colors.textSecondary }}
-            >
-              Brak zgłoszeń serwisowych.
-            </RNText>
-          }
+          ListEmptyComponent={<ActivityIndicator color={theme.colors.primary} />}
         />
       )}
 
-      {role === 'DIRECTOR' && (
+      {permissions.canCreateServiceRecord(role || 'EMPLOYEE') && (
         <Fab theme={theme} onPress={() => setModalVisible(true)}>
           <Plus size={30} color="white" />
         </Fab>
       )}
 
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <ModalOverlay>
-          <ModalContent theme={theme}>
-            <View
-              style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}
-            >
-              <RNText
-                style={{
-                  fontSize: theme.fontSize.f20,
-                  fontWeight: 'bold',
-                  color: theme.colors.text,
-                }}
-              >
-                Nowe zgłoszenie
-              </RNText>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color={theme.colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            <Label theme={theme}>Szpital</Label>
-            <StyledInput
-              theme={theme}
-              placeholder="Nazwa szpitala"
-              value={hospital}
-              onChangeText={setHospital}
-              placeholderTextColor={theme.colors.textSecondary}
-            />
-
-            <Label theme={theme}>Oddział</Label>
-            <StyledInput
-              theme={theme}
-              placeholder="Nazwa oddziału"
-              value={department}
-              onChangeText={setDepartment}
-              placeholderTextColor={theme.colors.textSecondary}
-            />
-
-            <Label theme={theme}>Opis problemu / Prace</Label>
-            <StyledInput
-              theme={theme}
-              placeholder="Co należy zrobić або що зроблено..."
-              multiline
-              numberOfLines={4}
-              value={description}
-              onChangeText={setDescription}
-              placeholderTextColor={theme.colors.textSecondary}
-              style={{ height: 100, textAlignVertical: 'top' }}
-            />
-
-            <TouchableOpacity
-              onPress={handleAddService}
-              style={{
-                backgroundColor: theme.colors.primary,
-                padding: 16,
-                borderRadius: 12,
-                marginTop: 20,
-                alignItems: 'center',
-              }}
-            >
-              <RNText style={{ color: 'white', fontWeight: 'bold', fontSize: theme.fontSize.f16 }}>
-                Wyślij zgłoszenie
-              </RNText>
-            </TouchableOpacity>
-          </ModalContent>
-        </ModalOverlay>
-      </Modal>
+      <AddServiceModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onAdd={handleAddService}
+        theme={theme}
+        hospital={hospital}
+        setHospital={setHospital}
+        department={department}
+        setDepartment={setDepartment}
+        description={description}
+        setDescription={setDescription}
+        isListening={isListening}
+        toggleListening={toggleListening}
+      />
 
       {uploading && (
         <UploadOverlay>
@@ -548,5 +269,3 @@ const ServiceScreen = () => {
     </Container>
   );
 };
-
-export default ServiceScreen;

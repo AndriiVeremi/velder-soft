@@ -209,7 +209,6 @@ const DirectorReportsScreen = () => {
   const handleDelete = (report: Report) => {
     const performDelete = async () => {
       try {
-        // Видаляємо файли по черзі, ігноруючи помилки "не знайдено"
         for (const item of report.media) {
           try {
             const storageRef = ref(storage, item.path);
@@ -218,7 +217,7 @@ const DirectorReportsScreen = () => {
             console.warn('File already deleted or missing in Storage:', item.path);
           }
         }
-        // Видаляємо документ із бази
+
         await deleteDoc(doc(db, 'reports', report.id));
         notify.success('Zgłoszenie usunięte');
       } catch (e) {

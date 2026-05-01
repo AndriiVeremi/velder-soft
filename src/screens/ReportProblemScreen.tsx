@@ -16,11 +16,18 @@ import { collection, addDoc, serverTimestamp, getDocs, query, where } from 'fire
 import { db, storage, auth } from '../config/firebase';
 import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
-import { Camera, Video, X, Send, Trash2, Image as ImageIcon } from 'lucide-react-native';
+import { Camera, Video, X, Send, Trash2, Image as ImageIcon, Mic } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { StackScreenProps } from '@react-navigation/stack';
 import { sendPushNotification } from '../utils/notifications';
-import { ScreenHeader, ScreenTitle } from '../components/CommonUI';
+import {
+  ScreenHeader,
+  ScreenTitle,
+  MicButton,
+  VoiceInputContainer,
+  ListeningIndicator,
+} from '../components/CommonUI';
+import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
 
 const Container = styled.View`
   flex: 1;
@@ -139,6 +146,12 @@ const ReportProblemScreen = ({ navigation }: Props) => {
   const [media, setMedia] = useState<MediaFile[]>([]);
   const [uploading, setUploading] = useState(false);
 
+  const { isListening, toggleListening } = useVoiceRecognition({
+    onResult: (transcript) => {
+      setDescription(transcript);
+    },
+  });
+
   const pickMedia = async (type: 'image' | 'video' | 'mixed') => {
     if (media.length >= 5) {
       notify.error('Maksymalnie 5 plików');
@@ -236,13 +249,15 @@ const ReportProblemScreen = ({ navigation }: Props) => {
           await sendPushNotification(
             tokens,
             'Nowe zgłoszenie problemu! ⚠️',
-            `${userData?.name || 'Pracownik'}: ${description.substring(0, 50)}${description.length > 50 ? '...' : ''}`
+            `${userData?.name || 'Pracownik'}: ${description.substring(0, 50)}${description.length > 50 ? '...' : ''}`,
+            'alerts_v2'
           );
         }
       } catch (pushErr) {
         console.warn('Failed to notify director:', pushErr);
       }
 
+      await playDoneSound();
       notify.success('Zgłoszenie zostało wysłane');
       navigation.goBack();
     } catch (e) {
@@ -268,16 +283,23 @@ const ReportProblemScreen = ({ navigation }: Props) => {
           <Content>
             <Label theme={theme}>Opis problemu</Label>
 
-            <StyledTextInput
-              theme={theme}
-              placeholder="Np. Awaria instalacji, brak materiałów..."
-              multiline
-              numberOfLines={5}
-              textAlignVertical="top"
-              value={description}
-              onChangeText={setDescription}
-              placeholderTextColor={theme.colors.textSecondary}
-            />
+            <VoiceInputContainer theme={theme} style={{ marginBottom: 25 }}>
+              <StyledTextInput
+                theme={theme}
+                placeholder="Np. Awaria instalacji, brak materiałów..."
+                multiline
+                numberOfLines={5}
+                textAlignVertical="top"
+                value={description}
+                onChangeText={setDescription}
+                placeholderTextColor={theme.colors.textSecondary}
+                style={{ flex: 1, marginBottom: 0, borderWeight: 0, borderWidth: 0 }}
+              />
+              <MicButton active={isListening} theme={theme} onPress={toggleListening}>
+                <Mic size={24} color={isListening ? 'white' : theme.colors.primary} />
+              </MicButton>
+            </VoiceInputContainer>
+            <ListeningIndicator active={isListening} theme={theme} />
 
             <Label theme={theme}>Załączniki ({media.length}/5)</Label>
             <MediaGrid>
@@ -332,4 +354,3 @@ const ReportProblemScreen = ({ navigation }: Props) => {
   );
 };
 
-export default ReportProblemScreen;

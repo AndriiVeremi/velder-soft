@@ -26,37 +26,27 @@ import {
   setDoc,
   serverTimestamp,
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import * as ImagePicker from 'expo-image-picker';
-import { db, storage } from '../config/firebase';
+import { db } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { useAppTheme } from '../context/ThemeContext';
 import { getCalendarTheme } from '../config/theme';
 import {
-  CheckCircle2,
-  Camera,
-  ArrowRight,
   Megaphone,
   Palmtree,
-  X,
   CheckCircle,
   ChevronLeft,
   ChevronRight,
-  Download,
+  ArrowRight,
 } from 'lucide-react-native';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { notify } from '../utils/notify';
-import { downloadImage } from '../utils/download';
-import { UploadOverlay } from '../components/CommonUI';
 import { runWeeklyCleanup } from '../utils/cleanup';
 import { StackScreenProps } from '@react-navigation/stack';
-import { Task, Announcement, VacationInfo, UserRequest } from '../types';
+import { Task, Announcement, VacationInfo, UserRequest, ServiceRecord } from '../types';
 import { RootStackParamList } from '../config/navigationTypes';
 
 type Props = StackScreenProps<RootStackParamList, 'Home'>;
-
-const { width } = Dimensions.get('window');
 
 LocaleConfig.locales['pl'] = {
   monthNames: [
@@ -147,81 +137,87 @@ const Card = styled.View`
   border-radius: ${(props) => props.theme.borderRadius.lg}px;
   border: 1px solid ${(props) => props.theme.colors.border};
   margin-bottom: ${(props) => props.theme.spacing.md}px;
-
-  /* Shadow for iOS */
+  elevation: 3;
   shadow-color: #000;
   shadow-offset: 0px 2px;
   shadow-opacity: 0.1;
   shadow-radius: 4px;
-  /* Elevation for Android */
-  elevation: 3;
+`;
+
+const SectionHeader = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
 `;
 
 const SectionTitle = styled(RNText)`
   font-size: ${(props) => props.theme.fontSize.lg}px;
   font-weight: bold;
   color: ${(props) => props.theme.colors.text};
-  margin-bottom: ${(props) => props.theme.spacing.md}px;
 `;
 
-const TaskItemContainer = styled.View`
-  border-bottom-width: 1px;
-  border-bottom-color: ${(props) => props.theme.colors.background};
-  padding: 12px 0;
+const InfoItemContainer = styled.View<{
+  priority?: string;
+  type: 'task' | 'service';
+  done: boolean;
+}>`
+  border-left-width: 4px;
+  border-left-color: ${(props) => {
+    if (props.done) return props.theme.colors.success;
+    if (props.priority === 'URGENT') return props.theme.colors.error;
+    return props.type === 'service' ? '#ff9800' : props.theme.colors.primary;
+  }};
+  background-color: ${(props) => (props.theme.isDark ? '#1a1a1a' : '#f9f9f9')};
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  border-width: 1px;
+  border-color: ${(props) => props.theme.colors.border};
 `;
 
-const TaskRow = styled.TouchableOpacity`
+const InfoHeader = styled.View`
   flex-direction: row;
-  align-items: center;
+  justify-content: space-between;
+  align-items: flex-start;
 `;
 
-const TaskText = styled(RNText)<{ done?: boolean }>`
-  flex: 1;
-  margin-left: 12px;
-  font-size: ${(props) => props.theme.fontSize.md}px;
+const InfoTitle = styled(RNText)<{ done: boolean }>`
+  font-size: ${(props) => props.theme.fontSize.f14}px;
+  font-weight: bold;
   color: ${(props) => (props.done ? props.theme.colors.textSecondary : props.theme.colors.text)};
   text-decoration: ${(props) => (props.done ? 'line-through' : 'none')};
-  font-weight: ${(props) => (props.done ? '400' : '600')};
+  flex: 1;
 `;
 
-const TaskTime = styled(RNText)`
-  font-size: ${(props) => props.theme.fontSize.sm}px;
-  color: ${(props) => props.theme.colors.primary};
+const InfoSubtitle = styled(RNText)`
+  font-size: ${(props) => props.theme.fontSize.f12}px;
+  color: ${(props) => props.theme.colors.textSecondary};
+  margin-top: 2px;
+`;
+
+const InfoBadge = styled.View<{ type: 'task' | 'service'; urgent?: boolean }>`
+  background-color: ${(props) =>
+    props.urgent
+      ? props.theme.colors.error
+      : props.type === 'service'
+        ? '#fff3e0'
+        : props.theme.colors.accent};
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+`;
+
+const BadgeText = styled(RNText)<{ urgent?: boolean }>`
+  font-size: 10px;
   font-weight: bold;
-  margin-left: 34px;
-`;
-
-const TaskImagePreview = styled.Image`
-  width: 100%;
-  height: 120px;
-  border-radius: 8px;
-  margin-top: 10px;
-  margin-left: 34px;
-  max-width: 250px;
-`;
-
-const ShowAllButton = styled.TouchableOpacity`
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  margin-top: 15px;
-  padding: 10px;
-`;
-
-const CameraIconButton = styled.TouchableOpacity`
-  padding: 5px;
+  color: ${(props) => (props.urgent ? 'white' : '#666')};
 `;
 
 const EmptyTasksText = styled(RNText)`
   color: ${(props) => props.theme.colors.textSecondary};
   text-align: center;
   margin-top: 10px;
-`;
-
-const ShowAllText = styled(RNText)`
-  color: ${(props) => props.theme.colors.primary};
-  font-weight: bold;
-  margin-right: 5px;
 `;
 
 const VacationCountdownCard = styled.TouchableOpacity`
@@ -235,12 +231,11 @@ const VacationCountdownCard = styled.TouchableOpacity`
   border-left-color: ${(props) => props.theme.colors.primary};
   border-width: 1px;
   border-color: ${(props) => props.theme.colors.border};
-
+  elevation: 3;
   shadow-color: #000;
   shadow-offset: 0px 2px;
   shadow-opacity: 0.1;
   shadow-radius: 4px;
-  elevation: 3;
 `;
 
 const VacationTextWrapper = styled.View`
@@ -319,12 +314,11 @@ const AnnouncementCard = styled.View`
   align-items: center;
   border-width: 1px;
   border-color: ${(props) => (props.theme.isDark ? '#4d3a00' : '#ffe0b2')};
-
+  elevation: 2;
   shadow-color: #000;
   shadow-offset: 0px 2px;
   shadow-opacity: 0.1;
   shadow-radius: 3px;
-  elevation: 2;
 `;
 
 const RequestsSection = styled.View`
@@ -341,12 +335,11 @@ const RequestItem = styled.View`
   margin-bottom: 12px;
   flex-direction: row;
   align-items: center;
-
+  elevation: 2;
   shadow-color: #000;
   shadow-offset: 0px 2px;
   shadow-opacity: 0.1;
   shadow-radius: 3px;
-  elevation: 2;
 `;
 
 const RequestContent = styled.View`
@@ -381,8 +374,8 @@ const HomeScreen = ({ navigation }: Props) => {
 
   const [selectedDate, setSelectedDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [services, setServices] = useState<ServiceRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
   const [latestAnnouncement, setLatestAnnouncement] = useState<Announcement | null>(null);
   const [isAnnouncementConfirmed, setIsAnnouncementConfirmed] = useState(false);
   const [vacations, setVacations] = useState<VacationInfo[]>([]);
@@ -396,7 +389,6 @@ const HomeScreen = ({ navigation }: Props) => {
 
     return onSnapshot(q, (snap) => {
       const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as UserRequest);
-
       const sorted = data.sort(
         (a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)
       );
@@ -475,7 +467,6 @@ const HomeScreen = ({ navigation }: Props) => {
         const batch = writeBatch(db);
         snap.forEach((d) => {
           const data = d.data();
-
           if (data.assignedTo === user.uid) {
             batch.update(doc(db, 'tasks', d.id), { date: todayStr, wasMoved: true });
           }
@@ -489,48 +480,64 @@ const HomeScreen = ({ navigation }: Props) => {
   }, [user, todayStr]);
 
   useEffect(() => {
-    const q = query(collection(db, 'tasks'), where('date', '==', selectedDate));
-    return onSnapshot(q, (querySnapshot) => {
-      const allTasks = querySnapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Task);
+    if (!user) return;
 
+    const qTasks = query(collection(db, 'tasks'), where('date', '==', selectedDate));
+    const unsubTasks = onSnapshot(qTasks, (snap) => {
+      const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Task);
       const filtered =
-        role === 'DIRECTOR' ? allTasks : allTasks.filter((t) => t.assignedTo === user?.uid);
-
+        role === 'DIRECTOR'
+          ? all
+          : all.filter((t) => t.assignedTo === user.uid || t.assignedTo === 'all');
       setTasks(filtered.sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00')));
       setLoading(false);
     });
-  }, [selectedDate, user, role]);
 
-  const toggleTask = async (id: string, currentStatus: boolean) => {
-    try {
-      await updateDoc(doc(db, 'tasks', id), { done: !currentStatus });
-    } catch (e) {
-      notify.error('Błąd');
-    }
-  };
+    const qServices = query(collection(db, 'services'), orderBy('createdAt', 'desc'), limit(10));
+    const unsubServices = onSnapshot(qServices, (snap) => {
+      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as any);
+      setServices(data);
+    });
 
-  const addPhotoToTask = async (taskId: string, timestamp: number) => {
-    let result = await ImagePicker.launchCameraAsync({ quality: 0.6 });
-    if (result.canceled) return;
-    setUploading(true);
-    try {
-      const response = await fetch(result.assets[0].uri);
-      const blob = await response.blob();
-      const filename = `task_photos/${taskId}_${timestamp}.jpg`;
-      const storageRef = ref(storage, filename);
-      await uploadBytes(storageRef, blob);
-      const photoUrl = await getDownloadURL(storageRef);
-      await updateDoc(doc(db, 'tasks', taskId), { photoUrl, photoPath: filename, done: true });
-    } catch (e) {
-      notify.error('Błąd');
-    } finally {
-      setUploading(false);
-    }
-  };
+    return () => {
+      unsubTasks();
+      unsubServices();
+    };
+  }, [selectedDate, user, role, todayStr]);
 
   useEffect(() => {
     if (role === 'DIRECTOR') runWeeklyCleanup();
   }, [role]);
+
+  const combinedItems = useMemo(() => {
+    const tItems = tasks.map((t) => ({
+      id: t.id,
+      title: t.title,
+      subtitle: t.time || 'Cały dzień',
+      type: 'task' as const,
+      priority: t.priority,
+      done: t.done,
+      createdAt: t.createdAt?.toMillis() || 0,
+    }));
+
+    const sItems = services
+      .filter((s) => {
+        if (!s.createdAt) return false;
+        const sDate = format(s.createdAt.toDate(), 'yyyy-MM-dd');
+        return sDate === selectedDate;
+      })
+      .map((s) => ({
+        id: s.id,
+        title: `${s.hospital} - ${s.department}`,
+        subtitle: s.description,
+        type: 'service' as const,
+        priority: 'NORMAL',
+        done: (s as any).status === 'DONE',
+        createdAt: s.createdAt?.toMillis() || 0,
+      }));
+
+    return [...tItems, ...sItems].sort((a, b) => b.createdAt - a.createdAt).slice(0, 10);
+  }, [tasks, services, selectedDate]);
 
   const myNextVacation = useMemo(() => {
     return (
@@ -547,7 +554,6 @@ const HomeScreen = ({ navigation }: Props) => {
     today.setHours(0, 0, 0, 0);
     const diff = start.getTime() - today.getTime();
     const result = Math.ceil(diff / (1000 * 60 * 60 * 24));
-
     if (result > 5 || result <= 0) return null;
     return result;
   }, [myNextVacation]);
@@ -691,76 +697,63 @@ const HomeScreen = ({ navigation }: Props) => {
           </LeftColumn>
           <RightColumn theme={theme} isDesktop={isDesktop}>
             <Card theme={theme}>
-              <SectionTitle theme={theme}>Zadania na dziś</SectionTitle>
+              <SectionHeader>
+                <SectionTitle theme={theme} style={{ marginBottom: 0 }}>
+                  Dzisiejszy Plan
+                </SectionTitle>
+                <TouchableOpacity onPress={() => navigation.navigate('Tasks')}>
+                  <ArrowRight size={20} color={theme.colors.primary} />
+                </TouchableOpacity>
+              </SectionHeader>
+
               {loading ? (
                 <ActivityIndicator color={theme.colors.primary} />
               ) : (
-                tasks.slice(0, 5).map((task) => (
-                  <TaskItemContainer key={task.id} theme={theme}>
-                    <TaskRow theme={theme} onPress={() => toggleTask(task.id, task.done)}>
-                      <CheckCircle2
-                        size={22}
-                        color={task.done ? theme.colors.success : theme.colors.border}
-                      />
-                      <TaskText theme={theme} done={task.done}>
-                        {task.title}
-                      </TaskText>
-                      <CameraIconButton onPress={() => addPhotoToTask(task.id, Date.now())}>
-                        <Camera
-                          size={20}
-                          color={task.photoUrl ? theme.colors.success : theme.colors.textSecondary}
-                        />
-                      </CameraIconButton>
-                    </TaskRow>
-                    {task.time && <TaskTime theme={theme}>{task.time}</TaskTime>}
-                    {task.photoUrl && (
-                      <View
-                        style={{
-                          position: 'relative',
-                          width: '100%',
-                          maxWidth: 250,
-                          marginLeft: 34,
-                          marginTop: 10,
-                        }}
-                      >
-                        <TaskImagePreview
-                          source={{ uri: task.photoUrl }}
-                          style={{ marginLeft: 0 }}
-                        />
-                        <TouchableOpacity
-                          onPress={() => downloadImage(task.photoUrl!, `task_${task.id}.jpg`)}
-                          style={{
-                            position: 'absolute',
-                            bottom: 8,
-                            right: 8,
-                            backgroundColor: 'rgba(0, 135, 68, 0.8)',
-                            padding: 6,
-                            borderRadius: 8,
-                          }}
-                        >
-                          <Download size={14} color="white" />
-                        </TouchableOpacity>
-                      </View>
-                    )}
-                  </TaskItemContainer>
+                combinedItems.map((item) => (
+                  <InfoItemContainer
+                    key={`${item.type}_${item.id}`}
+                    theme={theme}
+                    type={item.type}
+                    priority={item.priority}
+                    done={item.done}
+                  >
+                    <InfoHeader>
+                      <InfoTitle theme={theme} done={item.done} numberOfLines={1}>
+                        {item.title}
+                      </InfoTitle>
+                      <InfoBadge type={item.type} urgent={item.priority === 'URGENT'} theme={theme}>
+                        <BadgeText urgent={item.priority === 'URGENT'}>
+                          {item.type === 'service'
+                            ? 'SERWIS'
+                            : item.priority === 'URGENT'
+                              ? 'PILNE'
+                              : 'ZADANIE'}
+                        </BadgeText>
+                      </InfoBadge>
+                    </InfoHeader>
+                    <InfoSubtitle theme={theme} numberOfLines={1}>
+                      {item.subtitle}
+                    </InfoSubtitle>
+                  </InfoItemContainer>
                 ))
               )}
-              {tasks.length === 0 && !loading && (
-                <EmptyTasksText theme={theme}>Brak zadań.</EmptyTasksText>
+
+              {combinedItems.length === 0 && !loading && (
+                <EmptyTasksText theme={theme}>Brak zaplanowanych zadań.</EmptyTasksText>
               )}
-              <ShowAllButton onPress={() => navigation.navigate('Tasks')}>
-                <ShowAllText theme={theme}>Wszystkie zadania</ShowAllText>
-                <ArrowRight size={18} color={theme.colors.primary} />
-              </ShowAllButton>
+
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Tasks')}
+                style={{ marginTop: 10, alignItems: 'center' }}
+              >
+                <RNText style={{ color: theme.colors.primary, fontWeight: 'bold', fontSize: 14 }}>
+                  Przejdź do pełnej listy
+                </RNText>
+              </TouchableOpacity>
             </Card>
           </RightColumn>
         </MainWrapper>
       </Content>
-      {uploading && (
-        <UploadOverlay theme={theme}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-        </UploadOverlay>
-      )}
     </Container>
   );
 };
