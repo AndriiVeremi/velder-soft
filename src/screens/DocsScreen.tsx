@@ -193,13 +193,17 @@ const DocsScreen = ({ navigation }: Props) => {
 
   useEffect(() => {
     const q = query(collection(db, 'docs_categories'), orderBy('createdAt', 'asc'));
-    return onSnapshot(q, (snap) => {
-      setCategories(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as DocsCategory));
-      setLoading(false);
-    }, (error) => {
-      console.error('DocsScreen Categories Error:', error);
-      setLoading(false);
-    });
+    return onSnapshot(
+      q,
+      (snap) => {
+        setCategories(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as DocsCategory));
+        setLoading(false);
+      },
+      (error) => {
+        console.error('DocsScreen Categories Error:', error);
+        setLoading(false);
+      }
+    );
   }, []);
 
   useEffect(() => {
@@ -209,13 +213,17 @@ const DocsScreen = ({ navigation }: Props) => {
       where('categoryId', '==', selectedCategory.id),
       orderBy('createdAt', 'asc')
     );
-    return onSnapshot(q, (snap) => {
-      setFolders(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as DocsFolder));
-      setLoading(false);
-    }, (error) => {
-      console.error('DocsScreen Folders Error:', error);
-      setLoading(false);
-    });
+    return onSnapshot(
+      q,
+      (snap) => {
+        setFolders(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as DocsFolder));
+        setLoading(false);
+      },
+      (error) => {
+        console.error('DocsScreen Folders Error:', error);
+        setLoading(false);
+      }
+    );
   }, [selectedCategory]);
 
   useEffect(() => {
@@ -225,13 +233,17 @@ const DocsScreen = ({ navigation }: Props) => {
       where('folderId', '==', selectedFolder.id),
       orderBy('createdAt', 'asc')
     );
-    return onSnapshot(q, (snap) => {
-      setFiles(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as DocsFile));
-      setLoading(false);
-    }, (error) => {
-      console.error('DocsScreen Files Error:', error);
-      setLoading(false);
-    });
+    return onSnapshot(
+      q,
+      (snap) => {
+        setFiles(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as DocsFile));
+        setLoading(false);
+      },
+      (error) => {
+        console.error('DocsScreen Files Error:', error);
+        setLoading(false);
+      }
+    );
   }, [selectedFolder]);
 
   const goBack = () => {

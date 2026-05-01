@@ -9,12 +9,19 @@ interface ParsedReminder {
 
 const POLISH_DAYS: Record<string, Day> = {
   poniedziałek: 1,
+  poniedziałku: 1,
   wtorek: 2,
+  wtorku: 2,
   środa: 3,
+  środę: 3,
   czwartek: 4,
+  czwartku: 4,
   piątek: 5,
+  piątku: 5,
   sobota: 6,
+  sobotę: 6,
   niedziela: 0,
+  niedzielę: 0,
 };
 
 export const parseVoiceReminder = (text: string): ParsedReminder => {
@@ -24,7 +31,6 @@ export const parseVoiceReminder = (text: string): ParsedReminder => {
   let resultHour = 10;
   let resultMinute = 0;
 
-  // 1. Parse Date
   if (lowerText.includes('pojutrze')) {
     resultDate = addDays(now, 2);
     lowerText = lowerText.replace('pojutrze', '');
@@ -35,7 +41,6 @@ export const parseVoiceReminder = (text: string): ParsedReminder => {
     resultDate = now;
     lowerText = lowerText.replace(/dzisiaj|dziś/g, '');
   } else {
-    // Check days of week
     for (const [dayName, dayIndex] of Object.entries(POLISH_DAYS)) {
       if (lowerText.includes(dayName)) {
         resultDate = nextDay(now, dayIndex);
@@ -45,7 +50,6 @@ export const parseVoiceReminder = (text: string): ParsedReminder => {
     }
   }
 
-  // 2. Parse Time (e.g., "o 15:30", "godzina 10", "15 30")
   const timeRegex = /(?:o\s*|godzin(?:ie|a)\s*)?(\d{1,2})(?::|\s+)?(\d{2})?/;
   const timeMatch = lowerText.match(timeRegex);
 
@@ -57,22 +61,27 @@ export const parseVoiceReminder = (text: string): ParsedReminder => {
     lowerText = lowerText.replace(timeMatch[0], '');
   }
 
-  // Handle "rano" / "popołudniu" / "wieczorem"
-  if ((lowerText.includes('wieczorem') || lowerText.includes('po południu')) && resultHour < 12) {
+  if (
+    (lowerText.includes('wieczorem') ||
+      lowerText.includes('po południu') ||
+      lowerText.includes('popołudniu')) &&
+    resultHour < 12
+  ) {
     resultHour += 12;
-    lowerText = lowerText.replace(/wieczorem|po południu/g, '');
+    lowerText = lowerText.replace(/wieczorem|po południu|popołudniu/g, '');
   } else if (lowerText.includes('rano') && resultHour > 12) {
     resultHour -= 12;
     lowerText = lowerText.replace('rano', '');
+  } else if (lowerText.includes('nocy') && resultHour === 12) {
+    resultHour = 0;
+    lowerText = lowerText.replace('nocy', '');
   }
 
-  // 3. Clean Title
   let title = lowerText
     .replace(/\s+/g, ' ')
     .replace(/^(o|na|w)\s+/i, '') // Remove starting prepositions
     .trim();
 
-  // Capitalize first letter
   if (title) {
     title = title.charAt(0).toUpperCase() + title.slice(1);
   } else {

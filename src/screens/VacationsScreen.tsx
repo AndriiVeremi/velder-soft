@@ -263,7 +263,7 @@ const VacationsScreen = ({ route, navigation }: Props) => {
               content: {
                 title: 'Urlop za 5 dni! 🏖️',
                 body: 'Przygotuj się na odpoczynek.',
-                sound: 'default',
+                sound: 'alert.wav',
               },
               trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: trig },
             }).catch(() => {});
@@ -276,7 +276,7 @@ const VacationsScreen = ({ route, navigation }: Props) => {
               content: {
                 title: 'Urlop już jutro! ☀️',
                 body: 'Pamiętaj o dokończeniu zadań.',
-                sound: 'default',
+                sound: 'alert.wav',
               },
               trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: trig },
             }).catch(() => {});
@@ -332,7 +332,8 @@ const VacationsScreen = ({ route, navigation }: Props) => {
           await sendPushNotification(
             tokens,
             'Nowy wniosek o urlop! 🏖️',
-            `${userData?.name || 'Pracownik'} prosi o wolne: ${dates[0]} — ${dates[dates.length - 1]}`
+            `${userData?.name || 'Pracownik'} prosi o wolne: ${dates[0]} — ${dates[dates.length - 1]}`,
+            'done_v1'
           );
         }
       } catch (pushErr) {
@@ -340,6 +341,7 @@ const VacationsScreen = ({ route, navigation }: Props) => {
       }
 
       setSelectedDates({});
+      await playDoneSound();
       notify.success('Wniosek wysłany');
     } catch (e) {
       notify.error('Błąd');
@@ -533,5 +535,3 @@ const VacationsScreen = ({ route, navigation }: Props) => {
     </Container>
   );
 };
-
-export default VacationsScreen;

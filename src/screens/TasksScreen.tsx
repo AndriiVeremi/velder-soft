@@ -1,16 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-  View,
-  Text as RNText,
-  TouchableOpacity,
-  ActivityIndicator,
-  FlatList,
-  Modal,
-  ScrollView,
-  TextInput,
-  Platform,
-} from 'react-native';
-import styled from 'styled-components/native';
+import { View, Text as RNText, TouchableOpacity, ActivityIndicator, FlatList } from 'react-native';
 import {
   collection,
   query,
@@ -27,27 +16,19 @@ import { db } from '../config/firebase';
 import { sendPushNotification } from '../utils/notifications';
 import { useAuth } from '../context/AuthContext';
 import { useAppTheme } from '../context/ThemeContext';
-import {
-  Plus,
-  CheckCircle2,
-  Trash2,
-  Calendar as CalendarIcon,
-  Clock,
-  Camera,
-  X,
-  ChevronRight,
-  ChevronLeft,
-  Download,
-} from 'lucide-react-native';
-import { format, addDays, subDays, startOfDay } from 'date-fns';
+import { Plus, ChevronRight, ChevronLeft } from 'lucide-react-native';
+import { format, addDays, subDays } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { notify } from '../utils/notify';
-import { downloadImage } from '../utils/download';
-import { pickAndUploadPhoto } from '../utils/upload';
 import { confirmDelete } from '../utils/confirm';
 import { useMarkAsRead } from '../hooks/useMarkAsRead';
-import { TimePicker, ModalOverlay, ModalContent, UploadOverlay, Fab } from '../components/CommonUI';
+import { Fab, UploadOverlay } from '../components/CommonUI';
 import { Task } from '../types';
+import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
+import { parseVoiceReminder } from '../utils/voiceParser';
+import { TaskCardComponent } from '../components/tasks/TaskCard';
+import { AddTaskModal } from '../components/tasks/AddTaskModal';
+import styled from 'styled-components/native';
 
 const Container = styled.View`
   flex: 1;
@@ -71,92 +52,6 @@ const DateText = styled(RNText)`
   text-transform: capitalize;
 `;
 
-const TaskCard = styled.View<{ done: boolean }>`
-  background-color: ${(props) => props.theme.colors.surface};
-  margin: 8px 15px;
-  padding: 16px;
-  border-radius: 16px;
-  border-width: 1px;
-  border-color: ${(props) => props.theme.colors.border};
-  opacity: ${(props) => (props.done ? 0.8 : 1)};
-
-  /* Shadow for iOS */
-  shadow-color: #000;
-  shadow-offset: 0px 2px;
-  shadow-opacity: 0.1;
-  shadow-radius: 4px;
-  /* Elevation for Android */
-  elevation: 3;
-`;
-
-const TaskTitle = styled(RNText)<{ done?: boolean }>`
-  font-size: ${(props) => props.theme.fontSize.lg}px;
-  font-weight: bold;
-  color: ${(props) => (props.done ? props.theme.colors.textSecondary : props.theme.colors.text)};
-  text-decoration: ${(props) => (props.done ? 'line-through' : 'none')};
-  flex: 1;
-`;
-
-const TaskDescription = styled(RNText)<{ done?: boolean }>`
-  font-size: ${(props) => props.theme.fontSize.f14}px;
-  color: ${(props) => props.theme.colors.textSecondary};
-  margin-top: 4px;
-  margin-left: 36px;
-  line-height: 18px;
-`;
-
-const TaskMeta = styled.View`
-  flex-direction: row;
-  align-items: center;
-  margin-top: 8px;
-`;
-
-const MetaText = styled(RNText)`
-  font-size: ${(props) => props.theme.fontSize.sm}px;
-  color: ${(props) => props.theme.colors.primary};
-  margin-left: 5px;
-  font-weight: 500;
-`;
-
-const ActionRow = styled.View`
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-end;
-  margin-top: 12px;
-  border-top-width: 1px;
-  border-top-color: ${(props) => props.theme.colors.background};
-  padding-top: 10px;
-`;
-
-const IconButton = styled.TouchableOpacity`
-  padding: 8px;
-  margin-left: 10px;
-`;
-
-const StyledInput = styled.TextInput`
-  background-color: ${(props) => props.theme.colors.background};
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 15px;
-  color: ${(props) => props.theme.colors.text};
-  border-width: 1px;
-  border-color: ${(props) => props.theme.colors.border};
-`;
-
-const Label = styled(RNText)`
-  font-size: ${(props) => props.theme.fontSize.md}px;
-  font-weight: bold;
-  color: ${(props) => props.theme.colors.textSecondary};
-  margin-bottom: 8px;
-`;
-
-const ImagePreview = styled.Image`
-  width: 100%;
-  height: 150px;
-  border-radius: 8px;
-  margin-top: 10px;
-`;
-
 interface Worker {
   id: string;
   name: string;
@@ -166,7 +61,7 @@ interface Worker {
 }
 
 const TasksScreen = () => {
-  const { user, role } = useAuth();
+  const { user, role, userData } = useAuth();
   const { theme } = useAppTheme();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -177,11 +72,20 @@ const TasksScreen = () => {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [selectedWorkerId, setSelectedWorkerId] = useState<string>('all');
 
-  // New task state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [hour, setHour] = useState(9);
   const [minute, setMinute] = useState(0);
+  const [isUrgent, setIsUrgent] = useState(false);
+
+  const { isListening, toggleListening } = useVoiceRecognition({
+    onResult: (transcript) => {
+      const parsed = parseVoiceReminder(transcript);
+      setDescription(parsed.title);
+      setHour(parsed.hour);
+      setMinute(parsed.minute);
+    },
+  });
 
   const dateStr = useMemo(() => format(selectedDate, 'yyyy-MM-dd'), [selectedDate]);
 
@@ -203,9 +107,7 @@ const TasksScreen = () => {
 
   useEffect(() => {
     if (!user) return;
-
     const q = query(collection(db, 'tasks'), where('date', '==', dateStr));
-
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const allTasks = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Task);
       const filtered =
@@ -223,13 +125,11 @@ const TasksScreen = () => {
         scheduleMarkAsRead(newIds);
       }
     });
-
     return unsubscribe;
   }, [user, dateStr, role]);
 
   const handleAddTask = async () => {
     if (!title.trim()) return notify.error('Wpisz tytuł zadania');
-
     try {
       const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
       const assignedTo = role === 'DIRECTOR' ? selectedWorkerId : user?.uid;
@@ -242,25 +142,45 @@ const TasksScreen = () => {
         done: false,
         assignedTo,
         isNew: true,
+        priority: isUrgent ? 'URGENT' : 'NORMAL',
         createdAt: serverTimestamp(),
       });
 
       if (role === 'DIRECTOR') {
         try {
-          const targetWorkers =
-            selectedWorkerId === 'all' ? workers : workers.filter((w) => w.id === selectedWorkerId);
-          const tokens = targetWorkers
-            .filter((w) => w.pushToken)
-            .map((w) => ({
-              token: w.pushToken as string,
-              notificationStart: (w as any).notificationStart,
-              notificationEnd: (w as any).notificationEnd,
-            }));
-
-          if (tokens.length > 0) {
+          let targetTokens: {
+            token: string;
+            notificationStart?: string;
+            notificationEnd?: string;
+          }[] = [];
+          if (selectedWorkerId === 'all') {
+            const usersSnap = await getDocs(
+              query(collection(db, 'users'), where('isActive', '==', true))
+            );
+            usersSnap.forEach((docSnap) => {
+              const u = docSnap.data();
+              if (u.pushToken && u.role !== 'DIRECTOR' && docSnap.id !== user?.uid) {
+                targetTokens.push({
+                  token: u.pushToken,
+                  notificationStart: u.notificationStart,
+                  notificationEnd: u.notificationEnd,
+                });
+              }
+            });
+          } else {
+            const worker = workers.find((w) => w.id === selectedWorkerId);
+            if (worker?.pushToken) {
+              targetTokens.push({
+                token: worker.pushToken,
+                notificationStart: worker.notificationStart,
+                notificationEnd: worker.notificationEnd,
+              });
+            }
+          }
+          if (targetTokens.length > 0) {
             await sendPushNotification(
-              tokens,
-              'Nowe zadanie! 📋',
+              targetTokens,
+              isUrgent ? '🚨 PILNE ZADANIE! 🚨' : 'Nowe zadanie! 📋',
               `${title.trim()}${description ? '\n' + description.trim() : ''}\n${dateStr} o ${time}`
             );
           }
@@ -272,7 +192,9 @@ const TasksScreen = () => {
       setModalVisible(false);
       setTitle('');
       setDescription('');
+      setIsUrgent(false);
       setSelectedWorkerId('all');
+      await playDoneSound();
       notify.success('Zadanie dodane');
     } catch (e) {
       notify.error('Błąd zapisu');
@@ -280,10 +202,39 @@ const TasksScreen = () => {
   };
 
   const toggleTask = async (task: Task) => {
+    const newStatus = !task.done;
     try {
-      await updateDoc(doc(db, 'tasks', task.id), { done: !task.done });
+      await updateDoc(doc(db, 'tasks', task.id), { done: newStatus });
+      if (newStatus && role === 'EMPLOYEE') {
+        try {
+          const directorsSnap = await getDocs(
+            query(collection(db, 'users'), where('role', '==', 'DIRECTOR'))
+          );
+          const tokens: { token: string; notificationStart?: string; notificationEnd?: string }[] =
+            [];
+          directorsSnap.forEach((d) => {
+            const data = d.data();
+            if (data.pushToken && d.id !== user?.uid)
+              tokens.push({
+                token: data.pushToken,
+                notificationStart: data.notificationStart,
+                notificationEnd: data.notificationEnd,
+              });
+          });
+          if (tokens.length > 0) {
+            await sendPushNotification(
+              tokens,
+              task.priority === 'URGENT' ? '🚨 PILNE ZADANIE WYKONANE! ✅' : 'Zadanie wykonane! ✅',
+              `${userData?.name || 'Pracownik'} oznaczył jako wykonane: ${task.title}`,
+              'done_v1'
+            );
+          }
+        } catch (pushErr) {
+          console.warn('Failed to notify director:', pushErr);
+        }
+      }
     } catch (e) {
-      notify.error('Błąd aktualizacji');
+      notify.error('Błąd актуалізації');
     }
   };
 
@@ -296,24 +247,6 @@ const TasksScreen = () => {
         notify.error('Błąd usuwania');
       }
     });
-  };
-
-  const handleAddPhoto = async (task: Task) => {
-    setUploading(true);
-    const result = await pickAndUploadPhoto('task_photos', `${task.id}_${Date.now()}.jpg`);
-    if (result) {
-      try {
-        await updateDoc(doc(db, 'tasks', task.id), {
-          photoUrl: result.photoUrl,
-          photoPath: result.photoPath,
-          done: true,
-        });
-        notify.success('Zdjęcie dodane');
-      } catch (e) {
-        notify.error('Błąd zapisu');
-      }
-    }
-    setUploading(false);
   };
 
   return (
@@ -336,98 +269,21 @@ const TasksScreen = () => {
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingVertical: 10 }}
           renderItem={({ item }) => (
-            <TaskCard
+            <TaskCardComponent
+              task={item}
+              role={role || ''}
               theme={theme}
-              done={item.done}
-              style={
-                item.isNew && !item.done
-                  ? { borderColor: theme.colors.primary, borderWidth: 2 }
-                  : undefined
-              }
-            >
-              {item.isNew && !item.done && (
-                <View
-                  style={{
-                    backgroundColor: theme.colors.primary,
-                    borderRadius: 6,
-                    paddingHorizontal: 8,
-                    paddingVertical: 2,
-                    alignSelf: 'flex-start',
-                    marginBottom: 6,
-                  }}
-                >
-                  <RNText
-                    style={{ color: 'white', fontSize: theme.fontSize.sm, fontWeight: 'bold' }}
-                  >
-                    NOWE
-                  </RNText>
-                </View>
-              )}
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <TouchableOpacity onPress={() => toggleTask(item)}>
-                  <CheckCircle2
-                    size={24}
-                    color={item.done ? theme.colors.success : theme.colors.border}
-                  />
-                </TouchableOpacity>
-                <TaskTitle theme={theme} done={item.done} style={{ marginLeft: 12 }}>
-                  {item.title}
-                </TaskTitle>
-              </View>
-
-              {item.description ? (
-                <TaskDescription theme={theme} done={item.done}>
-                  {item.description}
-                </TaskDescription>
-              ) : null}
-
-              <TaskMeta>
-                <Clock size={14} color={theme.colors.primary} />
-                <MetaText theme={theme}>{item.time || 'Brak czasu'}</MetaText>
-              </TaskMeta>
-
-              {item.photoUrl && (
-                <View style={{ position: 'relative', marginTop: 10 }}>
-                  <ImagePreview source={{ uri: item.photoUrl }} />
-                  <TouchableOpacity
-                    onPress={() => downloadImage(item.photoUrl!, `task_${item.id}.jpg`)}
-                    style={{
-                      position: 'absolute',
-                      bottom: 10,
-                      right: 10,
-                      backgroundColor: 'rgba(0, 135, 68, 0.8)',
-                      padding: 8,
-                      borderRadius: 10,
-                    }}
-                  >
-                    <Download size={18} color="white" />
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              <ActionRow theme={theme}>
-                <IconButton onPress={() => handleAddPhoto(item)}>
-                  <Camera
-                    size={20}
-                    color={item.photoUrl ? theme.colors.success : theme.colors.textSecondary}
-                  />
-                </IconButton>
-                <IconButton onPress={() => handleDeleteTask(item.id)}>
-                  <Trash2 size={20} color={theme.colors.error} opacity={0.6} />
-                </IconButton>
-              </ActionRow>
-            </TaskCard>
+              workers={workers}
+              onToggle={toggleTask}
+              onAddPhoto={() => {}}
+              onDelete={handleDeleteTask}
+            />
           )}
           ListEmptyComponent={
             <RNText
-              style={{
-                textAlign: 'center',
-                marginTop: 50,
-                color: theme.colors.textSecondary,
-                fontSize: theme.fontSize.f15,
-              }}
+              style={{ textAlign: 'center', marginTop: 50, color: theme.colors.textSecondary }}
             >
-              Brak zadań na ten dzień.
+              Brak zadań на цей день.
             </RNText>
           }
         />
@@ -439,132 +295,34 @@ const TasksScreen = () => {
         </Fab>
       )}
 
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <ModalOverlay>
-          <ModalContent theme={theme}>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <View
-                style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}
-              >
-                <RNText
-                  style={{
-                    fontSize: theme.fontSize.f20,
-                    fontWeight: 'bold',
-                    color: theme.colors.text,
-                  }}
-                >
-                  Nowe zadanie
-                </RNText>
-                <TouchableOpacity onPress={() => setModalVisible(false)}>
-                  <X size={24} color={theme.colors.text} />
-                </TouchableOpacity>
-              </View>
-
-              <Label theme={theme}>Tytuł zadania</Label>
-              <StyledInput
-                theme={theme}
-                placeholder="Np. Kontrola instalacji"
-                value={title}
-                onChangeText={setTitle}
-                placeholderTextColor={theme.colors.textSecondary}
-              />
-
-              <Label theme={theme}>Opis (opcjonalnie)</Label>
-              <StyledInput
-                theme={theme}
-                placeholder="Dodatkowe informacje..."
-                value={description}
-                onChangeText={setDescription}
-                placeholderTextColor={theme.colors.textSecondary}
-                multiline
-                numberOfLines={3}
-                style={{ minHeight: 80, textAlignVertical: 'top' }}
-              />
-
-              {role === 'DIRECTOR' && (
-                <>
-                  <Label theme={theme}>Przypisz do</Label>
-                  <View style={{ marginBottom: 15 }}>
-                    {[{ id: 'all', name: 'Wszyscy pracownicy' }, ...workers].map((w) => (
-                      <TouchableOpacity
-                        key={w.id}
-                        onPress={() => setSelectedWorkerId(w.id)}
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          padding: 10,
-                          borderRadius: 8,
-                          marginBottom: 4,
-                          backgroundColor:
-                            selectedWorkerId === w.id
-                              ? theme.colors.primary + '20'
-                              : theme.colors.background,
-                          borderWidth: 1,
-                          borderColor:
-                            selectedWorkerId === w.id ? theme.colors.primary : theme.colors.border,
-                        }}
-                      >
-                        <View
-                          style={{
-                            width: 18,
-                            height: 18,
-                            borderRadius: 9,
-                            borderWidth: 2,
-                            borderColor:
-                              selectedWorkerId === w.id
-                                ? theme.colors.primary
-                                : theme.colors.border,
-                            backgroundColor:
-                              selectedWorkerId === w.id ? theme.colors.primary : 'transparent',
-                            marginRight: 10,
-                          }}
-                        />
-                        <RNText style={{ color: theme.colors.text, fontSize: theme.fontSize.f15 }}>
-                          {w.name}
-                        </RNText>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </>
-              )}
-
-              <Label theme={theme}>Godzina</Label>
-              <TimePicker
-                hour={hour}
-                minute={minute}
-                onHourChange={setHour}
-                onMinuteChange={setMinute}
-                theme={theme}
-              />
-
-              <TouchableOpacity
-                onPress={handleAddTask}
-                style={{
-                  backgroundColor: theme.colors.primary,
-                  padding: 16,
-                  borderRadius: 12,
-                  marginTop: 30,
-                  alignItems: 'center',
-                }}
-              >
-                <RNText
-                  style={{ color: 'white', fontWeight: 'bold', fontSize: theme.fontSize.f16 }}
-                >
-                  Dodaj zadanie
-                </RNText>
-              </TouchableOpacity>
-            </ScrollView>
-          </ModalContent>
-        </ModalOverlay>
-      </Modal>
+      <AddTaskModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onAdd={handleAddTask}
+        theme={theme}
+        role={role || ''}
+        workers={workers}
+        title={title}
+        setTitle={setTitle}
+        description={description}
+        setDescription={setDescription}
+        hour={hour}
+        setHour={setHour}
+        minute={minute}
+        setMinute={setMinute}
+        isUrgent={isUrgent}
+        setIsUrgent={setIsUrgent}
+        selectedWorkerId={selectedWorkerId}
+        setSelectedWorkerId={setSelectedWorkerId}
+        isListening={isListening}
+        toggleListening={toggleListening}
+      />
 
       {uploading && (
-        <UploadOverlay>
+        <UploadOverlay theme={theme}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
         </UploadOverlay>
       )}
     </Container>
   );
 };
-
-export default TasksScreen;

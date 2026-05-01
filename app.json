@@ -50,7 +50,11 @@
           "icon": "./assets/notification-icon.png",
           "color": "#008744",
           "defaultChannel": "default",
-          "sounds": []
+          "sounds": [
+            "./assets/sound/alert.wav",
+            "./assets/sound/reminder.wav",
+            "./assets/sound/done.wav"
+          ]
         }
       ],
       [

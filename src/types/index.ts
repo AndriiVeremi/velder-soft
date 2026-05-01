@@ -28,6 +28,7 @@ export interface Task {
   wasMoved?: boolean;
   assignedTo?: string;
   isNew?: boolean;
+  priority?: 'NORMAL' | 'URGENT';
   createdAt?: Timestamp | null;
 }
 
