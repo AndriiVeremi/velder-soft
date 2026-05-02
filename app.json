@@ -14,12 +14,14 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.velder.soft",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.velder.soft",
+      "googleServicesFile": "./google-services.json",
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon-foreground.png",
@@ -62,8 +64,7 @@
           "microphonePermission": "Dozwól na dostęp do mikrofonu, aby móc dyktować przypomnienia.",
           "speechRecognitionPermission": "Dozwól na rozpoznawanie mowy, aby zamieniać głos na tekst."
         }
-      ],
-      "expo-audio"
+      ]
     ],
     "extra": {
       "eas": {

@@ -57,6 +57,13 @@ service cloud.firestore {
       allow write: if isDirector();
     }
 
+    // --- ФОТО АРХІВ (Service Records) ---
+    match /service_records/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isDirector();
+    }
+
     // --- ЗАВДАННЯ ---
     match /tasks/{taskId} {
       allow read: if isSignedIn();
@@ -76,6 +83,10 @@ service cloud.firestore {
     match /announcements/{id} {
       allow read: if isSignedIn();
       allow create, update, delete: if isDirector();
+    }
+    match /announcement_reads/{id} {
+      allow read, create: if isSignedIn();
+      allow delete: if isDirector();
     }
 
     // --- ВІДПУСТКИ ---
@@ -117,6 +128,11 @@ service cloud.firestore {
       allow create: if isDirector();
       allow update: if isDirector() || (isSignedIn() && isUnchanged('hospital') && isUnchanged('department') && isUnchanged('status'));
       allow delete: if isDirector();
+    }
+
+    // --- СИСТЕМНІ НАЛАШТУВАННЯ ---
+    match /settings/{id} {
+      allow read, write: if isDirector();
     }
 
     // --- ДОКУМЕНТАЦІЯ ---

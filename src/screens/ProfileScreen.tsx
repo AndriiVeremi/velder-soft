@@ -278,6 +278,28 @@ const ProfileScreen = ({ navigation }: Props) => {
               </RoleText>
             </RoleBadge>
 
+            <View style={{ marginBottom: 20, alignItems: 'center' }}>
+              <RNText style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 4 }}>
+                Status Powiadomień:
+              </RNText>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ 
+                  width: 8, 
+                  height: 8, 
+                  borderRadius: 4, 
+                  backgroundColor: userData?.pushToken ? theme.colors.primary : theme.colors.error,
+                  marginRight: 8
+                }} />
+                <RNText style={{ 
+                  fontSize: 14, 
+                  fontWeight: 'bold', 
+                  color: userData?.pushToken ? theme.colors.primary : theme.colors.error 
+                }}>
+                  {userData?.pushToken ? 'Aktywne' : 'Błąd / Brak (Uruchom na telefonie)'}
+                </RNText>
+              </View>
+            </View>
+
             <InfoSection theme={theme}>
               <SectionTitleText theme={theme}>Ustawienia powiadomień</SectionTitleText>
 

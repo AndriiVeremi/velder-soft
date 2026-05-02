@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, where, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { ref, listAll } from 'firebase/storage';
 import { db, storage } from '../config/firebase';
 
@@ -16,6 +16,11 @@ export interface SystemStats {
     totalFiles: number;
     percentage: number;
   };
+  push: {
+    count: number;
+    limit: number;
+    percentage: number;
+  };
   lastUpdate: Date;
 }
 
@@ -31,7 +36,12 @@ export const getSystemStats = async (): Promise<SystemStats> => {
     const projectsCount = projectsSnap.size;
     const dbTotal = tasksCount + servicesCount + projectsCount;
 
-    // Cloud Storage counts (recursive listing is limited in client SDK, so we list folders)
+    // Push stats
+    const statsRef = doc(db, 'settings', 'stats');
+    const statsSnap = await getDoc(statsRef);
+    const pushCount = statsSnap.exists() ? statsSnap.data().pushCount || 0 : 0;
+
+    // Cloud Storage counts
     let photoCount = 0;
     try {
       const taskPhotosRef = ref(storage, 'task_photos');
@@ -58,13 +68,18 @@ export const getSystemStats = async (): Promise<SystemStats> => {
         services: servicesCount,
         projects: projectsCount,
         total: dbTotal,
-        percentage: Math.min(Math.round((dbTotal / 5000) * 100), 100), // Hard limit of 5000 docs for free tier simulation
+        percentage: Math.min(Math.round((dbTotal / 5000) * 100), 100),
       },
       storage: {
         photos: photoCount,
         pdfs: pdfCount,
         totalFiles: photoCount + pdfCount,
-        percentage: Math.min(Math.round(((photoCount + pdfCount) / 1000) * 100), 100), // Limit 1000 files
+        percentage: Math.min(Math.round(((photoCount + pdfCount) / 1000) * 100), 100),
+      },
+      push: {
+        count: pushCount,
+        limit: 2000000,
+        percentage: Math.min(Math.round((pushCount / 2000000) * 100), 100),
       },
       lastUpdate: new Date(),
     };

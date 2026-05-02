@@ -1,6 +1,8 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import app from '../config/firebase';
 
 let _quietStart: string | undefined;
 let _quietEnd: string | undefined;
@@ -261,7 +263,21 @@ export async function sendPushNotification(
   if (messages.length === 0) return;
 
   if (Platform.OS === 'web') {
-    console.warn('[Push API] Browser blocks direct push sending due to CORS. Use mobile app to send notifications.');
+    try {
+      const functions = getFunctions(app);
+      const sendPush = httpsCallable(functions, 'sendPushNotification');
+      
+      await sendPush({
+        recipients: messages.map(m => m.to),
+        title,
+        body,
+        channelId
+      });
+      
+      console.log('[Push API] Sent via Cloud Functions');
+    } catch (error) {
+      console.error('[Push API] Cloud Function Error:', error);
+    }
     return;
   }
 
@@ -278,9 +294,9 @@ export async function sendPushNotification(
       body: JSON.stringify(messages),
     });
     const result = await response.json();
-    console.log('[Push API] Result:', JSON.stringify(result, null, 2));
+    console.log('[Push API] Sent successfully');
   } catch (error) {
-    console.error('[Push API] Fatal Error:', error);
+    console.error('[Push API] Error:', error);
   }
 }
 

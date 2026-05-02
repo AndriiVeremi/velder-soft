@@ -10,7 +10,7 @@ import {
 import styled from 'styled-components/native';
 import { useAppTheme } from '../context/ThemeContext';
 import { getSystemStats, SystemStats } from '../utils/systemStats';
-import { Database, HardDrive, Trash2, RefreshCcw, Info, AlertTriangle } from 'lucide-react-native';
+import { Database, HardDrive, Trash2, RefreshCcw, Info, AlertTriangle, Bell } from 'lucide-react-native';
 import { runWeeklyCleanup } from '../utils/cleanup';
 import { notify } from '../utils/notify';
 import { ScreenHeader, ScreenTitle } from '../components/CommonUI';
@@ -250,6 +250,32 @@ const SystemStatusScreen = () => {
           <StatRow>
             <StatLabel theme={theme}>Wykorzystanie miejsca</StatLabel>
             <StatValue theme={theme}>{stats?.storage.percentage}%</StatValue>
+          </StatRow>
+        </Card>
+
+        <Card theme={theme}>
+          <CardHeader>
+            <IconBox color={theme.colors.primary}>
+              <Bell size={22} color={theme.colors.primary} />
+            </IconBox>
+            <CardTitle theme={theme}>Powiadomienia (Push)</CardTitle>
+          </CardHeader>
+
+          <StatRow>
+            <StatLabel theme={theme}>Wysłano в системі</StatLabel>
+            <StatValue theme={theme}>{stats?.push.count.toLocaleString()}</StatValue>
+          </StatRow>
+
+          <ProgressContainer theme={theme}>
+            <ProgressBar 
+              width={stats?.push.percentage || 0} 
+              color={theme.colors.primary} 
+            />
+          </ProgressContainer>
+
+          <StatRow>
+            <StatLabel theme={theme}>Limit безкоштовний (Firebase)</StatLabel>
+            <StatValue theme={theme}>2,000,000</StatValue>
           </StatRow>
         </Card>
 

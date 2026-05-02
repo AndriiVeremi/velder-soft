@@ -202,13 +202,16 @@ const SendRequestScreen = ({ navigation }: Props) => {
           [];
         directorsSnap.forEach((d) => {
           const data = d.data();
-          if (data.pushToken)
+          if (data.pushToken && d.id !== user?.uid)
             tokens.push({
               token: data.pushToken,
               notificationStart: data.notificationStart,
               notificationEnd: data.notificationEnd,
             });
         });
+
+        console.log(`[Request Debug] Notifying ${tokens.length} directors`);
+
         if (tokens.length > 0) {
           await sendPushNotification(
             tokens,

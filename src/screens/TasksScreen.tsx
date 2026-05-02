@@ -160,12 +160,9 @@ const TasksScreen = () => {
             query(collection(db, 'users'), where('isActive', '==', true))
           );
 
-          console.log(`[Push Debug] Found ${usersSnap.size} active users in DB`);
-
           if (selectedWorkerId === 'all') {
             usersSnap.forEach((docSnap) => {
               const u = docSnap.data();
-              console.log(`[Push Debug] Checking user: ${u.name}, Role: ${u.role}, Token: ${u.pushToken ? 'YES' : 'NO'}`);
               if (u.pushToken && u.role === 'EMPLOYEE' && docSnap.id !== user?.uid) {
                 targetTokens.push({
                   token: u.pushToken,
@@ -178,7 +175,6 @@ const TasksScreen = () => {
             const workerDoc = usersSnap.docs.find((d) => d.id === selectedWorkerId);
             if (workerDoc) {
               const u = workerDoc.data();
-              console.log(`[Push Debug] Single worker: ${u.name}, Token: ${u.pushToken ? 'YES' : 'NO'}`);
               if (u.pushToken && workerDoc.id !== user?.uid) {
                 targetTokens.push({
                   token: u.pushToken,
@@ -188,8 +184,6 @@ const TasksScreen = () => {
               }
             }
           }
-
-          console.log(`[Push Debug] Final targets count: ${targetTokens.length}`);
           
           if (targetTokens.length > 0) {
             await sendPushNotification(
