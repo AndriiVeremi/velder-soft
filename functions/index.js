@@ -1,5 +1,5 @@
 const {setGlobalOptions} = require("firebase-functions");
-const {onCall, HttpsError} = require("firebase-functions/v2/https");
+const {onRequest} = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const {Expo} = require("expo-server-sdk");
 
@@ -9,18 +9,25 @@ const expo = new Expo();
 
 setGlobalOptions({maxInstances: 10});
 
-exports.sendPushNotification = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError(
-        "unauthenticated",
-        "Користувач повинен бути авторизований."
-    );
+exports.sendPushNotification = onRequest({cors: true}, async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    res.status(401).json({error: "Unauthorized"});
+    return;
   }
 
-  const {recipients, title, body, channelId = "default"} = request.data;
+  try {
+    await admin.auth().verifyIdToken(authHeader.split("Bearer ")[1]);
+  } catch (e) {
+    res.status(401).json({error: "Invalid token"});
+    return;
+  }
+
+  const {recipients, title, body, channelId = "default"} = req.body;
 
   if (!recipients || recipients.length === 0) {
-    return {success: false, error: "Немає отримувачів"};
+    res.json({success: false, error: "No recipients"});
+    return;
   }
 
   const soundFile =
@@ -32,10 +39,9 @@ exports.sendPushNotification = onCall(async (request) => {
 
   for (const token of recipients) {
     if (!Expo.isExpoPushToken(token)) {
-      console.warn(`Невалідний Expo push токен: ${token}`);
+      console.warn(`Invalid token: ${token}`);
       continue;
     }
-
     messages.push({
       to: token,
       sound: soundFile,
@@ -52,7 +58,8 @@ exports.sendPushNotification = onCall(async (request) => {
   }
 
   if (messages.length === 0) {
-    return {success: false, error: "Жодного валідного Expo push токена"};
+    res.json({success: false, error: "No valid tokens"});
+    return;
   }
 
   const chunks = expo.chunkPushNotifications(messages);
@@ -64,8 +71,7 @@ exports.sendPushNotification = onCall(async (request) => {
       tickets.push(...ticketChunk);
     }
 
-    const statsRef = db.collection("settings").doc("stats");
-    await statsRef.set(
+    await db.collection("settings").doc("stats").set(
         {
           pushCount: admin.firestore.FieldValue.increment(messages.length),
           lastPushAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -73,9 +79,9 @@ exports.sendPushNotification = onCall(async (request) => {
         {merge: true}
     );
 
-    return {success: true, sentCount: messages.length};
+    res.json({success: true, sentCount: messages.length});
   } catch (error) {
     console.error("Push error:", error);
-    throw new HttpsError("internal", "Помилка відправки пушів");
+    res.status(500).json({error: "Push send failed"});
   }
 });

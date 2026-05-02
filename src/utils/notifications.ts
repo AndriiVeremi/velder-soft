@@ -1,8 +1,10 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform, Alert } from 'react-native';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import app from '../config/firebase';
+import { auth } from '../config/firebase';
+
+const PUSH_FUNCTION_URL =
+  'https://us-central1-velder-project.cloudfunctions.net/sendPushNotification';
 
 let _quietStart: string | undefined;
 let _quietEnd: string | undefined;
@@ -35,7 +37,6 @@ Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
     const data = notification.request.content.data;
     const isPersonalReminder = !!data?.reminderId;
-    // Граємо звук для всіх сповіщень у фокусі (за бажанням користувача)
     const shouldPlaySound = true;
     return {
       shouldShowAlert: true,
@@ -238,50 +239,61 @@ export async function sendPushNotification(
         ? 'reminder.wav'
         : 'alert.wav';
 
-  const messages = recipients.map((r) => {
-    const token = typeof r === 'string' ? r : r.token;
-    const start = typeof r === 'string' ? undefined : r.notificationStart;
-    const end = typeof r === 'string' ? undefined : r.notificationEnd;
-    const silent = isQuietHours(start, end);
+  const messages = recipients
+    .map((r) => {
+      const token = typeof r === 'string' ? r : r.token;
+      const start = typeof r === 'string' ? undefined : r.notificationStart;
+      const end = typeof r === 'string' ? undefined : r.notificationEnd;
+      const silent = isQuietHours(start, end);
 
-    return {
-      to: token,
-      sound: silent ? null : soundFile,
-      title,
-      body,
-      priority: 'high',
-      channelId: channelId,
-      android: {
+      return {
+        to: token,
+        sound: silent ? null : soundFile,
+        title,
+        body,
+        priority: 'high',
         channelId: channelId,
-        sound: silent ? null : true,
-      },
-      _displayInForeground: true,
-      ttl: 3600,
-    };
-  }).filter(m => !!m.to);
+        android: {
+          channelId: channelId,
+          sound: silent ? null : soundFile,
+        },
+        _displayInForeground: true,
+        ttl: 3600,
+      };
+    })
+    .filter((m) => !!m.to);
 
   if (messages.length === 0) return;
 
+  console.log(`[Push API] Attempting to send ${messages.length} messages`);
+
   if (Platform.OS === 'web') {
     try {
-      const functions = getFunctions(app);
-      const sendPush = httpsCallable(functions, 'sendPushNotification');
-      
-      await sendPush({
-        recipients: messages.map(m => m.to),
-        title,
-        body,
-        channelId
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) {
+        console.error('[Push API] No auth token');
+        return;
+      }
+      const response = await fetch(PUSH_FUNCTION_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          recipients: messages.map((m) => m.to),
+          title,
+          body,
+          channelId,
+        }),
       });
-      
-      console.log('[Push API] Sent via Cloud Functions');
+      const result = await response.json();
+      console.log('[Push API] Cloud Function result:', result);
     } catch (error) {
       console.error('[Push API] Cloud Function Error:', error);
     }
     return;
   }
-
-  console.log(`[Push API] Attempting to send ${messages.length} messages`);
 
   try {
     const response = await fetch('https://exp.host/--/api/v2/push/send', {
@@ -294,7 +306,14 @@ export async function sendPushNotification(
       body: JSON.stringify(messages),
     });
     const result = await response.json();
-    console.log('[Push API] Sent successfully');
+    const tickets = Array.isArray(result?.data) ? result.data : [];
+    tickets.forEach((ticket: any, i: number) => {
+      if (ticket.status === 'error') {
+        console.error(`[Push API] Ticket ${i} error:`, ticket.message, ticket.details);
+      } else {
+        console.log(`[Push API] Ticket ${i} ok, id:`, ticket.id);
+      }
+    });
   } catch (error) {
     console.error('[Push API] Error:', error);
   }
