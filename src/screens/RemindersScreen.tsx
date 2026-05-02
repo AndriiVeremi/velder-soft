@@ -141,7 +141,7 @@ const RemindersScreen = () => {
                 trigger: {
                   type: SchedulableTriggerInputTypes.DATE,
                   date: scheduleDate,
-                  channelId: 'reminders_v2',
+                  channelId: 'reminders',
                 },
               });
             }

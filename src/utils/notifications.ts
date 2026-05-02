@@ -1,6 +1,11 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { auth } from '../config/firebase';
+
+const PUSH_FUNCTION_URL =
+  'https://us-central1-velder-project.cloudfunctions.net/sendPushNotification';
 
 let _quietStart: string | undefined;
 let _quietEnd: string | undefined;
@@ -23,9 +28,9 @@ export function isQuietHours(start?: string, end?: string): boolean {
   const endMin = eh * 60 + em;
 
   if (startMin <= endMin) {
-    return cur >= startMin && cur < endMin;
+    return cur < startMin || cur >= endMin;
   } else {
-    return cur >= startMin || cur < endMin;
+    return cur >= endMin && cur < startMin;
   }
 }
 
@@ -33,7 +38,6 @@ Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
     const data = notification.request.content.data;
     const isPersonalReminder = !!data?.reminderId;
-    // Граємо звук для всіх сповіщень у фокусі (за бажанням користувача)
     const shouldPlaySound = true;
     return {
       shouldShowAlert: true,
@@ -69,6 +73,18 @@ export async function registerForPushNotificationsAsync() {
 
   try {
     if (Platform.OS === 'android') {
+      // Android permanently caches channel config (sound, importance) on first creation.
+      // We use a version key to delete and recreate channels exactly once after a config change.
+      const CHANNEL_MIGRATION_KEY = 'notif_channels_v4';
+      const migrated = await AsyncStorage.getItem(CHANNEL_MIGRATION_KEY);
+      if (!migrated) {
+        for (const id of ['default', 'alerts', 'alerts_v2', 'alerts_v3', 'reminders', 'reminders_v2', 'done', 'done_v1']) {
+          try { await Notifications.deleteNotificationChannelAsync(id); } catch (_) {}
+        }
+        await AsyncStorage.setItem(CHANNEL_MIGRATION_KEY, '1');
+        console.log('[Channels] Migration done — all channels deleted and will be recreated');
+      }
+
       await Notifications.setNotificationChannelAsync('default', {
         name: 'Domyślny',
         importance: Notifications.AndroidImportance.MAX,
@@ -79,7 +95,7 @@ export async function registerForPushNotificationsAsync() {
         sound: 'alert.wav',
       });
 
-      await Notifications.setNotificationChannelAsync('alerts_v2', {
+      await Notifications.setNotificationChannelAsync('alerts', {
         name: 'Alerts',
         importance: Notifications.AndroidImportance.MAX,
         enableVibrate: true,
@@ -89,7 +105,7 @@ export async function registerForPushNotificationsAsync() {
         lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
       });
 
-      await Notifications.setNotificationChannelAsync('reminders_v2', {
+      await Notifications.setNotificationChannelAsync('reminders', {
         name: 'Przypomnienia',
         importance: Notifications.AndroidImportance.MAX,
         enableVibrate: true,
@@ -100,7 +116,7 @@ export async function registerForPushNotificationsAsync() {
         bypassDnd: false,
       });
 
-      await Notifications.setNotificationChannelAsync('done_v1', {
+      await Notifications.setNotificationChannelAsync('done', {
         name: 'Potwierdzenia',
         importance: Notifications.AndroidImportance.DEFAULT,
         enableVibrate: true,
@@ -200,7 +216,7 @@ export function setupNotificationListeners() {
             trigger: {
               type: Notifications.SchedulableTriggerInputTypes.DATE,
               date: scheduleDate,
-              channelId: 'reminders_v2',
+              channelId: 'reminders',
             },
           });
         } catch (e) {}
@@ -225,47 +241,74 @@ export async function sendPushNotification(
   recipients: PushRecipient[],
   title: string,
   body: string,
-  channelId: 'alerts_v2' | 'reminders_v2' | 'done_v1' = 'alerts_v2'
+  channelId: 'alerts' | 'reminders' | 'done' = 'alerts'
 ) {
   if (recipients.length === 0) return;
 
   const soundFile =
-    channelId === 'done_v1'
+    channelId === 'done'
       ? 'done.wav'
-      : channelId === 'reminders_v2'
+      : channelId === 'reminders'
         ? 'reminder.wav'
         : 'alert.wav';
 
-  const messages = recipients.map((r) => {
-    const token = typeof r === 'string' ? r : r.token;
-    const start = typeof r === 'string' ? undefined : r.notificationStart;
-    const end = typeof r === 'string' ? undefined : r.notificationEnd;
-    const silent = isQuietHours(start, end);
+  const messages = recipients
+    .map((r) => {
+      const token = typeof r === 'string' ? r : r.token;
+      const start = typeof r === 'string' ? undefined : r.notificationStart;
+      const end = typeof r === 'string' ? undefined : r.notificationEnd;
+      const silent = isQuietHours(start, end);
 
-    return {
-      to: token,
-      sound: silent ? null : soundFile,
-      title,
-      body,
-      priority: 'high',
-      channelId: channelId,
-      android: {
+      console.log(`[Push Debug] recipient token=${token?.substring(0, 20)}... start=${start} end=${end} silent=${silent} sound=${silent ? 'NULL' : soundFile}`);
+
+      return {
+        to: token,
+        sound: silent ? null : soundFile,
+        title,
+        body,
+        priority: 'high',
         channelId: channelId,
-        sound: silent ? null : true,
-      },
-      _displayInForeground: true,
-      ttl: 3600,
-    };
-  }).filter(m => !!m.to);
+        android: {
+          channelId: channelId,
+          sound: silent ? null : soundFile,
+        },
+        _displayInForeground: true,
+        ttl: 3600,
+      };
+    })
+    .filter((m) => !!m.to);
 
   if (messages.length === 0) return;
 
+  console.log(`[Push API] Attempting to send ${messages.length} messages`);
+
   if (Platform.OS === 'web') {
-    console.warn('[Push API] Browser blocks direct push sending due to CORS. Use mobile app to send notifications.');
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) {
+        console.error('[Push API] No auth token');
+        return;
+      }
+      const response = await fetch(PUSH_FUNCTION_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          recipients: messages.map((m) => m.to),
+          title,
+          body,
+          channelId,
+        }),
+      });
+      const result = await response.json();
+      console.log('[Push API] Cloud Function result:', result);
+    } catch (error) {
+      console.error('[Push API] Cloud Function Error:', error);
+    }
     return;
   }
-
-  console.log(`[Push API] Attempting to send ${messages.length} messages`);
 
   try {
     const response = await fetch('https://exp.host/--/api/v2/push/send', {
@@ -278,9 +321,16 @@ export async function sendPushNotification(
       body: JSON.stringify(messages),
     });
     const result = await response.json();
-    console.log('[Push API] Result:', JSON.stringify(result, null, 2));
+    const tickets = Array.isArray(result?.data) ? result.data : [];
+    tickets.forEach((ticket: any, i: number) => {
+      if (ticket.status === 'error') {
+        console.error(`[Push API] Ticket ${i} error:`, ticket.message, ticket.details);
+      } else {
+        console.log(`[Push API] Ticket ${i} ok, id:`, ticket.id);
+      }
+    });
   } catch (error) {
-    console.error('[Push API] Fatal Error:', error);
+    console.error('[Push API] Error:', error);
   }
 }
 
@@ -309,7 +359,7 @@ export async function scheduleDailyReminder(taskCount: number, startTime: string
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
       hour: hour,
       minute: minute,
-      channelId: 'alerts_v2',
+      channelId: 'alerts',
     },
   });
 }

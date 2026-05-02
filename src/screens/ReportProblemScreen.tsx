@@ -238,20 +238,23 @@ const ReportProblemScreen = ({ navigation }: Props) => {
           [];
         directorsSnap.forEach((d) => {
           const data = d.data();
-          if (data.pushToken)
+          if (data.pushToken && d.id !== user?.uid) {
             tokens.push({
               token: data.pushToken,
               notificationStart: data.notificationStart,
               notificationEnd: data.notificationEnd,
             });
+          }
         });
+
+        console.log(`[Report Debug] Notifying ${tokens.length} directors`);
 
         if (tokens.length > 0) {
           await sendPushNotification(
             tokens,
             'Nowe zgłoszenie problemu! ⚠️',
             `${userData?.name || 'Pracownik'}: ${description.substring(0, 50)}${description.length > 50 ? '...' : ''}`,
-            'alerts_v2'
+            'alerts'
           );
         }
       } catch (pushErr) {

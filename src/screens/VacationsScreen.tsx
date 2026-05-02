@@ -269,7 +269,7 @@ const VacationsScreen = ({ route, navigation }: Props) => {
               trigger: {
                 type: Notifications.SchedulableTriggerInputTypes.DATE,
                 date: trig,
-                channelId: 'alerts_v2',
+                channelId: 'alerts',
               },
             }).catch(() => {});
           }
@@ -286,7 +286,7 @@ const VacationsScreen = ({ route, navigation }: Props) => {
               trigger: {
                 type: Notifications.SchedulableTriggerInputTypes.DATE,
                 date: trig,
-                channelId: 'alerts_v2',
+                channelId: 'alerts',
               },
             }).catch(() => {});
           }
@@ -329,20 +329,23 @@ const VacationsScreen = ({ route, navigation }: Props) => {
           [];
         directorsSnap.forEach((d) => {
           const data = d.data();
-          if (data.pushToken)
+          if (data.pushToken && d.id !== user?.uid) {
             tokens.push({
               token: data.pushToken,
               notificationStart: data.notificationStart,
               notificationEnd: data.notificationEnd,
             });
+          }
         });
+
+        console.log(`[Vacation Debug] Notifying ${tokens.length} directors`);
 
         if (tokens.length > 0) {
           await sendPushNotification(
             tokens,
             'Nowy wniosek o urlop! 🏖️',
             `${userData?.name || 'Pracownik'} prosi o wolne: ${dates[0]} — ${dates[dates.length - 1]}`,
-            'done_v1'
+            'alerts'
           );
         }
       } catch (pushErr) {
