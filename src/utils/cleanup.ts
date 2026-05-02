@@ -45,8 +45,6 @@ export async function cleanupAnnouncements() {
 
 export async function runWeeklyCleanup() {
   try {
-    await cleanupAnnouncements();
-
     const systemRef = doc(db, 'settings', 'system');
     const systemSnap = await getDoc(systemRef);
 
@@ -60,6 +58,8 @@ export async function runWeeklyCleanup() {
         return;
       }
     }
+
+    await cleanupAnnouncements();
 
     console.log('Running weekly tasks cleanup...');
 

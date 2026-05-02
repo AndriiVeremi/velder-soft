@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Timestamp } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { registerForPushNotificationsAsync, setQuietHoursCache } from '../utils/notifications';
 import { Platform } from 'react-native';
@@ -52,9 +52,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (Platform.OS !== 'web') {
           registerForPushNotificationsAsync().then((token) => {
             if (token) {
-              updateDoc(doc(db, 'users', firebaseUser.uid), { pushToken: token }).catch((err) =>
-                console.warn('Failed to save push token:', err)
-              );
+              console.log('--- MY PUSH TOKEN:', token);
+              setDoc(
+                doc(db, 'users', firebaseUser.uid),
+                { pushToken: token },
+                { merge: true }
+              ).catch((err) => console.warn('Failed to save push token:', err));
             }
           });
         }

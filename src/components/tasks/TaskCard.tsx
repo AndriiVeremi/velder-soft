@@ -133,9 +133,7 @@ export const TaskCardComponent: React.FC<TaskCardProps> = ({
         <Title theme={theme} done={task.done}>
           {task.title}
         </Title>
-        <StatusBadge
-          status={task.done ? 'DONE' : task.priority === 'URGENT' ? 'URGENT' : 'PENDING'}
-        />
+        <StatusBadge status={task.done ? 'DONE' : 'PENDING'} />
       </CardHeader>
 
       {task.description ? (

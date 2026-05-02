@@ -30,6 +30,7 @@ import { getCalendarTheme } from '../config/theme';
 import { notify } from '../utils/notify';
 import { confirmDelete } from '../utils/confirm';
 import { useMarkAsRead } from '../hooks/useMarkAsRead';
+import { playDoneSound } from '../utils/audio';
 import {
   Check,
   X,
@@ -245,7 +246,7 @@ const VacationsScreen = ({ route, navigation }: Props) => {
       }
     );
     return unsubscribe;
-  }, [isAdminView]);
+  }, [isAdminView, scheduleMarkAsRead]);
 
   useEffect(() => {
     if (isAdminView || Platform.OS === 'web') return;
@@ -265,7 +266,11 @@ const VacationsScreen = ({ route, navigation }: Props) => {
                 body: 'Przygotuj się na odpoczynek.',
                 sound: 'alert.wav',
               },
-              trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: trig },
+              trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.DATE,
+                date: trig,
+                channelId: 'alerts_v2',
+              },
             }).catch(() => {});
           }
           if (days >= 1) {
@@ -278,7 +283,11 @@ const VacationsScreen = ({ route, navigation }: Props) => {
                 body: 'Pamiętaj o dokończeniu zadań.',
                 sound: 'alert.wav',
               },
-              trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: trig },
+              trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.DATE,
+                date: trig,
+                channelId: 'alerts_v2',
+              },
             }).catch(() => {});
           }
         }
@@ -535,3 +544,5 @@ const VacationsScreen = ({ route, navigation }: Props) => {
     </Container>
   );
 };
+
+export default VacationsScreen;

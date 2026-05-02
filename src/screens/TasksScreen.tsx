@@ -28,6 +28,8 @@ import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
 import { parseVoiceReminder } from '../utils/voiceParser';
 import { TaskCardComponent } from '../components/tasks/TaskCard';
 import { AddTaskModal } from '../components/tasks/AddTaskModal';
+import { playDoneSound } from '../utils/audio';
+import { pickAndUploadPhoto } from '../utils/upload';
 import styled from 'styled-components/native';
 
 const Container = styled.View`
@@ -126,7 +128,7 @@ const TasksScreen = () => {
       }
     });
     return unsubscribe;
-  }, [user, dateStr, role]);
+  }, [user, dateStr, role, scheduleMarkAsRead]);
 
   const handleAddTask = async () => {
     if (!title.trim()) return notify.error('Wpisz tytuł zadania');
@@ -148,18 +150,23 @@ const TasksScreen = () => {
 
       if (role === 'DIRECTOR') {
         try {
-          let targetTokens: {
+          const targetTokens: {
             token: string;
             notificationStart?: string;
             notificationEnd?: string;
           }[] = [];
+
+          const usersSnap = await getDocs(
+            query(collection(db, 'users'), where('isActive', '==', true))
+          );
+
+          console.log(`[Push Debug] Found ${usersSnap.size} active users in DB`);
+
           if (selectedWorkerId === 'all') {
-            const usersSnap = await getDocs(
-              query(collection(db, 'users'), where('isActive', '==', true))
-            );
             usersSnap.forEach((docSnap) => {
               const u = docSnap.data();
-              if (u.pushToken && u.role !== 'DIRECTOR' && docSnap.id !== user?.uid) {
+              console.log(`[Push Debug] Checking user: ${u.name}, Role: ${u.role}, Token: ${u.pushToken ? 'YES' : 'NO'}`);
+              if (u.pushToken && u.role === 'EMPLOYEE' && docSnap.id !== user?.uid) {
                 targetTokens.push({
                   token: u.pushToken,
                   notificationStart: u.notificationStart,
@@ -168,24 +175,32 @@ const TasksScreen = () => {
               }
             });
           } else {
-            const worker = workers.find((w) => w.id === selectedWorkerId);
-            if (worker?.pushToken) {
-              targetTokens.push({
-                token: worker.pushToken,
-                notificationStart: worker.notificationStart,
-                notificationEnd: worker.notificationEnd,
-              });
+            const workerDoc = usersSnap.docs.find((d) => d.id === selectedWorkerId);
+            if (workerDoc) {
+              const u = workerDoc.data();
+              console.log(`[Push Debug] Single worker: ${u.name}, Token: ${u.pushToken ? 'YES' : 'NO'}`);
+              if (u.pushToken && workerDoc.id !== user?.uid) {
+                targetTokens.push({
+                  token: u.pushToken,
+                  notificationStart: u.notificationStart,
+                  notificationEnd: u.notificationEnd,
+                });
+              }
             }
           }
+
+          console.log(`[Push Debug] Final targets count: ${targetTokens.length}`);
+          
           if (targetTokens.length > 0) {
             await sendPushNotification(
               targetTokens,
               isUrgent ? '🚨 PILNE ZADANIE! 🚨' : 'Nowe zadanie! 📋',
-              `${title.trim()}${description ? '\n' + description.trim() : ''}\n${dateStr} o ${time}`
+              `${title.trim()}\n${dateStr} o ${time}`,
+              'alerts_v2'
             );
           }
         } catch (pushErr) {
-          console.warn('Failed to send task notification:', pushErr);
+          console.warn('[Push Error] TasksScreen:', pushErr);
         }
       }
 
@@ -234,7 +249,22 @@ const TasksScreen = () => {
         }
       }
     } catch (e) {
-      notify.error('Błąd актуалізації');
+      notify.error('Błąd aktualizacji');
+    }
+  };
+
+  const handleAddPhoto = async (task: Task) => {
+    const result = await pickAndUploadPhoto('task_photos', `${task.id}_${Date.now()}.jpg`);
+    if (result) {
+      try {
+        await updateDoc(doc(db, 'tasks', task.id), {
+          photoUrl: result.photoUrl,
+          photoPath: result.photoPath,
+        });
+        notify.success('Zdjęcie dodane');
+      } catch (e) {
+        notify.error('Błąd zapisu');
+      }
     }
   };
 
@@ -275,7 +305,7 @@ const TasksScreen = () => {
               theme={theme}
               workers={workers}
               onToggle={toggleTask}
-              onAddPhoto={() => {}}
+              onAddPhoto={handleAddPhoto}
               onDelete={handleDeleteTask}
             />
           )}
@@ -283,7 +313,7 @@ const TasksScreen = () => {
             <RNText
               style={{ textAlign: 'center', marginTop: 50, color: theme.colors.textSecondary }}
             >
-              Brak zadań на цей день.
+              Brak zadań w tym dniu.
             </RNText>
           }
         />
@@ -326,3 +356,5 @@ const TasksScreen = () => {
     </Container>
   );
 };
+
+export default TasksScreen;

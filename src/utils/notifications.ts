@@ -23,9 +23,9 @@ export function isQuietHours(start?: string, end?: string): boolean {
   const endMin = eh * 60 + em;
 
   if (startMin <= endMin) {
-    return cur < startMin || cur >= endMin;
+    return cur >= startMin && cur < endMin;
   } else {
-    return cur >= endMin && cur < startMin;
+    return cur >= startMin || cur < endMin;
   }
 }
 
@@ -33,7 +33,8 @@ Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
     const data = notification.request.content.data;
     const isPersonalReminder = !!data?.reminderId;
-    const shouldPlaySound = isPersonalReminder || !isQuietHours();
+    // Граємо звук для всіх сповіщень у фокусі (за бажанням користувача)
+    const shouldPlaySound = true;
     return {
       shouldShowAlert: true,
       shouldShowBanner: true,
@@ -69,13 +70,13 @@ export async function registerForPushNotificationsAsync() {
   try {
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
+        name: 'Domyślny',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#008744',
         enableVibrate: true,
         showBadge: true,
-        sound: 'default',
+        sound: 'alert.wav',
       });
 
       await Notifications.setNotificationChannelAsync('alerts_v2', {
@@ -240,6 +241,7 @@ export async function sendPushNotification(
     const start = typeof r === 'string' ? undefined : r.notificationStart;
     const end = typeof r === 'string' ? undefined : r.notificationEnd;
     const silent = isQuietHours(start, end);
+
     return {
       to: token,
       sound: silent ? null : soundFile,
@@ -247,10 +249,23 @@ export async function sendPushNotification(
       body,
       priority: 'high',
       channelId: channelId,
+      android: {
+        channelId: channelId,
+        sound: silent ? null : true,
+      },
       _displayInForeground: true,
       ttl: 3600,
     };
-  });
+  }).filter(m => !!m.to);
+
+  if (messages.length === 0) return;
+
+  if (Platform.OS === 'web') {
+    console.warn('[Push API] Browser blocks direct push sending due to CORS. Use mobile app to send notifications.');
+    return;
+  }
+
+  console.log(`[Push API] Attempting to send ${messages.length} messages`);
 
   try {
     const response = await fetch('https://exp.host/--/api/v2/push/send', {
@@ -263,9 +278,9 @@ export async function sendPushNotification(
       body: JSON.stringify(messages),
     });
     const result = await response.json();
-    console.log('Push notification result:', result);
+    console.log('[Push API] Result:', JSON.stringify(result, null, 2));
   } catch (error) {
-    console.error('Error sending push notification:', error);
+    console.error('[Push API] Fatal Error:', error);
   }
 }
 
@@ -286,7 +301,7 @@ export async function scheduleDailyReminder(taskCount: number, startTime: string
     identifier: DAILY_REMINDER_ID,
     content: {
       title: 'Dzień dobry! Masz zadania 📋',
-      body: `Dziś na liście: ${taskCount} zadaң. Powodzenia!`,
+      body: `Dziś na liście: ${taskCount} zadań. Powodzenia!`,
       sound: 'alert.wav',
       badge: taskCount,
     },
@@ -294,7 +309,7 @@ export async function scheduleDailyReminder(taskCount: number, startTime: string
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
       hour: hour,
       minute: minute,
-      channelId: 'default',
+      channelId: 'alerts_v2',
     },
   });
 }

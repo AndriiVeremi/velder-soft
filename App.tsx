@@ -33,6 +33,7 @@ import ReportProblemScreen from './src/screens/ReportProblemScreen';
 import DirectorReportsScreen from './src/screens/DirectorReportsScreen';
 import AboutCompanyScreen from './src/screens/AboutCompanyScreen';
 import DocsScreen from './src/screens/DocsScreen';
+import SystemStatusScreen from './src/screens/SystemStatusScreen';
 import SendRequestScreen from './src/screens/SendRequestScreen';
 import { RootStackParamList } from './src/config/navigationTypes';
 
@@ -146,6 +147,11 @@ const AuthenticatedStack = () => {
           options={{ title: 'Ogłoszenia' }}
         />
         <Stack.Screen
+          name="SystemStatus"
+          component={withLayout(SystemStatusScreen, 'SystemStatus')}
+          options={{ title: 'Stan Systemu' }}
+        />
+        <Stack.Screen
           name="Profile"
           component={withLayout(ProfileScreen, 'Profile')}
           options={{ title: 'Profil' }}
@@ -224,8 +230,6 @@ const RootNavigation = () => {
   return <AuthenticatedStack />;
 };
 
-import { RootSiblingParent } from 'react-native-root-siblings';
-
 export default function App() {
   useEffect(() => {
     registerForPushNotificationsAsync();
@@ -237,17 +241,15 @@ export default function App() {
   }, []);
 
   return (
-    <RootSiblingParent>
-      <SafeAreaProvider>
-        <AppThemeProvider>
-          <AuthProvider>
-            <NavigationContainer>
-              <RootNavigation />
-            </NavigationContainer>
-            <WebToaster />
-          </AuthProvider>
-        </AppThemeProvider>
-      </SafeAreaProvider>
-    </RootSiblingParent>
+    <SafeAreaProvider>
+      <AppThemeProvider>
+        <AuthProvider>
+          <NavigationContainer>
+            <RootNavigation />
+          </NavigationContainer>
+          <WebToaster />
+        </AuthProvider>
+      </AppThemeProvider>
+    </SafeAreaProvider>
   );
 }

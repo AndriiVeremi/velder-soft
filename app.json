@@ -21,9 +21,8 @@
     "android": {
       "package": "com.velder.soft",
       "softwareKeyboardLayoutMode": "resize",
-      "useNextNotificationsApi": true,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/VelderIcon.png",
+        "foregroundImage": "./assets/icon-foreground.png",
         "backgroundColor": "#008744"
       },
       "navigationBar": {
@@ -63,7 +62,8 @@
           "microphonePermission": "Dozwól na dostęp do mikrofonu, aby móc dyktować przypomnienia.",
           "speechRecognitionPermission": "Dozwól na rozpoznawanie mowy, aby zamieniać głos na tekst."
         }
-      ]
+      ],
+      "expo-audio"
     ],
     "extra": {
       "eas": {

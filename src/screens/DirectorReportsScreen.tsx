@@ -204,7 +204,7 @@ const DirectorReportsScreen = () => {
     });
 
     return unsubscribe;
-  }, []);
+  }, [scheduleMarkAsRead]);
 
   const handleDelete = (report: Report) => {
     const performDelete = async () => {

@@ -27,6 +27,7 @@ import { useAuth } from '../context/AuthContext';
 import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
 import { confirmDelete } from '../utils/confirm';
+import { playDoneSound } from '../utils/audio';
 import {
   ScreenHeader,
   ScreenTitle,
@@ -329,4 +330,3 @@ const SendRequestScreen = ({ navigation }: Props) => {
 };
 
 export default SendRequestScreen;
-SendRequestScreen;

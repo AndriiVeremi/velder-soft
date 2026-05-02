@@ -50,7 +50,8 @@ const AddBtn = styled.TouchableOpacity`
   background-color: ${(props) => props.theme.colors.primary};
   padding: 16px;
   border-radius: 12px;
-  margintop: 30px;
+  margin-top: 20px;
+  margin-bottom: 20px;
   align-items: center;
 `;
 
@@ -208,6 +209,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = (props) => {
                   flexDirection: 'row',
                   alignItems: 'center',
                   marginTop: 20,
+                  marginBottom: 10,
                   padding: 12,
                   borderRadius: 10,
                   backgroundColor: isUrgent ? theme.colors.error + '15' : theme.colors.background,

@@ -37,17 +37,17 @@ const StyledInput = styled.TextInput`
 `;
 
 const AddBtn = styled.TouchableOpacity`
-  backgroundcolor: ${(props) => props.theme.colors.primary};
+  background-color: ${(props) => props.theme.colors.primary};
   padding: 16px;
   border-radius: 12px;
-  margintop: 20px;
-  alignitems: center;
+  margin-top: 20px;
+  align-items: center;
 `;
 
 const AddBtnText = styled(RNText)`
   color: white;
-  fontweight: bold;
-  fontsize: ${(props) => props.theme.fontSize.f16}px;
+  font-weight: bold;
+  font-size: ${(props) => props.theme.fontSize.f16}px;
 `;
 
 export const AddServiceModal: React.FC<AddServiceModalProps> = ({
