@@ -150,18 +150,23 @@ const TasksScreen = () => {
 
       if (role === 'DIRECTOR') {
         try {
-          let targetTokens: {
+          const targetTokens: {
             token: string;
             notificationStart?: string;
             notificationEnd?: string;
           }[] = [];
+
+          const usersSnap = await getDocs(
+            query(collection(db, 'users'), where('isActive', '==', true))
+          );
+
+          console.log(`[Push Debug] Found ${usersSnap.size} active users in DB`);
+
           if (selectedWorkerId === 'all') {
-            const usersSnap = await getDocs(
-              query(collection(db, 'users'), where('isActive', '==', true))
-            );
             usersSnap.forEach((docSnap) => {
               const u = docSnap.data();
-              if (u.pushToken && u.role !== 'DIRECTOR' && docSnap.id !== user?.uid) {
+              console.log(`[Push Debug] Checking user: ${u.name}, Role: ${u.role}, Token: ${u.pushToken ? 'YES' : 'NO'}`);
+              if (u.pushToken && u.role === 'EMPLOYEE' && docSnap.id !== user?.uid) {
                 targetTokens.push({
                   token: u.pushToken,
                   notificationStart: u.notificationStart,
@@ -170,25 +175,32 @@ const TasksScreen = () => {
               }
             });
           } else {
-            const worker = workers.find((w) => w.id === selectedWorkerId);
-            if (worker?.pushToken) {
-              targetTokens.push({
-                token: worker.pushToken,
-                notificationStart: worker.notificationStart,
-                notificationEnd: worker.notificationEnd,
-              });
+            const workerDoc = usersSnap.docs.find((d) => d.id === selectedWorkerId);
+            if (workerDoc) {
+              const u = workerDoc.data();
+              console.log(`[Push Debug] Single worker: ${u.name}, Token: ${u.pushToken ? 'YES' : 'NO'}`);
+              if (u.pushToken && workerDoc.id !== user?.uid) {
+                targetTokens.push({
+                  token: u.pushToken,
+                  notificationStart: u.notificationStart,
+                  notificationEnd: u.notificationEnd,
+                });
+              }
             }
           }
+
+          console.log(`[Push Debug] Final targets count: ${targetTokens.length}`);
+          
           if (targetTokens.length > 0) {
             await sendPushNotification(
               targetTokens,
               isUrgent ? '🚨 PILNE ZADANIE! 🚨' : 'Nowe zadanie! 📋',
-              `${title.trim()}${description ? '\n' + description.trim() : ''}\n${dateStr} o ${time}`,
+              `${title.trim()}\n${dateStr} o ${time}`,
               'alerts_v2'
             );
           }
         } catch (pushErr) {
-          console.warn('Failed to send task notification:', pushErr);
+          console.warn('[Push Error] TasksScreen:', pushErr);
         }
       }
 

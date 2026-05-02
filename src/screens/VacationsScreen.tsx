@@ -266,7 +266,11 @@ const VacationsScreen = ({ route, navigation }: Props) => {
                 body: 'Przygotuj się na odpoczynek.',
                 sound: 'alert.wav',
               },
-              trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: trig },
+              trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.DATE,
+                date: trig,
+                channelId: 'alerts_v2',
+              },
             }).catch(() => {});
           }
           if (days >= 1) {
@@ -279,7 +283,11 @@ const VacationsScreen = ({ route, navigation }: Props) => {
                 body: 'Pamiętaj o dokończeniu zadań.',
                 sound: 'alert.wav',
               },
-              trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: trig },
+              trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.DATE,
+                date: trig,
+                channelId: 'alerts_v2',
+              },
             }).catch(() => {});
           }
         }

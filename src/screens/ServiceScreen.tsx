@@ -125,7 +125,7 @@ const ServiceScreen = () => {
           [];
         usersSnap.forEach((d) => {
           const data = d.data();
-          if (data.pushToken) {
+          if (data.pushToken && d.id !== user?.uid) {
             tokens.push({
               token: data.pushToken,
               notificationStart: data.notificationStart,

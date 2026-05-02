@@ -1,18 +1,16 @@
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { createAudioPlayer } from 'expo-audio';
 
 export const playDoneSound = async () => {
   if (Platform.OS === 'web') return;
   try {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'Sukces! ✅',
-        body: 'Działanie zostało potwierdzone.',
-        sound: 'done.wav',
-        data: {},
-      },
-      trigger: null,
-    });
+    const player = createAudioPlayer(require('../../assets/sound/done.wav'));
+    await player.play();
+    setTimeout(() => {
+      try {
+        player.release();
+      } catch (e) {}
+    }, 3000);
   } catch (error) {
     console.warn('Failed to play local sound:', error);
   }
