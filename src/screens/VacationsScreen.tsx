@@ -269,7 +269,7 @@ const VacationsScreen = ({ route, navigation }: Props) => {
               trigger: {
                 type: Notifications.SchedulableTriggerInputTypes.DATE,
                 date: trig,
-                channelId: 'alerts_v2',
+                channelId: 'alerts',
               },
             }).catch(() => {});
           }
@@ -286,7 +286,7 @@ const VacationsScreen = ({ route, navigation }: Props) => {
               trigger: {
                 type: Notifications.SchedulableTriggerInputTypes.DATE,
                 date: trig,
-                channelId: 'alerts_v2',
+                channelId: 'alerts',
               },
             }).catch(() => {});
           }
@@ -345,7 +345,7 @@ const VacationsScreen = ({ route, navigation }: Props) => {
             tokens,
             'Nowy wniosek o urlop! 🏖️',
             `${userData?.name || 'Pracownik'} prosi o wolne: ${dates[0]} — ${dates[dates.length - 1]}`,
-            'alerts_v2'
+            'alerts'
           );
         }
       } catch (pushErr) {

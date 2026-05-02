@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../config/firebase';
 
 const PUSH_FUNCTION_URL =
@@ -27,9 +28,9 @@ export function isQuietHours(start?: string, end?: string): boolean {
   const endMin = eh * 60 + em;
 
   if (startMin <= endMin) {
-    return cur >= startMin && cur < endMin;
+    return cur < startMin || cur >= endMin;
   } else {
-    return cur >= startMin || cur < endMin;
+    return cur >= endMin && cur < startMin;
   }
 }
 
@@ -72,6 +73,18 @@ export async function registerForPushNotificationsAsync() {
 
   try {
     if (Platform.OS === 'android') {
+      // Android permanently caches channel config (sound, importance) on first creation.
+      // We use a version key to delete and recreate channels exactly once after a config change.
+      const CHANNEL_MIGRATION_KEY = 'notif_channels_v4';
+      const migrated = await AsyncStorage.getItem(CHANNEL_MIGRATION_KEY);
+      if (!migrated) {
+        for (const id of ['default', 'alerts', 'alerts_v2', 'alerts_v3', 'reminders', 'reminders_v2', 'done', 'done_v1']) {
+          try { await Notifications.deleteNotificationChannelAsync(id); } catch (_) {}
+        }
+        await AsyncStorage.setItem(CHANNEL_MIGRATION_KEY, '1');
+        console.log('[Channels] Migration done — all channels deleted and will be recreated');
+      }
+
       await Notifications.setNotificationChannelAsync('default', {
         name: 'Domyślny',
         importance: Notifications.AndroidImportance.MAX,
@@ -82,7 +95,7 @@ export async function registerForPushNotificationsAsync() {
         sound: 'alert.wav',
       });
 
-      await Notifications.setNotificationChannelAsync('alerts_v2', {
+      await Notifications.setNotificationChannelAsync('alerts', {
         name: 'Alerts',
         importance: Notifications.AndroidImportance.MAX,
         enableVibrate: true,
@@ -92,7 +105,7 @@ export async function registerForPushNotificationsAsync() {
         lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
       });
 
-      await Notifications.setNotificationChannelAsync('reminders_v2', {
+      await Notifications.setNotificationChannelAsync('reminders', {
         name: 'Przypomnienia',
         importance: Notifications.AndroidImportance.MAX,
         enableVibrate: true,
@@ -103,7 +116,7 @@ export async function registerForPushNotificationsAsync() {
         bypassDnd: false,
       });
 
-      await Notifications.setNotificationChannelAsync('done_v1', {
+      await Notifications.setNotificationChannelAsync('done', {
         name: 'Potwierdzenia',
         importance: Notifications.AndroidImportance.DEFAULT,
         enableVibrate: true,
@@ -203,7 +216,7 @@ export function setupNotificationListeners() {
             trigger: {
               type: Notifications.SchedulableTriggerInputTypes.DATE,
               date: scheduleDate,
-              channelId: 'reminders_v2',
+              channelId: 'reminders',
             },
           });
         } catch (e) {}
@@ -228,14 +241,14 @@ export async function sendPushNotification(
   recipients: PushRecipient[],
   title: string,
   body: string,
-  channelId: 'alerts_v2' | 'reminders_v2' | 'done_v1' = 'alerts_v2'
+  channelId: 'alerts' | 'reminders' | 'done' = 'alerts'
 ) {
   if (recipients.length === 0) return;
 
   const soundFile =
-    channelId === 'done_v1'
+    channelId === 'done'
       ? 'done.wav'
-      : channelId === 'reminders_v2'
+      : channelId === 'reminders'
         ? 'reminder.wav'
         : 'alert.wav';
 
@@ -245,6 +258,8 @@ export async function sendPushNotification(
       const start = typeof r === 'string' ? undefined : r.notificationStart;
       const end = typeof r === 'string' ? undefined : r.notificationEnd;
       const silent = isQuietHours(start, end);
+
+      console.log(`[Push Debug] recipient token=${token?.substring(0, 20)}... start=${start} end=${end} silent=${silent} sound=${silent ? 'NULL' : soundFile}`);
 
       return {
         to: token,
@@ -344,7 +359,7 @@ export async function scheduleDailyReminder(taskCount: number, startTime: string
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
       hour: hour,
       minute: minute,
-      channelId: 'alerts_v2',
+      channelId: 'alerts',
     },
   });
 }

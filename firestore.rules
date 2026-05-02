@@ -30,7 +30,11 @@ service cloud.firestore {
 
     // --- КОРИСТУВАЧІ ---
     match /users/{userId} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isDirector());
+      allow read: if isSignedIn() && (
+        request.auth.uid == userId || 
+        isDirector() || 
+        resource.data.role == 'DIRECTOR'
+      );
       allow create: if isSignedIn() && 
                     request.resource.data.role == 'EMPLOYEE' && 
                     request.resource.data.isActive == false;

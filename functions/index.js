@@ -31,8 +31,8 @@ exports.sendPushNotification = onRequest({cors: true}, async (req, res) => {
   }
 
   const soundFile =
-    channelId === "done_v1" ? "done.wav" :
-    channelId === "reminders_v2" ? "reminder.wav" :
+    channelId === "done" ? "done.wav" :
+    channelId === "reminders" ? "reminder.wav" :
     "alert.wav";
 
   const messages = [];

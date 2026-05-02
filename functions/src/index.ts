@@ -33,8 +33,8 @@ export const sendPushNotification = functions.https.onCall(async (request) => {
   
   // Визначаємо файл звуку за каналом
   const soundFile = 
-    channelId === 'done_v1' ? 'done.wav' : 
-    channelId === 'reminders_v2' ? 'reminder.wav' : 
+    channelId === 'done' ? 'done.wav' : 
+    channelId === 'reminders' ? 'reminder.wav' : 
     'alert.wav';
 
   for (const token of recipients) {

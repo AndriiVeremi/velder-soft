@@ -184,7 +184,7 @@ const AnnouncementsScreen = ({ navigation, route }: Props) => {
             tokens,
             'Nowe ogłoszenie! 📢',
             text.length > 50 ? `${text.substring(0, 50)}...` : text,
-            'alerts_v2'
+            'alerts'
           );
         }
       } catch (pushErr) {
