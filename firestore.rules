@@ -18,7 +18,7 @@ service cloud.firestore {
       return isSignedIn() && getUserData().role == 'DIRECTOR';
     }
     
-    // Перевірка активності акаунту
+    // Перевірка активності акаунту (використовуємо тільки там, де це критично)
     function isActive() {
       return isSignedIn() && getUserData().isActive == true;
     }
@@ -45,30 +45,30 @@ service cloud.firestore {
 
     // --- ПРОЄКТИ, ЛІКАРНІ, ВІДДІЛЕННЯ ---
     match /projects/{id} {
-      allow read: if isActive();
+      allow read: if isSignedIn();
       allow write: if isDirector();
     }
     match /hospitals/{id} {
-      allow read: if isActive();
+      allow read: if isSignedIn();
       allow write: if isDirector();
     }
     match /departments/{id} {
-      allow read: if isActive();
+      allow read: if isSignedIn();
       allow write: if isDirector();
     }
 
     // --- ФОТО АРХІВ (Service Records) ---
     match /service_records/{id} {
-      allow read: if isActive();
-      allow create: if isActive() && request.resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow delete: if isDirector();
     }
 
     // --- ЗАВДАННЯ (Tasks) ---
     match /tasks/{taskId} {
-      allow read: if isActive() && (resource.data.assignedTo == request.auth.uid || resource.data.assignedTo == 'all' || isDirector());
+      allow read: if isSignedIn();
       allow create: if isDirector();
-      allow update: if isActive() && (
+      allow update: if isSignedIn() && (
         isDirector() || 
         (request.auth.uid == resource.data.assignedTo && 
          isUnchanged('title') && 
@@ -81,26 +81,27 @@ service cloud.firestore {
 
     // --- ОГОЛОШЕННЯ (Announcements) ---
     match /announcements/{id} {
-      allow read: if isActive();
+      allow read: if isSignedIn();
       allow write: if isDirector();
     }
     match /announcement_reads/{id} {
-      allow read, create: if isActive();
+      allow read, create: if isSignedIn();
+      allow delete: if isDirector();
     }
 
     // --- ВІДПУСТКИ (Vacations) ---
     match /vacations/{id} {
-      allow read: if isActive();
-      allow create: if isActive() && request.resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if isDirector() || (
-        isActive() && resource.data.userId == request.auth.uid && isUnchanged('status')
+        isSignedIn() && resource.data.userId == request.auth.uid && isUnchanged('status')
       );
-      allow delete: if isDirector() || (isActive() && resource.data.userId == request.auth.uid && resource.data.status == 'PENDING');
+      allow delete: if isDirector() || (isSignedIn() && resource.data.userId == request.auth.uid && resource.data.status == 'PENDING');
     }
 
     // --- НАГАДУВАННЯ (Reminders) ---
     match /reminders/{id} {
-      allow read, write: if isSignedIn() && (
+      allow read, create, update, delete: if isSignedIn() && (
         (resource == null || resource.data.userId == request.auth.uid) &&
         (request.resource == null || request.resource.data.userId == request.auth.uid)
       );
@@ -109,37 +110,42 @@ service cloud.firestore {
     // --- ЗВІТИ ПРО ПРОБЛЕМИ (Reports) ---
     match /reports/{id} {
       allow read: if isDirector();
-      allow create: if isActive() && request.resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow delete: if isDirector();
     }
 
     // --- ЛІНІЯ ДО ШЕФА (Requests) ---
     match /requests/{id} {
-      allow read: if isDirector() || (isActive() && resource.data.senderId == request.auth.uid);
-      allow create: if isActive() && request.resource.data.senderId == request.auth.uid;
-      allow update: if isDirector(); // Тільки Директор може міняти статус на CONFIRMED
-      allow delete: if isDirector() || (isActive() && resource.data.senderId == request.auth.uid);
+      allow read: if isDirector() || (isSignedIn() && resource.data.senderId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+      allow update: if isDirector();
+      allow delete: if isDirector() || (isSignedIn() && resource.data.senderId == request.auth.uid);
     }
 
     // --- СЕРВІС ---
     match /services/{id} {
-      allow read: if isActive();
+      allow read: if isSignedIn();
       allow create: if isDirector();
-      allow update: if isDirector() || (isActive() && isUnchanged('hospital') && isUnchanged('department') && isUnchanged('status'));
+      allow update: if isDirector() || (isSignedIn() && isUnchanged('hospital') && isUnchanged('department') && isUnchanged('status'));
       allow delete: if isDirector();
+    }
+
+    // --- СИСТЕМНІ НАЛАШТУВАННЯ ---
+    match /settings/{id} {
+      allow read, write: if isDirector();
     }
 
     // --- ДОКУМЕНТАЦІЯ ---
     match /docs_categories/{id} {
-      allow read: if isActive();
+      allow read: if isSignedIn();
       allow write: if isDirector();
     }
     match /docs_folders/{id} {
-      allow read: if isActive();
+      allow read: if isSignedIn();
       allow write: if isDirector();
     }
     match /docs_files/{id} {
-      allow read: if isActive();
+      allow read: if isSignedIn();
       allow write: if isDirector();
     }
   }

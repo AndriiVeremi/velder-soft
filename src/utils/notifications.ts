@@ -23,9 +23,9 @@ export function isQuietHours(start?: string, end?: string): boolean {
   const endMin = eh * 60 + em;
 
   if (startMin <= endMin) {
-    return cur < startMin || cur >= endMin;
+    return cur >= startMin && cur < endMin;
   } else {
-    return cur >= endMin && cur < startMin;
+    return cur >= startMin || cur < endMin;
   }
 }
 
@@ -69,13 +69,13 @@ export async function registerForPushNotificationsAsync() {
   try {
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
+        name: 'Domyślny',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#008744',
         enableVibrate: true,
         showBadge: true,
-        sound: 'default',
+        sound: 'alert.wav',
       });
 
       await Notifications.setNotificationChannelAsync('alerts_v2', {
@@ -247,6 +247,10 @@ export async function sendPushNotification(
       body,
       priority: 'high',
       channelId: channelId,
+      android: {
+        channelId: channelId,
+        sound: silent ? null : true,
+      },
       _displayInForeground: true,
       ttl: 3600,
     };

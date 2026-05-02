@@ -21,7 +21,6 @@
     "android": {
       "package": "com.velder.soft",
       "softwareKeyboardLayoutMode": "resize",
-      "useNextNotificationsApi": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/VelderIcon.png",
         "backgroundColor": "#008744"

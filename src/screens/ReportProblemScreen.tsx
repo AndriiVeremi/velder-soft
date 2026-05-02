@@ -28,6 +28,7 @@ import {
   ListeningIndicator,
 } from '../components/CommonUI';
 import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
+import { playDoneSound } from '../utils/audio';
 
 const Container = styled.View`
   flex: 1;
@@ -354,3 +355,4 @@ const ReportProblemScreen = ({ navigation }: Props) => {
   );
 };
 
+export default ReportProblemScreen;

@@ -28,7 +28,15 @@ import { Plus } from 'lucide-react-native';
 import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
 import { ServiceCardComponent } from '../components/service/ServiceCard';
 import { AddServiceModal } from '../components/service/AddServiceModal';
+import { playDoneSound } from '../utils/audio';
 import permissions from '../utils/permissions';
+
+const EmptyText = styled.Text`
+  text-align: center;
+  margin-top: 60px;
+  color: ${(props) => props.theme.colors.textSecondary};
+  font-size: 15px;
+`;
 
 const Container = styled.View`
   flex: 1;
@@ -69,15 +77,23 @@ const ServiceScreen = () => {
   });
 
   useEffect(() => {
+    if (!user) return;
     const q = query(collection(db, 'services'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Service);
-      setServices(data);
-      setLoading(false);
-      scheduleMarkAsRead(data.filter((s) => s.isNew).map((s) => s.id));
-    });
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Service);
+        setServices(data);
+        setLoading(false);
+        scheduleMarkAsRead(data.filter((s) => s.isNew).map((s) => s.id));
+      },
+      (error) => {
+        console.error('Firestore error:', error);
+        setLoading(false);
+      }
+    );
     return unsubscribe;
-  }, []);
+  }, [user, scheduleMarkAsRead]);
 
   const handleAddService = async () => {
     if (!permissions.canCreateServiceRecord(role || 'EMPLOYEE')) return;
@@ -122,7 +138,8 @@ const ServiceScreen = () => {
           await sendPushNotification(
             tokens,
             'Nowe zlecenie serwisowe! 🔧',
-            `Nowe zadanie w: ${hospital.trim()} — ${department.trim()}`
+            `Nowe zadanie w: ${hospital.trim()} — ${department.trim()}`,
+            'alerts_v2'
           );
         }
       } catch (pushErr) {
@@ -236,7 +253,7 @@ const ServiceScreen = () => {
               onDelete={handleDelete}
             />
           )}
-          ListEmptyComponent={<ActivityIndicator color={theme.colors.primary} />}
+          ListEmptyComponent={<EmptyText theme={theme}>Brak zgłoszeń serwisowych</EmptyText>}
         />
       )}
 
@@ -269,3 +286,5 @@ const ServiceScreen = () => {
     </Container>
   );
 };
+
+export default ServiceScreen;

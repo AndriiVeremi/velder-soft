@@ -28,7 +28,7 @@ export const downloadImage = async (url: string, fileName: string) => {
 
     const baseDir = FileSystem.documentDirectory || FileSystem.cacheDirectory;
     if (!baseDir) {
-      notify.error('Błąd системи файлів');
+      notify.error('Błąd systemy plików');
       return;
     }
 

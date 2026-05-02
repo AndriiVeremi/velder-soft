@@ -30,6 +30,7 @@ import { getCalendarTheme } from '../config/theme';
 import { notify } from '../utils/notify';
 import { confirmDelete } from '../utils/confirm';
 import { useMarkAsRead } from '../hooks/useMarkAsRead';
+import { playDoneSound } from '../utils/audio';
 import {
   Check,
   X,
@@ -245,7 +246,7 @@ const VacationsScreen = ({ route, navigation }: Props) => {
       }
     );
     return unsubscribe;
-  }, [isAdminView]);
+  }, [isAdminView, scheduleMarkAsRead]);
 
   useEffect(() => {
     if (isAdminView || Platform.OS === 'web') return;
@@ -535,3 +536,5 @@ const VacationsScreen = ({ route, navigation }: Props) => {
     </Container>
   );
 };
+
+export default VacationsScreen;

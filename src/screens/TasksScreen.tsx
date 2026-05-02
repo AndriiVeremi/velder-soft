@@ -28,6 +28,8 @@ import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
 import { parseVoiceReminder } from '../utils/voiceParser';
 import { TaskCardComponent } from '../components/tasks/TaskCard';
 import { AddTaskModal } from '../components/tasks/AddTaskModal';
+import { playDoneSound } from '../utils/audio';
+import { pickAndUploadPhoto } from '../utils/upload';
 import styled from 'styled-components/native';
 
 const Container = styled.View`
@@ -126,7 +128,7 @@ const TasksScreen = () => {
       }
     });
     return unsubscribe;
-  }, [user, dateStr, role]);
+  }, [user, dateStr, role, scheduleMarkAsRead]);
 
   const handleAddTask = async () => {
     if (!title.trim()) return notify.error('Wpisz tytuł zadania');
@@ -181,7 +183,8 @@ const TasksScreen = () => {
             await sendPushNotification(
               targetTokens,
               isUrgent ? '🚨 PILNE ZADANIE! 🚨' : 'Nowe zadanie! 📋',
-              `${title.trim()}${description ? '\n' + description.trim() : ''}\n${dateStr} o ${time}`
+              `${title.trim()}${description ? '\n' + description.trim() : ''}\n${dateStr} o ${time}`,
+              'alerts_v2'
             );
           }
         } catch (pushErr) {
@@ -234,7 +237,22 @@ const TasksScreen = () => {
         }
       }
     } catch (e) {
-      notify.error('Błąd актуалізації');
+      notify.error('Błąd aktualizacji');
+    }
+  };
+
+  const handleAddPhoto = async (task: Task) => {
+    const result = await pickAndUploadPhoto('task_photos', `${task.id}_${Date.now()}.jpg`);
+    if (result) {
+      try {
+        await updateDoc(doc(db, 'tasks', task.id), {
+          photoUrl: result.photoUrl,
+          photoPath: result.photoPath,
+        });
+        notify.success('Zdjęcie dodane');
+      } catch (e) {
+        notify.error('Błąd zapisu');
+      }
     }
   };
 
@@ -275,7 +293,7 @@ const TasksScreen = () => {
               theme={theme}
               workers={workers}
               onToggle={toggleTask}
-              onAddPhoto={() => {}}
+              onAddPhoto={handleAddPhoto}
               onDelete={handleDeleteTask}
             />
           )}
@@ -283,7 +301,7 @@ const TasksScreen = () => {
             <RNText
               style={{ textAlign: 'center', marginTop: 50, color: theme.colors.textSecondary }}
             >
-              Brak zadań на цей день.
+              Brak zadań w tym dniu.
             </RNText>
           }
         />
@@ -326,3 +344,5 @@ const TasksScreen = () => {
     </Container>
   );
 };
+
+export default TasksScreen;

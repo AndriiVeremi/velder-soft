@@ -12,7 +12,7 @@ import {
   doc,
   updateDoc,
 } from 'firebase/firestore';
-import { db, auth } from '../config/firebase';
+import { db } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { useAppTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notify';
@@ -44,6 +44,7 @@ interface Reminder {
 }
 
 const RemindersScreen = () => {
+  const { user } = useAuth();
   const { theme } = useAppTheme();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,30 +66,49 @@ const RemindersScreen = () => {
   });
 
   useEffect(() => {
-    if (!auth.currentUser) return;
-    const q = query(collection(db, 'reminders'), where('userId', '==', auth.currentUser.uid));
+    if (!user) return;
+    const q = query(collection(db, 'reminders'), where('userId', '==', user.uid));
     const unsubscribe = onSnapshot(
       q,
       (snap) => {
         const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Reminder);
         setReminders(
-          data.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
+          data.sort((a, b) => {
+            // Сортуємо: спочатку за датою, потім за часом
+            const dateCompare = (a.date || '').localeCompare(b.date || '');
+            if (dateCompare !== 0) return dateCompare;
+
+            const timeCompare = (a.time || '').localeCompare(b.time || '');
+            if (timeCompare !== 0) return timeCompare;
+
+            // Якщо дата і час однакові (або нові), використовуємо час створення
+            const timeA = a.createdAt?.toMillis?.() || Date.now();
+            const timeB = b.createdAt?.toMillis?.() || Date.now();
+            return timeB - timeA;
+          })
         );
         setLoading(false);
       },
-      () => setLoading(false)
+      (error) => {
+        console.error('Reminders fetch error:', error);
+        setLoading(false);
+      }
     );
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   const handleAdd = async () => {
     if (!title.trim()) return notify.error('Wpisz treść przypomnienia');
     const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
 
+    const [y, m, d] = date.split('-').map(Number);
+    const selectedDateTime = new Date(y, m - 1, d, hour, minute, 0);
+    if (selectedDateTime <= new Date()) return notify.error('Wybierz przyszłą datę i godzinę');
+
     try {
       const docRef = await addDoc(collection(db, 'reminders'), {
-        userId: auth.currentUser?.uid,
-        title,
+        userId: user?.uid,
+        title: title.trim(),
         date,
         time: timeStr,
         done: false,
@@ -101,7 +121,6 @@ const RemindersScreen = () => {
 
         const CYCLES = 1;
         const SIGNALS_PER_CYCLE = 3;
-        const CYCLE_GAP = 1;
 
         let signalIndex = 0;
         for (let c = 0; c < CYCLES; c++) {
@@ -114,10 +133,10 @@ const RemindersScreen = () => {
                 identifier: `${docRef.id}_${signalIndex}`,
                 content: {
                   title: `Ważne przypomnienie! 🔔`,
-                  body: title,
+                  body: title.trim(),
                   sound: 'reminder.wav',
                   categoryIdentifier: 'reminder',
-                  data: { reminderId: docRef.id, title },
+                  data: { reminderId: docRef.id, title: title.trim() },
                 },
                 trigger: {
                   type: SchedulableTriggerInputTypes.DATE,
@@ -130,8 +149,12 @@ const RemindersScreen = () => {
           }
         }
       }
+
       setModalVisible(false);
       setTitle('');
+      setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
+      setHour(10);
+      setMinute(0);
       notify.success('Przypomnienie dodane');
     } catch (e) {
       notify.error('Błąd zapisu');

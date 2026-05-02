@@ -37,7 +37,9 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowRight,
+  AlertTriangle,
 } from 'lucide-react-native';
+import { getSystemStats, SystemStats } from '../utils/systemStats';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { notify } from '../utils/notify';
@@ -366,6 +368,24 @@ const ConfirmBtn = styled.TouchableOpacity`
   border-radius: 8px;
 `;
 
+const StorageWarning = styled.TouchableOpacity`
+  background-color: ${(props) => (props.theme.isDark ? '#2c1e1e' : '#fff5f5')};
+  padding: 16px;
+  border-radius: ${(props) => props.theme.borderRadius.lg}px;
+  border-left-width: 6px;
+  border-left-color: ${(props) => props.theme.colors.error};
+  margin-bottom: 20px;
+  flex-direction: row;
+  align-items: center;
+  border-width: 1px;
+  border-color: ${(props) => (props.theme.isDark ? '#4d2c2c' : '#ffcccc')};
+  elevation: 2;
+  shadow-color: #000;
+  shadow-offset: 0px 2px;
+  shadow-opacity: 0.1;
+  shadow-radius: 3px;
+`;
+
 const HomeScreen = ({ navigation }: Props) => {
   const { user, role, userData } = useAuth();
   const { theme } = useAppTheme();
@@ -380,8 +400,17 @@ const HomeScreen = ({ navigation }: Props) => {
   const [isAnnouncementConfirmed, setIsAnnouncementConfirmed] = useState(false);
   const [vacations, setVacations] = useState<VacationInfo[]>([]);
   const [pendingRequests, setPendingRequests] = useState<UserRequest[]>([]);
+  const [storageStats, setStorageStats] = useState<SystemStats | null>(null);
 
   const todayStr = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
+
+  useEffect(() => {
+    if (role === 'DIRECTOR') {
+      getSystemStats()
+        .then(setStorageStats)
+        .catch(() => {});
+    }
+  }, [role]);
 
   useEffect(() => {
     if (role !== 'DIRECTOR') return;
@@ -585,6 +614,21 @@ const HomeScreen = ({ navigation }: Props) => {
         )}
         <MainWrapper theme={theme} isDesktop={isDesktop}>
           <LeftColumn theme={theme} isDesktop={isDesktop}>
+            {role === 'DIRECTOR' && storageStats && storageStats.storage.percentage > 80 && (
+              <StorageWarning theme={theme} onPress={() => navigation.navigate('SystemStatus')}>
+                <AlertTriangle size={24} color={theme.colors.error} />
+                <View style={{ marginLeft: 12, flex: 1 }}>
+                  <RNText style={{ color: theme.colors.error, fontWeight: 'bold', fontSize: 14 }}>
+                    Kończy się miejsce w chmurze! ({storageStats.storage.percentage}%)
+                  </RNText>
+                  <RNText style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
+                    Zalecane uruchomienie czyszczenia w ustawieniach systemu.
+                  </RNText>
+                </View>
+                <ArrowRight size={18} color={theme.colors.error} />
+              </StorageWarning>
+            )}
+
             {role === 'DIRECTOR' && pendingRequests.length > 0 && (
               <RequestsSection>
                 <SectionTitle theme={theme}>

@@ -7,6 +7,7 @@ import {
   Text as RNText,
   Image,
   ScrollView,
+  Modal,
 } from 'react-native';
 import styled from 'styled-components/native';
 import {
@@ -122,8 +123,6 @@ const TabLabel = styled(RNText)<{ active?: boolean }>`
     props.active ? props.theme.colors.primary : props.theme.colors.textSecondary};
 `;
 
-const MoreMenuOverlay = styled.Modal``;
-
 const MoreMenuBackdrop = styled.TouchableOpacity`
   flex: 1;
   background-color: rgba(0, 0, 0, 0.5);
@@ -223,12 +222,15 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
     }
 
     if (role === 'EMPLOYEE') {
-      const tQ = query(
-        collection(db, 'tasks'),
-        where('assignedTo', '==', user.uid),
-        where('done', '==', false)
+      const tQ = query(collection(db, 'tasks'), where('done', '==', false));
+      unsubscribes.push(
+        onSnapshot(tQ, (snap) => {
+          const myTasks = snap.docs.filter(
+            (d) => d.data().assignedTo === user.uid || d.data().assignedTo === 'all'
+          );
+          setBadges((p) => ({ ...p, tasks: myTasks.length }));
+        })
       );
-      unsubscribes.push(onSnapshot(tQ, (snap) => setBadges((p) => ({ ...p, tasks: snap.size }))));
     }
 
     const sQ = query(collection(db, 'services'), where('status', '==', 'PENDING'));
@@ -266,6 +268,9 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
         items: [
           { name: 'Reminders', label: 'Przypomnienia', icon: Bell },
           ...(role !== 'DIRECTOR' ? [{ name: 'Vacations', label: 'Urlop', icon: Palmtree }] : []),
+          ...(role === 'DIRECTOR'
+            ? [{ name: 'SystemStatus', label: 'Stan Systemu', icon: Info }]
+            : []),
           { name: 'Profile', label: 'Profil', icon: User },
           { name: 'About', label: 'O firmie', icon: Info },
         ],
@@ -304,13 +309,14 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
       const orderedNames = [
         'Home',
         'Tasks',
+        'Dashboard',
         'DirectorReports',
         'Reminders',
-        'Dashboard',
         'Service',
         'Docs',
         'Announcements',
         'Vacations',
+        'SystemStatus',
         'Users',
         'Profile',
         'About',
@@ -412,7 +418,7 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
           </TabItem>
         </BottomTabs>
       </SafeAreaView>
-      <MoreMenuOverlay
+      <Modal
         visible={moreVisible}
         transparent
         animationType="slide"
@@ -472,7 +478,7 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
             </MoreMenuContent>
           </SafeAreaView>
         </MoreMenuBackdrop>
-      </MoreMenuOverlay>
+      </Modal>
     </RootContainer>
   );
 };
