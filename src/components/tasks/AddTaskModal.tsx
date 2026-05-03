@@ -244,8 +244,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = (props) => {
               </TouchableOpacity>
             )}
 
-            <AddBtn 
-              theme={theme} 
+            <AddBtn
+              theme={theme}
               onPress={() => {
                 if (!title.trim()) {
                   const { notify } = require('../../utils/notify');

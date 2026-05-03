@@ -15,13 +15,17 @@ import * as Notifications from 'expo-notifications';
 import { doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { RootStackParamList } from '../config/navigationTypes';
-import { REMINDER_REPEAT_COUNT, REMINDER_SIGNALS_COUNT, REMINDER_INTERVAL_SECONDS } from '../utils/notifications';
+import {
+  REMINDER_REPEAT_COUNT,
+  REMINDER_SIGNALS_COUNT,
+  REMINDER_INTERVAL_SECONDS,
+} from '../utils/notifications';
 import { SchedulableTriggerInputTypes } from 'expo-notifications';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withRepeat, 
-  withTiming, 
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
   withSequence,
   interpolate,
 } from 'react-native-reanimated';
@@ -30,7 +34,7 @@ import { useAppTheme } from '../context/ThemeContext';
 
 const Container = styled.View`
   flex: 1;
-  background-color: ${props => props.theme.colors.background};
+  background-color: ${(props) => props.theme.colors.background};
   align-items: center;
   justify-content: center;
   padding: 30px;
@@ -41,21 +45,21 @@ const Glow = styled(Animated.View)<{ color: string }>`
   width: 250px;
   height: 250px;
   border-radius: 125px;
-  background-color: ${props => props.color};
+  background-color: ${(props) => props.color};
 `;
 
 const IconContainer = styled(Animated.View)`
   margin-bottom: 40px;
-  background-color: ${props => props.theme.isDark ? '#1a1a1a' : '#f0f0f0'};
+  background-color: ${(props) => (props.theme.isDark ? '#1a1a1a' : '#f0f0f0')};
   padding: 30px;
   border-radius: 100px;
   border-width: 2px;
-  border-color: ${props => props.theme.colors.border};
+  border-color: ${(props) => props.theme.colors.border};
 `;
 
 const Label = styled(RNText)`
   font-size: 14px;
-  color: ${props => props.theme.colors.textSecondary};
+  color: ${(props) => props.theme.colors.textSecondary};
   letter-spacing: 3px;
   text-transform: uppercase;
   margin-bottom: 12px;
@@ -65,7 +69,7 @@ const Label = styled(RNText)`
 const Title = styled(RNText)`
   font-size: 28px;
   font-weight: 900;
-  color: ${props => props.theme.colors.text};
+  color: ${(props) => props.theme.colors.text};
   text-align: center;
   margin-bottom: 60px;
   line-height: 36px;
@@ -77,7 +81,7 @@ const ButtonGroup = styled.View`
 `;
 
 const SnoozeBtn = styled.TouchableOpacity`
-  background-color: ${props => props.theme.colors.primary};
+  background-color: ${(props) => props.theme.colors.primary};
   border-radius: 20px;
   padding: 20px;
   width: 100%;
@@ -85,7 +89,7 @@ const SnoozeBtn = styled.TouchableOpacity`
   align-items: center;
   justify-content: center;
   elevation: 10;
-  shadow-color: ${props => props.theme.colors.primary};
+  shadow-color: ${(props) => props.theme.colors.primary};
   shadow-opacity: 0.3;
   shadow-radius: 15px;
 `;
@@ -106,11 +110,11 @@ const DismissBtn = styled.TouchableOpacity`
   align-items: center;
   justify-content: center;
   border-width: 2px;
-  border-color: ${props => props.theme.colors.error};
+  border-color: ${(props) => props.theme.colors.error};
 `;
 
 const DismissText = styled(RNText)`
-  color: ${props => props.theme.colors.error};
+  color: ${(props) => props.theme.colors.error};
   font-size: 18px;
   font-weight: bold;
   margin-left: 10px;
@@ -125,33 +129,9 @@ const AlarmScreen: React.FC<Props> = ({ navigation, route }) => {
   const { reminderId, title } = route.params;
   const { theme } = useAppTheme();
   const soundRef = useRef<Audio.Sound | null>(null);
-  
+
   const shake = useSharedValue(0);
   const pulse = useSharedValue(1);
-
-  useEffect(() => {
-    startSound();
-    
-    shake.value = withRepeat(
-      withSequence(
-        withTiming(-10, { duration: 50 }),
-        withTiming(10, { duration: 50 }),
-        withTiming(0, { duration: 50 })
-      ),
-      -1,
-      true
-    );
-
-    pulse.value = withRepeat(
-      withTiming(1.4, { duration: 1500 }),
-      -1,
-      true
-    );
-
-    return () => {
-      stopSound();
-    };
-  }, []);
 
   const startSound = async () => {
     try {
@@ -162,10 +142,11 @@ const AlarmScreen: React.FC<Props> = ({ navigation, route }) => {
         shouldDuckAndroid: false,
         playThroughEarpieceAndroid: false,
       });
-      const { sound } = await Audio.Sound.createAsync(
-        require('../../assets/sound/reminder.wav'),
-        { shouldPlay: true, isLooping: true, volume: 1.0 }
-      );
+      const { sound } = await Audio.Sound.createAsync(require('../../assets/sound/reminder.wav'), {
+        shouldPlay: true,
+        isLooping: true,
+        volume: 1.0,
+      });
       soundRef.current = sound;
     } catch (e) {
       console.warn('AlarmScreen: cannot start sound', e);
@@ -181,6 +162,26 @@ const AlarmScreen: React.FC<Props> = ({ navigation, route }) => {
       }
     } catch (e) {}
   };
+
+  useEffect(() => {
+    startSound();
+
+    shake.value = withRepeat(
+      withSequence(
+        withTiming(-10, { duration: 50 }),
+        withTiming(10, { duration: 50 }),
+        withTiming(0, { duration: 50 })
+      ),
+      -1,
+      true
+    );
+
+    pulse.value = withRepeat(withTiming(1.4, { duration: 1500 }), -1, true);
+
+    return () => {
+      stopSound();
+    };
+  }, [pulse, shake]);
 
   const animatedIconStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${shake.value}deg` }],
@@ -241,13 +242,13 @@ const AlarmScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <Container theme={theme}>
-      <StatusBar 
-        barStyle={theme.isDark ? "light-content" : "dark-content"} 
-        backgroundColor={theme.colors.background} 
+      <StatusBar
+        barStyle={theme.isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={theme.colors.background}
       />
-      
+
       <Glow color={theme.colors.primary} style={animatedGlowStyle} />
-      
+
       <IconContainer theme={theme} style={animatedIconStyle}>
         <BellRing size={80} color={theme.colors.primary} strokeWidth={2.5} />
       </IconContainer>

@@ -27,6 +27,7 @@ Niniejszy dokument zawiera szczegółowe informacje na temat struktury techniczn
 ### Monitorowanie Stanu Systemu (`src/utils/systemStats.ts`)
 
 Wprowadzono moduł analityczny dla Dyrekcji, który w czasie rzeczywistym agreguje dane:
+
 - **Database:** Zliczanie dokumentów w kluczowych kolekcjach (Tasks, Services, Projects) względem limitu 5000 dok.
 - **Storage:** Liczba plików zdjęć i PDF względem limitu 1000 plików.
 - **Push Stats:** Monitorowanie liczby wysłanych powiadomień przez Firebase (limit 2 mln).
@@ -44,7 +45,7 @@ Wprowadzono moduł analityczny dla Dyrekcji, który w czasie rzeczywistym agregu
 
 ### Inteligentne Rozpoznawanie Mowy (Speech-to-Text)
 
-- **Voice Parser (`src/utils/voiceParser.ts`):** 
+- **Voice Parser (`src/utils/voiceParser.ts`):**
   - Rozpoznaje frazy relatywne: "jutro", "pojutrze", "dziś", "w poniedziałek".
   - Wykrywa godziny w formatach: "o 12", "14:30", "rano" (9:00), "wieczorem" (19:00).
   - Wspiera zarówno platformy mobilne, jak i Web (poprzez `useVoiceRecognition`).

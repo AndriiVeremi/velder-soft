@@ -45,7 +45,7 @@ export const sendPushNotification = functions.https.onCall(async (request) => {
       data: { withSound: true },
       android: {
         channelId: channelId,
-        sound: soundFile, 
+        sound: soundFile,
       },
     });
   }

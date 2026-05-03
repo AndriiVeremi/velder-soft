@@ -22,7 +22,11 @@ import { Plus } from 'lucide-react-native';
 import { format } from 'date-fns';
 import * as Notifications from 'expo-notifications';
 import { SchedulableTriggerInputTypes } from 'expo-notifications';
-import { REMINDER_REPEAT_COUNT, REMINDER_SIGNALS_COUNT, REMINDER_INTERVAL_SECONDS } from '../utils/notifications';
+import {
+  REMINDER_REPEAT_COUNT,
+  REMINDER_SIGNALS_COUNT,
+  REMINDER_INTERVAL_SECONDS,
+} from '../utils/notifications';
 import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
 import { parseVoiceReminder } from '../utils/voiceParser';
 import { ReminderCardComponent } from '../components/tasks/ReminderCard';
@@ -203,7 +207,7 @@ const RemindersScreen = () => {
           }
         />
       )}
-<Fab theme={theme} onPress={() => setModalVisible(true)}>
+      <Fab theme={theme} onPress={() => setModalVisible(true)}>
         <Plus size={30} color="white" />
       </Fab>
       <AddReminderModal

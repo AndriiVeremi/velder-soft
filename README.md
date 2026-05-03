@@ -43,7 +43,6 @@ Aplikacja została zaprojektowana, aby przenieść 35 lat doświadczenia firmy w
 - **Raportowanie Incydentów:** System "Zgłoś problem" z obsługą foto/wideo, umożliwiający błyskawiczną reakcję Dyrekcji na usterki.
 - **Optymalizacja Operacyjna:** Automatyczne czyszczenie przeterminowanych danych (Weekly Cleanup) i archiwizacja logów.
 
-
 ---
 
 ## 💻 Technologia i Rozwój

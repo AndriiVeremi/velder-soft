@@ -528,7 +528,8 @@ const VacationsScreen = ({ route, navigation }: Props) => {
                   </IconButton>
                 </ActionButtons>
               ) : (
-                !isAdminView && item.status === 'PENDING' && (
+                !isAdminView &&
+                item.status === 'PENDING' && (
                   <TouchableOpacity onPress={() => deleteRequest(item.id)}>
                     <Trash2 size={20} color={theme.colors.textSecondary} />
                   </TouchableOpacity>

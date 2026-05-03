@@ -21,6 +21,7 @@ Niniejszy przewodnik pomoże Ci szybko zapoznać się z funkcjami aplikacji Veld
 ## 🏖️ 3. Inteligentne Urlopy
 
 Aplikacja dba o Twój wypoczynek:
+
 - **Wnioski:** Wybierz daty w kalendarzu i wyślij wniosek jednym kliknięciem.
 - **Odliczanie:** Po zatwierdzeniu urlopu, na ekranie głównym pojawi się licznik dni pozostałych do wyjazdu.
 - **Automatyczne Przypomnienia:** Telefon sam przypomni Ci o nadchodzącym urlopie **5 dni** oraz **1 dzień** przed jego rozpoczęciem.
@@ -28,8 +29,9 @@ Aplikacja dba o Twój wypoczynek:
 ## 🎙️ 4. Inteligentny Mikrofon (Voice Assistant)
 
 Możesz tworzyć przypomnienia głosem, bez konieczności wpisywania tekstu:
+
 - Kliknij ikonę mikrofonu przy dodawaniu przypomnienia.
-- Powiedz naturalnie, np.: *"Kupić rury miedziane jutro o dziesiątej rano"* lub *"Zadzwonić do hurtowni w poniedziałek o 15:00"*.
+- Powiedz naturalnie, np.: _"Kupić rury miedziane jutro o dziesiątej rano"_ lub _"Zadzwonić do hurtowni w poniedziałek o 15:00"_.
 - System sam rozpozna datę, godzinę oraz treść zadania.
 
 ## 🔔 5. System Sygnałów і Przypomnień
@@ -57,4 +59,3 @@ Możesz tworzyć przypomnienia głosem, bez konieczności wpisywania tekstu:
 
 © 2026 Velder-soft. System wspierający inżynierię medyczną.
 Opracowanie systemu: **Andrii Veremii (D@shuk)**
-
