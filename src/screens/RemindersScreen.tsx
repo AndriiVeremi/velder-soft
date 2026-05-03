@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text as RNText, FlatList, ActivityIndicator, Platform, TouchableOpacity } from 'react-native';
+import { View, Text as RNText, FlatList, ActivityIndicator, Platform } from 'react-native';
 import styled from 'styled-components/native';
 import {
   collection,
@@ -27,9 +27,6 @@ import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
 import { parseVoiceReminder } from '../utils/voiceParser';
 import { ReminderCardComponent } from '../components/tasks/ReminderCard';
 import { AddReminderModal } from '../components/tasks/AddReminderModal';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../config/navigationTypes';
 
 const Container = styled.View`
   flex: 1;
@@ -49,7 +46,6 @@ interface Reminder {
 const RemindersScreen = () => {
   const { user } = useAuth();
   const { theme } = useAppTheme();
-  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -207,14 +203,7 @@ const RemindersScreen = () => {
           }
         />
       )}
-      {/* DEV: тестова кнопка — видалити після перевірки */}
-      <TouchableOpacity
-        onPress={() => navigation.navigate('Alarm', { reminderId: 'test', title: 'Przykładowe przypomnienie testowe' })}
-        style={{ margin: 16, padding: 14, backgroundColor: '#e53935', borderRadius: 12, alignItems: 'center' }}
-      >
-        <RNText style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>🔔 TEST AlarmScreen</RNText>
-      </TouchableOpacity>
-      <Fab theme={theme} onPress={() => setModalVisible(true)}>
+<Fab theme={theme} onPress={() => setModalVisible(true)}>
         <Plus size={30} color="white" />
       </Fab>
       <AddReminderModal
