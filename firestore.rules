@@ -100,15 +100,13 @@ service cloud.firestore {
       allow update: if isDirector() || (
         isSignedIn() && resource.data.userId == request.auth.uid && isUnchanged('status')
       );
-      allow delete: if isDirector() || (isSignedIn() && resource.data.userId == request.auth.uid && resource.data.status == 'PENDING');
+      allow delete: if isDirector() || (isSignedIn() && resource.data.userId == request.auth.uid && (resource.data.status == 'PENDING' || resource.data.status == 'REJECTED'));
     }
 
     // --- НАГАДУВАННЯ ---
     match /reminders/{id} {
-      allow read, create, update, delete: if isSignedIn() && (
-        (resource == null || resource.data.userId == request.auth.uid) &&
-        (request.resource == null || request.resource.data.userId == request.auth.uid)
-      );
+      allow read, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     // --- ЗВІТИ ПРО ПРОБЛЕМИ ---
@@ -130,7 +128,7 @@ service cloud.firestore {
     match /services/{id} {
       allow read: if isSignedIn();
       allow create: if isDirector();
-      allow update: if isDirector() || (isSignedIn() && isUnchanged('hospital') && isUnchanged('department') && isUnchanged('status'));
+      allow update: if isDirector() || (isSignedIn() && isUnchanged('hospital') && isUnchanged('department'));
       allow delete: if isDirector();
     }
 

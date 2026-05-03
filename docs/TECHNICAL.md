@@ -4,72 +4,63 @@ Niniejszy dokument zawiera szczegółowe informacje na temat struktury techniczn
 
 ## 🛠 Stos Technologiczny
 
-- **Frontend:** React Native (Expo SDK 54)
-- **Język:** TypeScript (Pełna typizacja interfaces/types)
-- **Backend:** Firebase (Firestore, Auth, Storage)
-- **Stylizacja:** styled-components/native з підтримкою динамічного масштабування шрифтів (FontScale).
+- **Frontend:** React Native (Expo SDK 54) + Wsparcie Web (React)
+- **Język:** TypeScript (Pełna typizacja unknown/interfaces)
+- **Backend:** Google Firebase (Firestore, Auth, Storage, Cloud Functions dla Web Push)
+- **Stylizacja:** styled-components/native z wsparciem dynamicznego skalowania (FontScale).
 - **Ikony:** lucide-react-native
-- **Powiadomienia:** expo-notifications + Expo Push API (obsługa kanałów Android, priorytetów oraz godzin ciszy).
+- **Powiadomienia:** expo-notifications + Expo Push API (kanały Android v4, priorytety, godziny ciszy).
 
 ## 🏛 Architektura Systemu
 
 ### Struktura Danych (Firestore)
 
-System wykorzystuje zoptymalizowaną strukturę hierarchiczną:
+- **Hospitals (`hospitals`):** Główna hierarchia projektowa.
+- **Departments (`departments`):** Podfoldery z flagą `status`.
+- **Projects/Documents (`projects`):** Pliki PDF w Storage, linkowane w Firestore.
+- **Documentation (`docs_categories`, `docs_folders`, `docs_files`):** Trójpoziomowa baza wiedzy.
+- **Requests (`requests`):** "Linia do Szefa" (PENDING / CONFIRMED).
+- **Vacations (`vacations`):** System wniosków urlopowych z automatycznym monitorowaniem dat.
+- **Announcements (`announcements` & `announcement_reads`):** System komunikatów firmowych z śledzeniem odczytu.
+- **Settings/Stats (`settings/stats`):** Globalne liczniki dla monitoringu systemu.
 
-- **Hospitals (`hospitals`):** Główny folder projektu.
-- **Departments (`departments`):** Podfoldery przypisane do szpitala. Przechowują stan prac (`status`: IN_PROGRESS / COMPLETED).
-- **Projects/Documents (`projects`):** Pliki PDF przypisane do konkretnego oddziału.
-- **Documentation (`docs_categories`, `docs_folders`, `docs_files`):** Nowy moduł bazy wiedzy z trójpoziomową strukturą: Kategoria -> Folder -> Plik.
-- **Requests (`requests`):** System "Linia do Szefa". Dokumenty przechowują stan `PENDING` lub `CONFIRMED`.
+### Monitorowanie Stanu Systemu (`src/utils/systemStats.ts`)
 
-### Dynamiczne Skalowanie Interfejsu
+Wprowadzono moduł analityczny dla Dyrekcji, który w czasie rzeczywistym agreguje dane:
 
-Wprowadzono system `FontScale` (1x, 1.2x, 1.4x), który jest zintegrowany z `ThemeContext`.
-
-- **Mechanizm:** Rozmiary шрифтів definiowane są w `src/config/theme.ts` za pomocą funkcji `buildFontSize`.
-- **Zasada działania:** Wszystkie komponenty UI korzystają z kluczy `theme.fontSize.fXX`, co pozwala na natychmiastową zmianę rozmiaru w całej aplikacji bez restartu.
-- **Persystencja:** Wybrany profil skalowania jest zapisywany lokalnie przez `AsyncStorage`.
+- **Database:** Zliczanie dokumentów w kluczowych kolekcjach (Tasks, Services, Projects) względem limitu 5000 dok.
+- **Storage:** Liczba plików zdjęć i PDF względem limitu 1000 plików.
+- **Push Stats:** Monitorowanie liczby wysłanych powiadomień przez Firebase (limit 2 mln).
 
 ### Zaawansowany System Powiadomień
 
-- **Kanały Android:**
-  - `Alerts_v2`: Wysoki priorytet, niestandardowy dźwięk `alert.wav`.
-  - `Przypomnienia_v2`: Długi wzór wibracji, niestandardowy dźwięk `reminder.wav`, obsługa interaktywnych kategorii.
-- **Własne Dźwięki:** System obsługuje niestandardowe pliki audio (`.wav`) zarejestrowane w `app.json`. Dźwięki są zoptymalizowane pod kątem głośności i długości (maks. 30s dla iOS).
-- **Tryb Ciszy (Quiet Hours):** Użytkownik może zdefiniować godziny pracy w profilu. Powiadomienia PUSH wysyłane w tych godzinach są automatycznie wyciszane po stronie serwera/klienta.
-- **Interaktywne Przypomnienia:** Kategoria `reminder` pozwala na "Uśpienie" (Snooze) powiadomienia na 5 minut lub "Wyłączenie" (Dismiss) bezpośrednio z poziomu paska powiadomień. Akcje te automatycznie wybudzają aplikację (`opensAppToForeground: true`), aby zapewnić niezawodne działanie logiki JavaScript.
-- **Daily Reminders:** Automatyczne planowanie lokalnego powiadomienia z podsumowaniem zadań na dany dzień.
+- **Kanały Android (v4 Migration):** System automatycznie czyści stare kanały i rejestruje:
+  - `alerts`: Priorytet MAX, dźwięk `alert.wav`.
+  - `reminders`: Priorytet MAX, dźwięk `reminder.wav`, długie wibracje.
+  - `done`: Priorytet DEFAULT, dźwięk `done.wav`.
+- **Interaktywna Logika Snooze:**
+  - Akcja `snooze` planuje serię **3 sygnałów** w odstępach **1 minuty**, zaczynając po **5 minutach** od akcji.
+  - Akcja `dismiss` trwale usuwa przypomnienie z bazy Firestore i anuluje wszystkie zaplanowane sygnały lokalne.
+- **Tryb Ciszy (Quiet Hours):** Logika `isQuietHours` sprawdza zakres godzin użytkownika przed wysyłką Push przez Cloud Functions lub API Expo.
 
 ### Inteligentne Rozpoznawanie Mowy (Speech-to-Text)
 
-Wprowadzono moduł głosowy oparty na `expo-speech-recognition`, który umożliwia dyktowanie przypomnień w języku polskim.
+- **Voice Parser (`src/utils/voiceParser.ts`):**
+  - Rozpoznaje frazy relatywne: "jutro", "pojutrze", "dziś", "w poniedziałek".
+  - Wykrywa godziny w formatach: "o 12", "14:30", "rano" (9:00), "wieczorem" (19:00).
+  - Wspiera zarówno platformy mobilne, jak i Web (poprzez `useVoiceRecognition`).
 
-- **Mechanizm:** Wykorzystuje natywne API urządzenia do zamiany mowy na tekst.
-- **Voice Parser (`src/utils/voiceParser.ts`):** Autorski algorytm przetwarzania języka naturalnego (NLP), który wyodrębnia z tekstu:
-  - **Datę:** Obsługa fraz "jutro", "pojutrze", "dziś", "w poniedziałek" itp.
-  - **Godzinę:** Rozpoznawanie formatów "o 15:30", "godzina 10", obsługa pór dnia (rano, wieczorem).
-  - **Treść:** Automatyczne oczyszczanie tekstu z przyimków czasowych i formatowanie (wielka litera na początku).
-- **Tryb Fallback:** System posiada wbudowane mechanizmy obsługi braku uprawnień do mikrofonu lub braku dostępności modułu natywnego.
+### Moduł Urlopowy (Smart Vacations)
 
-### Automatyzacja i Cleanup
+- **Automatyczne Lokalne Przypomnienia:** Ekran `VacationsScreen.tsx` po stronie pracownika automatycznie planuje natywne powiadomienia:
+  - **T-5 dni:** "Urlop za 5 dni! 🏖️"
+  - **T-1 dzień:** "Urlop już jutro! ☀️"
+- **Real-time Sync:** Wykorzystanie `onSnapshot` zapewnia, że pracownik widzi zmianę statusu wniosku (Zatwierdzony/Odrzucony) natychmiast po decyzji Dyrektora.
 
-- **Weekly Cleanup:** Automatyczne usuwanie zakończonych zadań i powiązanych zdjęć po 7 dniach.
-- **Announcement Expiry:** Ogłoszenia oraz znaczniki ich przeczytania (`announcement_reads`) są automatycznie usuwane po 3 dniach w celu zachowania porządku w bazie danych.
+### Automatyzacja i Cleanup (`src/utils/cleanup.ts`)
 
-### Wspólne Komponenty (Refactoring)
-
-- **TimePicker:** Ustandaryzowany komponent do wyboru czasu pracy i zadań.
-- **Upload Utility:** Skonsolidowana logika `pickAndUploadPhoto` z automatyczną obsługą metadanych i błędów.
-- **CommonUI:** Współdzielone style dla ModalOverlay i ModalContent zapewniają spójność wizualną.
-
-## 🚀 Deployment i Aktualizacje
-
-### System OTA (Over-The-Air)
-
-Aktualizacje kodu JS są przesyłane natychmiastowo przez kanał `preview`.
-
-- **Komenda:** `npx eas update --branch preview`
+- **Weekly Cleanup:** Co tydzień system usuwa zakończone zadania oraz ich fizyczne pliki ze Storage.
+- **Announcement Expiry:** Usunięcie rekordów `announcement_reads` po 3 dniach od ogłoszenia.
 
 ---
 

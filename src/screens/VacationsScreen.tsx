@@ -338,8 +338,6 @@ const VacationsScreen = ({ route, navigation }: Props) => {
           }
         });
 
-        console.log(`[Vacation Debug] Notifying ${tokens.length} directors`);
-
         if (tokens.length > 0) {
           await sendPushNotification(
             tokens,
@@ -403,8 +401,12 @@ const VacationsScreen = ({ route, navigation }: Props) => {
 
   const deleteRequest = (id: string) => {
     confirmDelete('Usunąć wniosek?', async () => {
-      await deleteDoc(doc(db, 'vacations', id));
-      notify.success('Usunięto');
+      try {
+        await deleteDoc(doc(db, 'vacations', id));
+        notify.success('Usunięto');
+      } catch (e) {
+        notify.error('Nie masz uprawnień do usunięcia zatwierdzonego urlopu');
+      }
     });
   };
 
@@ -526,7 +528,8 @@ const VacationsScreen = ({ route, navigation }: Props) => {
                   </IconButton>
                 </ActionButtons>
               ) : (
-                !isAdminView && (
+                !isAdminView &&
+                item.status === 'PENDING' && (
                   <TouchableOpacity onPress={() => deleteRequest(item.id)}>
                     <Trash2 size={20} color={theme.colors.textSecondary} />
                   </TouchableOpacity>

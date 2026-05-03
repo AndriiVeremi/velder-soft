@@ -27,4 +27,5 @@ export type RootStackParamList = {
   DirectorReports: undefined;
   About: undefined;
   Docs: undefined;
+  Alarm: { reminderId: string; title: string };
 };

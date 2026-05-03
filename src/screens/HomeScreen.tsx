@@ -452,6 +452,9 @@ const HomeScreen = ({ navigation }: Props) => {
           );
           setIsAnnouncementConfirmed(!readDoc.empty);
         }
+      } else {
+        setLatestAnnouncement(null);
+        setIsAnnouncementConfirmed(false);
       }
     });
   }, [user, role]);

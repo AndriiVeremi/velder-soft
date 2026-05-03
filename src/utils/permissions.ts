@@ -8,7 +8,7 @@ export const permissions = {
   canDeleteTask: (role: UserRole) => role === 'DIRECTOR',
   canEditTask: (role: UserRole) => role === 'DIRECTOR',
 
-  canCreateServiceRecord: (role: UserRole) => role === 'DIRECTOR' || role === 'EMPLOYEE',
+  canCreateServiceRecord: (role: UserRole) => role === 'DIRECTOR',
   canDeleteServiceRecord: (role: UserRole) => role === 'DIRECTOR',
   canToggleServiceStatus: (role: UserRole) => role === 'DIRECTOR' || role === 'EMPLOYEE',
 

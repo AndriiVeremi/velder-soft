@@ -244,7 +244,16 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = (props) => {
               </TouchableOpacity>
             )}
 
-            <AddBtn theme={theme} onPress={onAdd}>
+            <AddBtn
+              theme={theme}
+              onPress={() => {
+                if (!title.trim()) {
+                  const { notify } = require('../../utils/notify');
+                  return notify.error('Wpisz tytuł zadania');
+                }
+                onAdd();
+              }}
+            >
               <AddBtnText theme={theme}>Dodaj zadanie</AddBtnText>
             </AddBtn>
           </ScrollView>

@@ -52,7 +52,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (Platform.OS !== 'web') {
           registerForPushNotificationsAsync().then((token) => {
             if (token) {
-              console.log('--- MY PUSH TOKEN:', token);
               setDoc(
                 doc(db, 'users', firebaseUser.uid),
                 { pushToken: token },

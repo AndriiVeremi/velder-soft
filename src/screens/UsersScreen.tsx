@@ -201,8 +201,23 @@ const UsersScreen = ({ navigation, route }: Props) => {
     confirmDelete(
       'Czy na pewno chcesz usunąć tego użytkownika?',
       async () => {
-        await deleteDoc(doc(db, 'users', userId));
-        notify.success('Użytkownik usunięty');
+        try {
+          // Delete all user's reminders
+          const remindersSnap = await getDocs(
+            query(collection(db, 'reminders'), where('userId', '==', userId))
+          );
+          const deletePromises = remindersSnap.docs.map((rDoc) =>
+            deleteDoc(doc(db, 'reminders', rDoc.id))
+          );
+          await Promise.all(deletePromises);
+
+          // Delete the user
+          await deleteDoc(doc(db, 'users', userId));
+          notify.success('Użytkownik usunięty');
+        } catch (e) {
+          console.error('Delete user error:', e);
+          notify.error('Błąd usuwania');
+        }
       },
       'Usuń użytkownika',
       'Usuń'

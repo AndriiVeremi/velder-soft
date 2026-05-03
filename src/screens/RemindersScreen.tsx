@@ -22,7 +22,11 @@ import { Plus } from 'lucide-react-native';
 import { format } from 'date-fns';
 import * as Notifications from 'expo-notifications';
 import { SchedulableTriggerInputTypes } from 'expo-notifications';
-import { REMINDER_REPEAT_COUNT, REMINDER_INTERVAL_MINUTES } from '../utils/notifications';
+import {
+  REMINDER_REPEAT_COUNT,
+  REMINDER_SIGNALS_COUNT,
+  REMINDER_INTERVAL_SECONDS,
+} from '../utils/notifications';
 import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
 import { parseVoiceReminder } from '../utils/voiceParser';
 import { ReminderCardComponent } from '../components/tasks/ReminderCard';
@@ -119,33 +123,24 @@ const RemindersScreen = () => {
         const [y, m, d] = date.split('-').map(Number);
         const baseDate = new Date(y, m - 1, d, hour, minute, 0);
 
-        const CYCLES = 1;
-        const SIGNALS_PER_CYCLE = 3;
-
-        let signalIndex = 0;
-        for (let c = 0; c < CYCLES; c++) {
-          for (let s = 0; s < SIGNALS_PER_CYCLE; s++) {
-            const offsetMinutes = s * REMINDER_INTERVAL_MINUTES;
-            const scheduleDate = new Date(baseDate.getTime() + offsetMinutes * 60000);
-
-            if (scheduleDate > new Date()) {
-              await Notifications.scheduleNotificationAsync({
-                identifier: `${docRef.id}_${signalIndex}`,
-                content: {
-                  title: `Ważne przypomnienie! 🔔`,
-                  body: title.trim(),
-                  sound: 'reminder.wav',
-                  categoryIdentifier: 'reminder',
-                  data: { reminderId: docRef.id, title: title.trim() },
-                },
-                trigger: {
-                  type: SchedulableTriggerInputTypes.DATE,
-                  date: scheduleDate,
-                  channelId: 'reminders',
-                },
-              });
-            }
-            signalIndex++;
+        for (let i = 0; i < REMINDER_SIGNALS_COUNT; i++) {
+          const scheduleDate = new Date(baseDate.getTime() + i * REMINDER_INTERVAL_SECONDS * 1000);
+          if (scheduleDate > new Date()) {
+            await Notifications.scheduleNotificationAsync({
+              identifier: `${docRef.id}_${i}`,
+              content: {
+                title: 'Ważne przypomnienie! 🔔',
+                body: title.trim(),
+                sound: 'reminder.wav',
+                categoryIdentifier: 'reminder',
+                data: { reminderId: docRef.id, title: title.trim() },
+              },
+              trigger: {
+                type: SchedulableTriggerInputTypes.DATE,
+                date: scheduleDate,
+                channelId: 'reminders',
+              },
+            });
           }
         }
       }

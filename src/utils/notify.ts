@@ -3,10 +3,7 @@ import { Alert, Platform } from 'react-native';
 
 export const notify = {
   success: (msg: string) => {
-    if (Platform.OS === 'web') {
-      console.log('Success:', msg);
-      return;
-    }
+    if (Platform.OS === 'web') return;
 
     Toast.show(msg, {
       duration: Toast.durations.SHORT,
@@ -19,10 +16,7 @@ export const notify = {
     });
   },
   error: (msg: string) => {
-    if (Platform.OS === 'web') {
-      console.log('Error:', msg);
-      return;
-    }
+    if (Platform.OS === 'web') return;
 
     Alert.alert('Błąd', msg);
   },

@@ -26,20 +26,20 @@ export const downloadImage = async (url: string, fileName: string) => {
       return;
     }
 
-    const baseDir = FileSystem.documentDirectory || FileSystem.cacheDirectory;
-    if (!baseDir) {
-      notify.error('Błąd systemy plików');
+    const cacheDir = FileSystem.cacheDirectory;
+    if (!cacheDir) {
+      notify.error('Błąd systemu plików');
       return;
     }
 
-    const fileUri = baseDir + fileName;
+    const fileUri = cacheDir + fileName;
     const downloadRes = await FileSystem.downloadAsync(url, fileUri);
 
-    if (downloadRes.status === 200) {
-      await MediaLibrary.createAssetAsync(downloadRes.uri);
+    if (downloadRes.status >= 200 && downloadRes.status < 300) {
+      await MediaLibrary.saveToLibraryAsync(downloadRes.uri);
       notify.success('Zdjęcie zapisane w galerii');
     } else {
-      throw new Error('Download failed');
+      throw new Error(`Download failed with status ${downloadRes.status}`);
     }
   } catch (error) {
     console.error('Download error:', error);

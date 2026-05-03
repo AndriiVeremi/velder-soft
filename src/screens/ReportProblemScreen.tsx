@@ -141,7 +141,7 @@ interface MediaFile {
 type Props = StackScreenProps<any, 'ReportProblem'>;
 
 const ReportProblemScreen = ({ navigation }: Props) => {
-  const { userData } = useAuth();
+  const { user, userData } = useAuth();
   const { theme } = useAppTheme();
   const [description, setDescription] = useState('');
   const [media, setMedia] = useState<MediaFile[]>([]);
@@ -246,8 +246,6 @@ const ReportProblemScreen = ({ navigation }: Props) => {
             });
           }
         });
-
-        console.log(`[Report Debug] Notifying ${tokens.length} directors`);
 
         if (tokens.length > 0) {
           await sendPushNotification(
