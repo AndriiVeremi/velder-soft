@@ -1,7 +1,7 @@
 export default {
   expo: {
-    name: 'VelderApp',
-    slug: 'velder-soft',
+    name: process.env.EXPO_PUBLIC_APP_NAME || 'VelderApp',
+    slug: process.env.EXPO_PUBLIC_APP_SLUG || 'velder-soft',
     version: '1.0.0',
     orientation: 'portrait',
     icon: './assets/VelderIcon.png',
@@ -38,7 +38,7 @@ export default {
       bundler: 'metro',
     },
     updates: {
-      url: 'https://u.expo.dev/60063075-7a9b-47f6-ba92-4021b7514fed',
+      url: `https://u.expo.dev/${process.env.EXPO_PUBLIC_EAS_PROJECT_ID || '60063075-7a9b-47f6-ba92-4021b7514fed'}`,
     },
     runtimeVersion: {
       policy: 'appVersion',
@@ -62,13 +62,13 @@ export default {
         'expo-speech-recognition',
         {
           microphonePermission: 'Dozwól na dostęp do mikrofonu, aby móc dyktować przypomnienia.',
-          speechRecognitionPermission: 'Dozwól na rozpoznawanie mowy, aby zamieniać głos na tekst.',
+          speechRecognitionPermission: 'Dozwól на rozpoznawanie mowy, aby zamieniać głos na tekst.',
         },
       ],
     ],
     extra: {
       eas: {
-        projectId: '60063075-7a9b-47f6-ba92-4021b7514fed',
+        projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID || '60063075-7a9b-47f6-ba92-4021b7514fed',
       },
     },
   },

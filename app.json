@@ -2,7 +2,7 @@
   "expo": {
     "name": "VelderApp",
     "slug": "velder-soft",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/VelderIcon.png",
     "userInterfaceStyle": "light",

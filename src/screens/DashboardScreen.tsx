@@ -254,8 +254,26 @@ const ModalTitle = styled(RNText)`
 
 type Props = StackScreenProps<any, 'Dashboard'>;
 
+import { initializeNewClientDatabase, checkIsDbInitialized } from '../utils/initDb';
+
 const DashboardScreen = ({ navigation }: Props) => {
   const { role } = useAuth();
+  const [isDbReady, setIsDbReady] = useState(true);
+
+  useEffect(() => {
+    const checkDb = async () => {
+      if (role === 'DIRECTOR') {
+        const ready = await checkIsDbInitialized();
+        setIsDbReady(ready);
+      }
+    };
+    checkDb();
+  }, [role]);
+
+  const handleInitDb = async () => {
+    const success = await initializeNewClientDatabase();
+    if (success) setIsDbReady(true);
+  };
   const { theme } = useAppTheme();
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [allHospitals, setAllHospitals] = useState<Hospital[]>([]);
@@ -625,6 +643,22 @@ const DashboardScreen = ({ navigation }: Props) => {
 
   return (
     <Container theme={theme}>
+      {!isDbReady && role === 'DIRECTOR' && (
+        <TouchableOpacity 
+          onPress={handleInitDb}
+          style={{ 
+            backgroundColor: theme.colors.warning, 
+            padding: 15, 
+            margin: 10, 
+            borderRadius: 8,
+            alignItems: 'center'
+          }}
+        >
+          <RNText style={{ fontWeight: 'bold', color: 'white' }}>
+            ⚙️ База даних не ініціалізована. Натисніть для налаштування.
+          </RNText>
+        </TouchableOpacity>
+      )}
       {(selectedHospital || selectedDepartment) && (
         <Header theme={theme}>
           <TouchableOpacity onPress={goBack}>
