@@ -453,6 +453,15 @@ const ProfileScreen = ({ navigation }: Props) => {
             <LogOut size={20} color={theme.colors.error} />
             <LogoutButtonText theme={theme}>Wyloguj się</LogoutButtonText>
           </LogoutButton>
+
+          <View style={{ marginTop: 30, marginBottom: 20, alignItems: 'center', opacity: 0.5 }}>
+            <RNText style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
+              Wersja: {Constants.expoConfig?.version} | Build: {Platform.OS === 'android' ? Constants.expoConfig?.android?.versionCode : Constants.expoConfig?.ios?.buildNumber}
+            </RNText>
+            <RNText style={{ color: theme.colors.textSecondary, fontSize: 10, marginTop: 4 }}>
+              Update ID: {Constants.updateId?.slice(0, 8) || 'Native Build'}
+            </RNText>
+          </View>
         </Content>
       </Container>
     </KeyboardAvoidingView>
