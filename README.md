@@ -35,11 +35,14 @@ Głównym celem działalności jest budowanie i utrzymanie sieci gazów medyczny
 
 Aplikacja została zaprojektowana, aby przenieść 35 lat doświadczenia firmy w erę cyfrową:
 
+- **Inteligentny Asystent Głosowy (AI Voice Parsing):** Tworzenie przypomnień za pomocą naturalnych komend głosowych. System automatycznie rozpoznaje daty, godziny i treść zadania.
+- **Moduł Inteligentnych Urlopów:** System wnioskowania z żywym odliczaniem do wypoczynku oraz automatycznymi powiadomieniami (T-5 i T-1) dla pracownika.
 - **Cyfrowe Archiwum Projektów:** Natychmiastowy dostęp do dokumentacji PDF i wizualnej historii prac na każdym oddziale.
-- **Inteligentny Monitoring Zadań:** Dynamiczne przydzielanie prac, system "Zadań Ogólnych" oraz automatyczna synchronizacja harmonogramów.
-- **Raportowanie Incydentów:** System "Zgłoś problem" z obsługą foto/wideo, umożliwiający błyskawiczną reakцію Dyrekcji na usterki.
-- **System Powiadomień Push:** Natywne sygnały o nowych komunikatach, zmianach w zadaniach oraz statusach wniosków urlopowych.
-- **Optymalizacja Operacyjna:** Automatyczne czyszczenie przeterminowanych danych i inteligentne serie przypomnień dla pracowników.
+- **Monitoring Stanu Systemu:** Panel analityczny dla Dyrekcji śledzący w czasie rzeczywistym limity bazy danych, plików Storage oraz powiadomień Push.
+- **Zaawansowane Powiadomienia (Snooze Logic):** Interaktywne przypomnienia z możliwością odkładania (snooze) i dedykowanymi kanałami dźwiękowymi.
+- **Raportowanie Incydentów:** System "Zgłoś problem" z obsługą foto/wideo, umożliwiający błyskawiczną reakcję Dyrekcji na usterki.
+- **Optymalizacja Operacyjna:** Automatyczne czyszczenie przeterminowanych danych (Weekly Cleanup) i archiwizacja logów.
+
 
 ---
 

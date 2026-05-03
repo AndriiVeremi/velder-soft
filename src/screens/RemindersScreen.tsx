@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text as RNText, FlatList, ActivityIndicator, Platform } from 'react-native';
+import { View, Text as RNText, FlatList, ActivityIndicator, Platform, TouchableOpacity } from 'react-native';
 import styled from 'styled-components/native';
 import {
   collection,
@@ -22,11 +22,14 @@ import { Plus } from 'lucide-react-native';
 import { format } from 'date-fns';
 import * as Notifications from 'expo-notifications';
 import { SchedulableTriggerInputTypes } from 'expo-notifications';
-import { REMINDER_REPEAT_COUNT, REMINDER_INTERVAL_MINUTES } from '../utils/notifications';
+import { REMINDER_REPEAT_COUNT, REMINDER_SIGNALS_COUNT, REMINDER_INTERVAL_SECONDS } from '../utils/notifications';
 import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
 import { parseVoiceReminder } from '../utils/voiceParser';
 import { ReminderCardComponent } from '../components/tasks/ReminderCard';
 import { AddReminderModal } from '../components/tasks/AddReminderModal';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../config/navigationTypes';
 
 const Container = styled.View`
   flex: 1;
@@ -46,6 +49,7 @@ interface Reminder {
 const RemindersScreen = () => {
   const { user } = useAuth();
   const { theme } = useAppTheme();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -119,33 +123,24 @@ const RemindersScreen = () => {
         const [y, m, d] = date.split('-').map(Number);
         const baseDate = new Date(y, m - 1, d, hour, minute, 0);
 
-        const CYCLES = 1;
-        const SIGNALS_PER_CYCLE = 3;
-
-        let signalIndex = 0;
-        for (let c = 0; c < CYCLES; c++) {
-          for (let s = 0; s < SIGNALS_PER_CYCLE; s++) {
-            const offsetMinutes = s * REMINDER_INTERVAL_MINUTES;
-            const scheduleDate = new Date(baseDate.getTime() + offsetMinutes * 60000);
-
-            if (scheduleDate > new Date()) {
-              await Notifications.scheduleNotificationAsync({
-                identifier: `${docRef.id}_${signalIndex}`,
-                content: {
-                  title: `Ważne przypomnienie! 🔔`,
-                  body: title.trim(),
-                  sound: 'reminder.wav',
-                  categoryIdentifier: 'reminder',
-                  data: { reminderId: docRef.id, title: title.trim() },
-                },
-                trigger: {
-                  type: SchedulableTriggerInputTypes.DATE,
-                  date: scheduleDate,
-                  channelId: 'reminders',
-                },
-              });
-            }
-            signalIndex++;
+        for (let i = 0; i < REMINDER_SIGNALS_COUNT; i++) {
+          const scheduleDate = new Date(baseDate.getTime() + i * REMINDER_INTERVAL_SECONDS * 1000);
+          if (scheduleDate > new Date()) {
+            await Notifications.scheduleNotificationAsync({
+              identifier: `${docRef.id}_${i}`,
+              content: {
+                title: 'Ważne przypomnienie! 🔔',
+                body: title.trim(),
+                sound: 'reminder.wav',
+                categoryIdentifier: 'reminder',
+                data: { reminderId: docRef.id, title: title.trim() },
+              },
+              trigger: {
+                type: SchedulableTriggerInputTypes.DATE,
+                date: scheduleDate,
+                channelId: 'reminders',
+              },
+            });
           }
         }
       }
@@ -212,6 +207,13 @@ const RemindersScreen = () => {
           }
         />
       )}
+      {/* DEV: тестова кнопка — видалити після перевірки */}
+      <TouchableOpacity
+        onPress={() => navigation.navigate('Alarm', { reminderId: 'test', title: 'Przykładowe przypomnienie testowe' })}
+        style={{ margin: 16, padding: 14, backgroundColor: '#e53935', borderRadius: 12, alignItems: 'center' }}
+      >
+        <RNText style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>🔔 TEST AlarmScreen</RNText>
+      </TouchableOpacity>
       <Fab theme={theme} onPress={() => setModalVisible(true)}>
         <Plus size={30} color="white" />
       </Fab>

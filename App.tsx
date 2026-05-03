@@ -14,6 +14,7 @@ import {
   setBadgeCount,
   setupNotificationListeners,
 } from './src/utils/notifications';
+import { navigationRef } from './src/navigation/navigationRef';
 import { WebToaster } from './src/components/WebToaster';
 import HomeScreen from './src/screens/HomeScreen';
 import TasksScreen from './src/screens/TasksScreen';
@@ -35,6 +36,7 @@ import AboutCompanyScreen from './src/screens/AboutCompanyScreen';
 import DocsScreen from './src/screens/DocsScreen';
 import SystemStatusScreen from './src/screens/SystemStatusScreen';
 import SendRequestScreen from './src/screens/SendRequestScreen';
+import AlarmScreen from './src/screens/AlarmScreen';
 import { RootStackParamList } from './src/config/navigationTypes';
 
 LogBox.ignoreLogs([
@@ -191,6 +193,11 @@ const AuthenticatedStack = () => {
           component={ProjectDetailsScreen}
           options={{ title: 'Szczegóły' }}
         />
+        <Stack.Screen
+          name="Alarm"
+          component={AlarmScreen}
+          options={{ headerShown: false, gestureEnabled: false }}
+        />
       </Stack.Navigator>
     </>
   );
@@ -244,7 +251,7 @@ export default function App() {
     <SafeAreaProvider>
       <AppThemeProvider>
         <AuthProvider>
-          <NavigationContainer>
+          <NavigationContainer ref={navigationRef}>
             <RootNavigation />
           </NavigationContainer>
           <WebToaster />

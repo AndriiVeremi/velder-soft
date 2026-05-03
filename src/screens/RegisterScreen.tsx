@@ -87,14 +87,16 @@ const RegisterScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-    if (!name || !email || !password) {
+    const cleanName = name.trim();
+    const cleanEmail = email.trim();
+    if (!cleanName || !cleanEmail || !password) {
       notify.error('Proszę wypełnić wszystkie pola');
       return;
     }
 
     setLoading(true);
     try {
-      const { user } = await createUserWithEmailAndPassword(auth, email, password);
+      const { user } = await createUserWithEmailAndPassword(auth, cleanEmail, password);
 
       if (!user) {
         notify.error('Nie udało się utworzyć konta');
@@ -102,8 +104,8 @@ const RegisterScreen = ({ navigation }: any) => {
       }
 
       await setDoc(doc(db, 'users', user.uid), {
-        name,
-        email,
+        name: cleanName,
+        email: cleanEmail,
         role: 'EMPLOYEE',
         isActive: false,
         createdAt: serverTimestamp(),

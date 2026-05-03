@@ -1,9 +1,10 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../config/firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
+import { navigationRef } from '../navigation/navigationRef';
 
 const PUSH_FUNCTION_URL =
   'https://us-central1-velder-project.cloudfunctions.net/sendPushNotification';
@@ -37,21 +38,21 @@ export function isQuietHours(start?: string, end?: string): boolean {
 
 Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
-    const data = notification.request.content.data;
-    const isPersonalReminder = !!data?.reminderId;
-    const shouldPlaySound = true;
     return {
       shouldShowAlert: true,
       shouldShowBanner: true,
       shouldShowList: true,
-      shouldPlaySound,
+      shouldPlaySound: false,
       shouldSetBadge: true,
     };
   },
 });
 
 export const REMINDER_REPEAT_COUNT = 20;
+/** @deprecated use REMINDER_INTERVAL_SECONDS */
 export const REMINDER_INTERVAL_MINUTES = 1;
+export const REMINDER_SIGNALS_COUNT = 10;
+export const REMINDER_INTERVAL_SECONDS = 30;
 
 export async function setupReminderCategory() {
   if (Platform.OS === 'web') return;
@@ -59,12 +60,12 @@ export async function setupReminderCategory() {
     {
       identifier: 'snooze',
       buttonTitle: 'Za 5 minut',
-      options: { opensAppToForeground: true },
+      options: { opensAppToForeground: false },
     },
     {
       identifier: 'dismiss',
       buttonTitle: 'Wyłącz',
-      options: { isDestructive: true, opensAppToForeground: true },
+      options: { isDestructive: true, opensAppToForeground: false },
     },
   ]);
 }
@@ -74,8 +75,6 @@ export async function registerForPushNotificationsAsync() {
 
   try {
     if (Platform.OS === 'android') {
-      // Android permanently caches channel config (sound, importance) on first creation.
-      // We use a version key to delete and recreate channels exactly once after a config change.
       const CHANNEL_MIGRATION_KEY = 'notif_channels_v4';
       const migrated = await AsyncStorage.getItem(CHANNEL_MIGRATION_KEY);
       if (!migrated) {
@@ -177,27 +176,36 @@ export async function setBadgeCount(count: number) {
   } catch (e) {}
 }
 
+function navigateToAlarm(reminderId: string, title: string) {
+  if (navigationRef.isReady()) {
+    navigationRef.navigate('Alarm', { reminderId, title });
+  }
+}
+
 export function setupNotificationListeners() {
   if (Platform.OS === 'web') return;
 
   const handleResponse = async (response: Notifications.NotificationResponse) => {
     const data = response.notification.request.content.data;
-    const reminderId = data?.reminderId;
+    const reminderId = data?.reminderId as string | undefined;
     const actionId = response.actionIdentifier;
 
     if (!reminderId) return;
 
-    if (actionId === 'dismiss' || actionId === Notifications.DEFAULT_ACTION_IDENTIFIER) {
+    if (actionId === Notifications.DEFAULT_ACTION_IDENTIFIER) {
+      navigateToAlarm(reminderId, (data?.title as string) || '');
+      return;
+    }
+
+    if (actionId === 'dismiss') {
       try {
         await deleteDoc(doc(db, 'reminders', reminderId));
       } catch (e) {
         console.warn('Failed to delete reminder from DB:', e);
       }
-
       for (let i = 0; i < REMINDER_REPEAT_COUNT; i++) {
         try {
-          const idToCancel = `${reminderId}_${i}`;
-          await Notifications.cancelScheduledNotificationAsync(idToCancel);
+          await Notifications.cancelScheduledNotificationAsync(`${reminderId}_${i}`);
         } catch (e) {}
       }
     }
@@ -209,14 +217,13 @@ export function setupNotificationListeners() {
         } catch (e) {}
       }
       const snoozeBase = new Date(Date.now() + 5 * 60 * 1000);
-      const SIGNALS_IN_SNOOZE = 3;
-      for (let i = 0; i < SIGNALS_IN_SNOOZE; i++) {
-        const scheduleDate = new Date(snoozeBase.getTime() + i * REMINDER_INTERVAL_MINUTES * 60000);
+      for (let i = 0; i < REMINDER_SIGNALS_COUNT; i++) {
+        const scheduleDate = new Date(snoozeBase.getTime() + i * REMINDER_INTERVAL_SECONDS * 1000);
         try {
           await Notifications.scheduleNotificationAsync({
             identifier: `${reminderId}_${i}`,
             content: {
-              title: `Przypomnienie (powrót) 🔔`,
+              title: 'Przypomnienie (powrót) 🔔',
               body: (data?.title as string) || '',
               sound: 'reminder.wav',
               categoryIdentifier: 'reminder',
@@ -233,13 +240,24 @@ export function setupNotificationListeners() {
     }
   };
 
+  // Foreground: відкрити AlarmScreen одразу при отриманні нагадування
+  const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
+    const data = notification.request.content.data;
+    if (data?.reminderId) {
+      navigateToAlarm(data.reminderId as string, (data.title as string) || '');
+    }
+  });
+
   Notifications.getLastNotificationResponseAsync().then((response) => {
     if (response) handleResponse(response);
   });
 
-  const subscription = Notifications.addNotificationResponseReceivedListener(handleResponse);
+  const responseSub = Notifications.addNotificationResponseReceivedListener(handleResponse);
 
-  return () => subscription.remove();
+  return () => {
+    receivedSub.remove();
+    responseSub.remove();
+  };
 }
 
 type PushRecipient =

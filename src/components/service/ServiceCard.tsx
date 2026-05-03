@@ -1,11 +1,12 @@
 import React from 'react';
 import { View, Text as RNText, TouchableOpacity } from 'react-native';
 import styled from 'styled-components/native';
-import { Clock, CheckCircle2, Camera, Trash2 } from 'lucide-react-native';
+import { Clock, CheckCircle2, Camera, Trash2, Download } from 'lucide-react-native';
 import { StatusBadge } from '../shared/Badges';
 import { ServiceRecord as Service } from '../../types';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import { downloadImage } from '../../utils/download';
 
 const Card = styled.View<{ status: string }>`
   background-color: ${(props) => props.theme.colors.surface};
@@ -81,7 +82,6 @@ const PhotoPreview = styled.Image`
   width: 100%;
   height: 150px;
   border-radius: 8px;
-  margin-top: 10px;
 `;
 
 interface ServiceCardProps {
@@ -166,7 +166,24 @@ export const ServiceCardComponent: React.FC<ServiceCardProps> = ({
         </MetaItem>
       </MetaRow>
 
-      {service.photoUrl && <PhotoPreview source={{ uri: service.photoUrl }} />}
+      {service.photoUrl && (
+        <View style={{ position: 'relative', marginTop: 10 }}>
+          <PhotoPreview source={{ uri: service.photoUrl }} />
+          <TouchableOpacity
+            onPress={() => downloadImage(service.photoUrl!, `service_${service.id}.jpg`)}
+            style={{
+              position: 'absolute',
+              bottom: 10,
+              right: 10,
+              backgroundColor: 'rgba(0, 135, 68, 0.8)',
+              padding: 8,
+              borderRadius: 10,
+            }}
+          >
+            <Download size={18} color="white" />
+          </TouchableOpacity>
+        </View>
+      )}
 
       <ActionButtons theme={theme}>
         {permissions.canToggleServiceStatus(role) && (

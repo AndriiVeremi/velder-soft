@@ -152,11 +152,12 @@ const AnnouncementsScreen = ({ navigation, route }: Props) => {
   }, []);
 
   const handlePost = async () => {
-    if (!text.trim()) return notify.error('Wpisz treść ogłoszenia');
+    const cleanText = text.trim();
+    if (!cleanText) return notify.error('Wpisz treść ogłoszenia');
     setPosting(true);
     try {
       await addDoc(collection(db, 'announcements'), {
-        text,
+        text: cleanText,
         createdAt: serverTimestamp(),
         createdBy: user?.uid,
         authorName: userData?.name || 'Dyrektor',
