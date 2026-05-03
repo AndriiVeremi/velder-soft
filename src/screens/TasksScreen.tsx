@@ -184,7 +184,7 @@ const TasksScreen = () => {
               }
             }
           }
-          
+
           if (targetTokens.length > 0) {
             await sendPushNotification(
               targetTokens,

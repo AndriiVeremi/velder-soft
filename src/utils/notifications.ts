@@ -2,7 +2,8 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth } from '../config/firebase';
+import { auth, db } from '../config/firebase';
+import { doc, deleteDoc } from 'firebase/firestore';
 
 const PUSH_FUNCTION_URL =
   'https://us-central1-velder-project.cloudfunctions.net/sendPushNotification';
@@ -78,11 +79,21 @@ export async function registerForPushNotificationsAsync() {
       const CHANNEL_MIGRATION_KEY = 'notif_channels_v4';
       const migrated = await AsyncStorage.getItem(CHANNEL_MIGRATION_KEY);
       if (!migrated) {
-        for (const id of ['default', 'alerts', 'alerts_v2', 'alerts_v3', 'reminders', 'reminders_v2', 'done', 'done_v1']) {
-          try { await Notifications.deleteNotificationChannelAsync(id); } catch (_) {}
+        for (const id of [
+          'default',
+          'alerts',
+          'alerts_v2',
+          'alerts_v3',
+          'reminders',
+          'reminders_v2',
+          'done',
+          'done_v1',
+        ]) {
+          try {
+            await Notifications.deleteNotificationChannelAsync(id);
+          } catch (_) {}
         }
         await AsyncStorage.setItem(CHANNEL_MIGRATION_KEY, '1');
-        console.log('[Channels] Migration done — all channels deleted and will be recreated');
       }
 
       await Notifications.setNotificationChannelAsync('default', {
@@ -145,7 +156,6 @@ export async function registerForPushNotificationsAsync() {
           projectId: '60063075-7a9b-47f6-ba92-4021b7514fed',
         })
       ).data;
-      console.log('Push Token acquired:', token);
       return token;
     } catch (tokenErr) {
       console.warn('Failed to get push token:', tokenErr);
@@ -175,25 +185,24 @@ export function setupNotificationListeners() {
     const reminderId = data?.reminderId;
     const actionId = response.actionIdentifier;
 
-    console.log('Notification Response Received:', { actionId, reminderId, data });
-
     if (!reminderId) return;
 
     if (actionId === 'dismiss' || actionId === Notifications.DEFAULT_ACTION_IDENTIFIER) {
-      console.log(`Attempting to dismiss reminder: ${reminderId}`);
+      try {
+        await deleteDoc(doc(db, 'reminders', reminderId));
+      } catch (e) {
+        console.warn('Failed to delete reminder from DB:', e);
+      }
+
       for (let i = 0; i < REMINDER_REPEAT_COUNT; i++) {
         try {
           const idToCancel = `${reminderId}_${i}`;
           await Notifications.cancelScheduledNotificationAsync(idToCancel);
-          console.log(`Cancelled: ${idToCancel}`);
-        } catch (e) {
-          console.warn(`Failed to cancel ${reminderId}_${i}:`, e);
-        }
+        } catch (e) {}
       }
     }
 
     if (actionId === 'snooze') {
-      console.log(`Snoozing reminder: ${reminderId}`);
       for (let i = 0; i < REMINDER_REPEAT_COUNT; i++) {
         try {
           await Notifications.cancelScheduledNotificationAsync(`${reminderId}_${i}`);
@@ -246,11 +255,7 @@ export async function sendPushNotification(
   if (recipients.length === 0) return;
 
   const soundFile =
-    channelId === 'done'
-      ? 'done.wav'
-      : channelId === 'reminders'
-        ? 'reminder.wav'
-        : 'alert.wav';
+    channelId === 'done' ? 'done.wav' : channelId === 'reminders' ? 'reminder.wav' : 'alert.wav';
 
   const messages = recipients
     .map((r) => {
@@ -258,8 +263,6 @@ export async function sendPushNotification(
       const start = typeof r === 'string' ? undefined : r.notificationStart;
       const end = typeof r === 'string' ? undefined : r.notificationEnd;
       const silent = isQuietHours(start, end);
-
-      console.log(`[Push Debug] recipient token=${token?.substring(0, 20)}... start=${start} end=${end} silent=${silent} sound=${silent ? 'NULL' : soundFile}`);
 
       return {
         to: token,
@@ -280,8 +283,6 @@ export async function sendPushNotification(
 
   if (messages.length === 0) return;
 
-  console.log(`[Push API] Attempting to send ${messages.length} messages`);
-
   if (Platform.OS === 'web') {
     try {
       const idToken = await auth.currentUser?.getIdToken();
@@ -289,7 +290,7 @@ export async function sendPushNotification(
         console.error('[Push API] No auth token');
         return;
       }
-      const response = await fetch(PUSH_FUNCTION_URL, {
+      await fetch(PUSH_FUNCTION_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -302,8 +303,6 @@ export async function sendPushNotification(
           channelId,
         }),
       });
-      const result = await response.json();
-      console.log('[Push API] Cloud Function result:', result);
     } catch (error) {
       console.error('[Push API] Cloud Function Error:', error);
     }
@@ -325,8 +324,6 @@ export async function sendPushNotification(
     tickets.forEach((ticket: any, i: number) => {
       if (ticket.status === 'error') {
         console.error(`[Push API] Ticket ${i} error:`, ticket.message, ticket.details);
-      } else {
-        console.log(`[Push API] Ticket ${i} ok, id:`, ticket.id);
       }
     });
   } catch (error) {

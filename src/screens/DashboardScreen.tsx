@@ -295,49 +295,20 @@ const DashboardScreen = ({ navigation }: Props) => {
   }, []);
 
   const hospitalsList = useMemo(() => {
-    const legacyNames = Array.from(new Set(allProjects.map((p) => p.hospital))).filter(Boolean);
-    const existingNames = new Set(allHospitals.map((h) => h.name));
-    const combined = [...allHospitals];
-    legacyNames.forEach((name) => {
-      if (!existingNames.has(name)) combined.push({ id: `legacy_${name}`, name: name as string });
-    });
-    return combined.sort((a, b) => a.name.localeCompare(b.name));
-  }, [allHospitals, allProjects]);
+    return [...allHospitals].sort((a, b) => a.name.localeCompare(b.name));
+  }, [allHospitals]);
 
   const departmentsList = useMemo(() => {
     if (!selectedHospital) return [];
-    const dbDepts = allDepartments.filter(
-      (d) => d.hospitalId === selectedHospital.id || d.hospitalName === selectedHospital.name
-    );
-    const existingNames = new Set(dbDepts.map((d) => d.name));
-
-    const legacyDepts = Array.from(
-      new Set(
-        allProjects.filter((p) => p.hospital === selectedHospital.name).map((p) => p.department)
-      )
-    ).filter(Boolean);
-
-    const combined = [...dbDepts];
-    legacyDepts.forEach((name) => {
-      if (!existingNames.has(name)) {
-        combined.push({
-          id: `legacy_dept_${name}`,
-          hospitalId: selectedHospital.id,
-          name: name as string,
-          status: 'IN_PROGRESS',
-        });
-      }
-    });
-
-    return combined.sort((a, b) => a.name.localeCompare(b.name));
-  }, [selectedHospital, allDepartments, allProjects]);
+    return allDepartments
+      .filter((d) => d.hospitalId === selectedHospital.id)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [selectedHospital, allDepartments]);
 
   const projects = useMemo(() => {
     if (!selectedHospital || !selectedDepartment) return [];
     return allProjects.filter(
-      (p) =>
-        (p.hospitalId === selectedHospital.id && p.departmentId === selectedDepartment.id) ||
-        (p.hospital === selectedHospital.name && p.department === selectedDepartment.name)
+      (p) => p.hospitalId === selectedHospital.id && p.departmentId === selectedDepartment.id
     );
   }, [selectedHospital, selectedDepartment, allProjects]);
 
@@ -367,19 +338,8 @@ const DashboardScreen = ({ navigation }: Props) => {
         await addDoc(collection(db, 'hospitals'), { name, createdAt: serverTimestamp() });
         notify.success('Szpital dodany');
       } else if (selectedHospital) {
-        let hospId = selectedHospital.id;
-
-        if (hospId.startsWith('legacy_')) {
-          const hospSnap = await addDoc(collection(db, 'hospitals'), {
-            name: selectedHospital.name,
-            createdAt: serverTimestamp(),
-          });
-          hospId = hospSnap.id;
-          setSelectedHospital({ id: hospId, name: selectedHospital.name });
-        }
-
         await addDoc(collection(db, 'departments'), {
-          hospitalId: hospId,
+          hospitalId: selectedHospital.id,
           hospitalName: selectedHospital.name,
           name,
           status: 'IN_PROGRESS',
@@ -397,7 +357,7 @@ const DashboardScreen = ({ navigation }: Props) => {
   };
 
   const toggleDeptStatus = async (dept: Department) => {
-    if (role !== 'DIRECTOR' || dept.id.startsWith('legacy_')) return;
+    if (role !== 'DIRECTOR') return;
     const newStatus = dept.status === 'COMPLETED' ? 'IN_PROGRESS' : 'COMPLETED';
     try {
       await updateDoc(doc(db, 'departments', dept.id), { status: newStatus });
@@ -408,7 +368,7 @@ const DashboardScreen = ({ navigation }: Props) => {
   };
 
   const handleDeleteHospital = (hosp: Hospital) => {
-    if (role !== 'DIRECTOR' || hosp.id.startsWith('legacy_')) return;
+    if (role !== 'DIRECTOR') return;
     const perform = async () => {
       try {
         const projectsSnap = await getDocs(
@@ -435,7 +395,7 @@ const DashboardScreen = ({ navigation }: Props) => {
   };
 
   const handleDeleteDepartment = (dept: Department) => {
-    if (role !== 'DIRECTOR' || dept.id.startsWith('legacy_')) return;
+    if (role !== 'DIRECTOR') return;
     const perform = async () => {
       try {
         const projectsSnap = await getDocs(
@@ -511,21 +471,11 @@ const DashboardScreen = ({ navigation }: Props) => {
             keyExtractor={(item) => item.id || ''}
             renderItem={({ item }) => (
               <ItemCard onPress={() => setSelectedHospital(item)} theme={theme}>
-                <Folder
-                  size={24}
-                  color={
-                    item.id.startsWith('legacy_')
-                      ? theme.colors.textSecondary
-                      : theme.colors.primary
-                  }
-                />
+                <Folder size={24} color={theme.colors.primary} />
                 <ItemInfo>
                   <ItemTitle theme={theme}>{item.name}</ItemTitle>
-                  {item.id.startsWith('legacy_') && (
-                    <ItemSubtitle theme={theme}>Stara dokumentacja</ItemSubtitle>
-                  )}
                 </ItemInfo>
-                {role === 'DIRECTOR' && !item.id.startsWith('legacy_') && (
+                {role === 'DIRECTOR' && (
                   <TouchableOpacity
                     onPress={(e) => {
                       e.stopPropagation();
@@ -553,14 +503,7 @@ const DashboardScreen = ({ navigation }: Props) => {
             keyExtractor={(item) => item.id || ''}
             renderItem={({ item }) => (
               <ItemCard onPress={() => setSelectedDepartment(item)} theme={theme}>
-                <Folder
-                  size={24}
-                  color={
-                    item.id.startsWith('legacy_dept_')
-                      ? theme.colors.textSecondary
-                      : theme.colors.warning || '#FFA000'
-                  }
-                />
+                <Folder size={24} color={theme.colors.warning || '#FFA000'} />
                 <ItemInfo>
                   <ItemTitle theme={theme}>{item.name}</ItemTitle>
                   <StatusRow>
@@ -569,13 +512,10 @@ const DashboardScreen = ({ navigation }: Props) => {
                       {item.status === 'COMPLETED' ? 'Zakończony' : 'W toku'}
                     </ItemSubtitle>
                   </StatusRow>
-                  {item.id.startsWith('legacy_dept_') && (
-                    <ItemSubtitle theme={theme}>Stary oddział</ItemSubtitle>
-                  )}
                 </ItemInfo>
 
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  {role === 'DIRECTOR' && !item.id.startsWith('legacy_dept_') && (
+                  {role === 'DIRECTOR' && (
                     <TouchableOpacity
                       onPress={(e) => {
                         e.stopPropagation();
@@ -590,19 +530,17 @@ const DashboardScreen = ({ navigation }: Props) => {
                       )}
                     </TouchableOpacity>
                   )}
-                  {role === 'DIRECTOR' &&
-                    !item.id.startsWith('legacy_') &&
-                    !item.id.startsWith('legacy_dept_') && (
-                      <TouchableOpacity
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          handleDeleteDepartment(item);
-                        }}
-                        style={{ padding: 10 }}
-                      >
-                        <Trash2 size={22} color={theme.colors.error} />
-                      </TouchableOpacity>
-                    )}
+                  {role === 'DIRECTOR' && (
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleDeleteDepartment(item);
+                      }}
+                      style={{ padding: 10 }}
+                    >
+                      <Trash2 size={22} color={theme.colors.error} />
+                    </TouchableOpacity>
+                  )}
                   <ChevronRight size={20} color={theme.colors.border} />
                 </View>
               </ItemCard>
@@ -677,8 +615,8 @@ const DashboardScreen = ({ navigation }: Props) => {
       setIsModalVisible(true);
     } else {
       navigation.navigate('AddProject', {
-        hospitalId: selectedHospital.id.startsWith('legacy_') ? null : selectedHospital.id,
-        departmentId: selectedDepartment.id.startsWith('legacy_') ? null : selectedDepartment.id,
+        hospitalId: selectedHospital.id,
+        departmentId: selectedDepartment.id,
         hospitalName: selectedHospital.name,
         departmentName: selectedDepartment.name,
       });

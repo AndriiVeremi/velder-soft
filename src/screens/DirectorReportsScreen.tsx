@@ -41,6 +41,7 @@ import {
 } from 'lucide-react-native';
 import { format } from 'date-fns';
 import { WebView } from 'react-native-webview';
+import { Video as ExpoVideo, ResizeMode } from 'expo-av';
 
 const Container = styled.View`
   flex: 1;
@@ -166,34 +167,6 @@ const DirectorReportsScreen = () => {
   const scheduleMarkAsRead = useMarkAsRead('reports');
 
   useEffect(() => {
-    const cleanup = async () => {
-      try {
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-        const q = query(
-          collection(db, 'reports'),
-          where('createdAt', '<', Timestamp.fromDate(sevenDaysAgo))
-        );
-        const snap = await getDocs(q);
-
-        for (const docSnap of snap.docs) {
-          const data = docSnap.data() as Report;
-          for (const item of data.media) {
-            try {
-              const storageRef = ref(storage, item.path);
-              await deleteObject(storageRef);
-            } catch (e) {
-              console.warn('Failed to delete storage item during cleanup:', item.path);
-            }
-          }
-          await deleteDoc(doc(db, 'reports', docSnap.id));
-        }
-      } catch (e) {
-        console.error('Error during old reports cleanup:', e);
-      }
-    };
-
     const q = query(collection(db, 'reports'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snap) => {
       const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Report);
@@ -284,65 +257,28 @@ const DirectorReportsScreen = () => {
 
             <Description theme={theme}>{item.description}</Description>
 
-            {Platform.OS === 'web' ? (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'row',
-                  overflowX: 'auto',
-                  marginBottom: 10,
-                  gap: 10,
-                }}
-              >
-                {item.media.map((file, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => openViewer(file)}
-                    style={{
-                      width: 80,
-                      height: 80,
-                      borderRadius: 8,
-                      overflow: 'hidden',
-                      cursor: 'pointer',
-                      flexShrink: 0,
-                      backgroundImage: file.type === 'image' ? `url(${file.url})` : undefined,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      backgroundColor: file.type === 'video' ? '#000' : theme.colors.background,
-                      border: `1px solid ${theme.colors.border}`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    {file.type === 'video' && <Play size={20} color="white" />}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <MediaStrip horizontal showsHorizontalScrollIndicator={false}>
-                {item.media.map((file, idx) => (
-                  <MediaThumbnail key={idx} theme={theme} onPress={() => openViewer(file)}>
-                    {file.type === 'image' ? (
-                      <Image source={{ uri: file.url }} style={{ width: 80, height: 80 }} />
-                    ) : (
-                      <View
-                        style={{
-                          flex: 1,
-                          backgroundColor: '#000',
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          width: '100%',
-                        }}
-                      >
-                        <Video size={24} color="white" />
-                        <Play size={12} color="white" style={{ position: 'absolute' }} />
-                      </View>
-                    )}
-                  </MediaThumbnail>
-                ))}
-              </MediaStrip>
-            )}
+            <MediaStrip horizontal showsHorizontalScrollIndicator={false}>
+              {item.media.map((file, idx) => (
+                <MediaThumbnail key={idx} theme={theme} onPress={() => openViewer(file)}>
+                  {file.type === 'image' ? (
+                    <Image source={{ uri: file.url }} style={{ width: 80, height: 80 }} />
+                  ) : (
+                    <View
+                      style={{
+                        flex: 1,
+                        backgroundColor: '#000',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        width: '100%',
+                      }}
+                    >
+                      <Video size={24} color="white" />
+                      <Play size={12} color="white" style={{ position: 'absolute' }} />
+                    </View>
+                  )}
+                </MediaThumbnail>
+              ))}
+            </MediaStrip>
 
             <DeletionInfo theme={theme}>Wygasa po 7 dniach od utworzenia</DeletionInfo>
           </ReportCard>
@@ -361,36 +297,42 @@ const DirectorReportsScreen = () => {
           </CloseModalButton>
 
           {selectedMedia?.type === 'image' ? (
-            Platform.OS === 'web' ? (
-              <div
-                style={{
-                  width: '90vw',
-                  height: '80vh',
-                  backgroundImage: `url(${selectedMedia.url})`,
-                  backgroundSize: 'contain',
-                  backgroundPosition: 'center',
-                  backgroundRepeat: 'no-repeat',
-                }}
-              />
-            ) : (
-              <Image
-                source={{ uri: selectedMedia.url }}
-                style={{ width: '100%', height: '80%', resizeMode: 'contain' }}
-              />
-            )
+            <Image
+              source={{ uri: selectedMedia.url }}
+              style={{ width: '100%', height: '80%', resizeMode: 'contain' }}
+            />
           ) : (
             <View style={{ width: '100%', height: '80%' }}>
               {Platform.OS === 'web' ? (
-                <video
-                  src={selectedMedia?.url}
-                  controls
-                  style={{ width: '100%', height: '100%' }}
-                />
+                <View
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    backgroundColor: 'black',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <WebView
+                    source={{
+                      html: `
+                        <body style="margin:0; background:black; display:flex; align-items:center; justify-content:center;">
+                          <video src="${selectedMedia?.url}" controls style="max-width: 100%; max-height: 100%;"></video>
+                        </body>
+                      `,
+                    }}
+                    style={{ flex: 1 }}
+                  />
+                </View>
               ) : (
-                <WebView
+                <ExpoVideo
                   source={{ uri: selectedMedia?.url || '' }}
+                  rate={1.0}
+                  volume={1.0}
+                  isMuted={false}
+                  resizeMode={ResizeMode.CONTAIN}
+                  shouldPlay
+                  useNativeControls
                   style={{ flex: 1, backgroundColor: 'black' }}
-                  allowsFullscreenVideo
                 />
               )}
             </View>

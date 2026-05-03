@@ -247,8 +247,6 @@ const ReportProblemScreen = ({ navigation }: Props) => {
           }
         });
 
-        console.log(`[Report Debug] Notifying ${tokens.length} directors`);
-
         if (tokens.length > 0) {
           await sendPushNotification(
             tokens,

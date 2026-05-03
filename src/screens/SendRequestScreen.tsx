@@ -210,13 +210,6 @@ const SendRequestScreen = ({ navigation }: Props) => {
             });
         });
 
-        const debugInfo = directorsSnap.docs.map(d => {
-          const data = d.data();
-          return `uid:${d.id.substring(0,6)} token:${data.pushToken ? data.pushToken.substring(0,15)+'…' : 'BRAK'} start:${data.notificationStart} end:${data.notificationEnd}`;
-        }).join('\n');
-        console.log(`[Request Debug] Notifying ${tokens.length} directors. Found docs:\n${debugInfo}`);
-        Alert.alert('DEBUG Push', `Znaleziono ${directorsSnap.size} dyrektorów\nZ tokenem: ${tokens.length}\n\n${debugInfo}`);
-
         if (tokens.length > 0) {
           await sendPushNotification(
             tokens,

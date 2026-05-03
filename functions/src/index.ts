@@ -1,6 +1,6 @@
-import * as functions from "firebase-functions/v2";
-import * as admin from "firebase-admin";
-import { Expo, ExpoPushMessage } from "expo-server-sdk";
+import * as functions from 'firebase-functions/v2';
+import * as admin from 'firebase-admin';
+import { Expo, ExpoPushMessage } from 'expo-server-sdk';
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -14,28 +14,21 @@ interface PushRequest {
 }
 
 export const sendPushNotification = functions.https.onCall(async (request) => {
-  // Перевірка авторизації
   if (!request.auth) {
-    throw new functions.https.HttpsError(
-      "unauthenticated",
-      "Користувач повинен бути авторизований."
-    );
+    throw new functions.https.HttpsError('unauthenticated', 'Użytkownik musi być autoryzowany.');
   }
 
   const data = request.data as PushRequest;
-  const { recipients, title, body, channelId = "default" } = data;
+  const { recipients, title, body, channelId = 'default' } = data;
 
   if (!recipients || recipients.length === 0) {
-    return { success: false, error: "Немає отримувачів" };
+    return { success: false, error: 'Brak odbiorców' };
   }
 
   const messages: ExpoPushMessage[] = [];
-  
-  // Визначаємо файл звуку за каналом
-  const soundFile = 
-    channelId === 'done' ? 'done.wav' : 
-    channelId === 'reminders' ? 'reminder.wav' : 
-    'alert.wav';
+
+  const soundFile =
+    channelId === 'done' ? 'done.wav' : channelId === 'reminders' ? 'reminder.wav' : 'alert.wav';
 
   for (const token of recipients) {
     if (!Expo.isExpoPushToken(token)) {
@@ -44,15 +37,15 @@ export const sendPushNotification = functions.https.onCall(async (request) => {
 
     messages.push({
       to: token,
-      sound: soundFile as any, 
+      sound: soundFile as any,
       title,
       body,
       priority: 'high',
-      mutableContent: true, // Для iOS
+      mutableContent: true,
       data: { withSound: true },
       android: {
         channelId: channelId,
-        sound: soundFile, // Явно вказуємо назву файлу для Android
+        sound: soundFile, 
       },
     });
   }
@@ -66,8 +59,7 @@ export const sendPushNotification = functions.https.onCall(async (request) => {
       tickets.push(...ticketChunk);
     }
 
-    // Оновлення статистики в базі даних
-    const statsRef = db.collection("settings").doc("stats");
+    const statsRef = db.collection('settings').doc('stats');
     await statsRef.set(
       {
         pushCount: admin.firestore.FieldValue.increment(messages.length),
@@ -78,7 +70,7 @@ export const sendPushNotification = functions.https.onCall(async (request) => {
 
     return { success: true, sentCount: messages.length };
   } catch (error) {
-    console.error("Push error:", error);
-    throw new functions.https.HttpsError("internal", "Помилка відправки пушів");
+    console.error('Push error:', error);
+    throw new functions.https.HttpsError('internal', 'Błąd podczas wysyłania wiadomości push');
   }
 });

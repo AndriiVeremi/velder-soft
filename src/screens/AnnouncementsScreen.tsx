@@ -205,9 +205,20 @@ const AnnouncementsScreen = ({ navigation, route }: Props) => {
       'Czy na pewno chcesz usunąć to ogłoszenie?',
       async () => {
         try {
+          // First delete all reads
+          const readsSnap = await getDocs(
+            query(collection(db, 'announcement_reads'), where('announcementId', '==', id))
+          );
+          const deletePromises = readsSnap.docs.map((readDoc) =>
+            deleteDoc(doc(db, 'announcement_reads', readDoc.id))
+          );
+          await Promise.all(deletePromises);
+
+          // Then delete the announcement itself
           await deleteDoc(doc(db, 'announcements', id));
           notify.success('Usunięto ogłoszenie');
         } catch (e) {
+          console.error('Delete error:', e);
           notify.error('Błąd usuwania');
         }
       },

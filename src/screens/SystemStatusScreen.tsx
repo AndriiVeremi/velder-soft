@@ -10,7 +10,15 @@ import {
 import styled from 'styled-components/native';
 import { useAppTheme } from '../context/ThemeContext';
 import { getSystemStats, SystemStats } from '../utils/systemStats';
-import { Database, HardDrive, Trash2, RefreshCcw, Info, AlertTriangle, Bell } from 'lucide-react-native';
+import {
+  Database,
+  HardDrive,
+  Trash2,
+  RefreshCcw,
+  Info,
+  AlertTriangle,
+  Bell,
+} from 'lucide-react-native';
 import { runWeeklyCleanup } from '../utils/cleanup';
 import { notify } from '../utils/notify';
 import { ScreenHeader, ScreenTitle } from '../components/CommonUI';
@@ -267,10 +275,7 @@ const SystemStatusScreen = () => {
           </StatRow>
 
           <ProgressContainer theme={theme}>
-            <ProgressBar 
-              width={stats?.push.percentage || 0} 
-              color={theme.colors.primary} 
-            />
+            <ProgressBar width={stats?.push.percentage || 0} color={theme.colors.primary} />
           </ProgressContainer>
 
           <StatRow>

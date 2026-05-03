@@ -1,76 +1,74 @@
 export default {
   expo: {
-    name: "VelderApp",
-    slug: "velder-soft",
-    version: "1.0.0",
-    orientation: "portrait",
-    icon: "./assets/VelderIcon.png",
-    userInterfaceStyle: "light",
+    name: 'VelderApp',
+    slug: 'velder-soft',
+    version: '1.0.0',
+    orientation: 'portrait',
+    icon: './assets/VelderIcon.png',
+    userInterfaceStyle: 'light',
     splash: {
-      image: "./assets/splash-icon.png",
-      resizeMode: "contain",
-      backgroundColor: "#008744",
+      image: './assets/splash-icon.png',
+      resizeMode: 'contain',
+      backgroundColor: '#008744',
     },
     ios: {
       supportsTablet: true,
-      bundleIdentifier: "com.velder.soft",
-      googleServicesFile: process.env.GOOGLE_SERVICES_PLIST || "./GoogleService-Info.plist",
+      bundleIdentifier: 'com.velder.soft',
+      googleServicesFile: process.env.GOOGLE_SERVICES_PLIST || './GoogleService-Info.plist',
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
       },
     },
     android: {
-      package: "com.velder.soft",
-      googleServicesFile: process.env.GOOGLE_SERVICES_JSON || "./google-services.json",
-      softwareKeyboardLayoutMode: "resize",
+      package: 'com.velder.soft',
+      googleServicesFile: process.env.GOOGLE_SERVICES_JSON || './google-services.json',
+      softwareKeyboardLayoutMode: 'resize',
       adaptiveIcon: {
-        foregroundImage: "./assets/icon-foreground.png",
-        backgroundColor: "#008744",
+        foregroundImage: './assets/icon-foreground.png',
+        backgroundColor: '#008744',
       },
       navigationBar: {
-        backgroundColor: "#ffffff",
-        barStyle: "dark-content",
+        backgroundColor: '#ffffff',
+        barStyle: 'dark-content',
       },
       edgeToEdgeEnabled: true,
     },
     web: {
-      favicon: "./assets/favicon.png",
-      bundler: "metro",
+      favicon: './assets/favicon.png',
+      bundler: 'metro',
     },
     updates: {
-      url: "https://u.expo.dev/60063075-7a9b-47f6-ba92-4021b7514fed",
+      url: 'https://u.expo.dev/60063075-7a9b-47f6-ba92-4021b7514fed',
     },
     runtimeVersion: {
-      policy: "appVersion",
+      policy: 'appVersion',
     },
     plugins: [
-      "expo-web-browser",
+      'expo-web-browser',
       [
-        "expo-notifications",
+        'expo-notifications',
         {
-          icon: "./assets/notification-icon.png",
-          color: "#008744",
-          defaultChannel: "default",
+          icon: './assets/notification-icon.png',
+          color: '#008744',
+          defaultChannel: 'default',
           sounds: [
-            "./assets/sound/alert.wav",
-            "./assets/sound/reminder.wav",
-            "./assets/sound/done.wav",
+            './assets/sound/alert.wav',
+            './assets/sound/reminder.wav',
+            './assets/sound/done.wav',
           ],
         },
       ],
       [
-        "expo-speech-recognition",
+        'expo-speech-recognition',
         {
-          microphonePermission:
-            "Dozwól na dostęp do mikrofonu, aby móc dyktować przypomnienia.",
-          speechRecognitionPermission:
-            "Dozwól na rozpoznawanie mowy, aby zamieniać głos na tekst.",
-          },
-          ],
-          ],
-          extra: {
+          microphonePermission: 'Dozwól na dostęp do mikrofonu, aby móc dyktować przypomnienia.',
+          speechRecognitionPermission: 'Dozwól na rozpoznawanie mowy, aby zamieniać głos na tekst.',
+        },
+      ],
+    ],
+    extra: {
       eas: {
-        projectId: "60063075-7a9b-47f6-ba92-4021b7514fed",
+        projectId: '60063075-7a9b-47f6-ba92-4021b7514fed',
       },
     },
   },
