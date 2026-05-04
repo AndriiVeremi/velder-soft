@@ -512,23 +512,32 @@ const VacationsScreen = ({ route, navigation }: Props) => {
                   <BadgeText>{item.status}</BadgeText>
                 </StatusBadge>
               </View>
-              {isAdminView && item.status === 'PENDING' ? (
+              {isAdminView ? (
                 <ActionButtons>
-                  <IconButton
-                    color={theme.colors.success}
-                    onPress={() => handleAction(item.id, 'APPROVED')}
+                  {item.status === 'PENDING' && (
+                    <>
+                      <IconButton
+                        color={theme.colors.success}
+                        onPress={() => handleAction(item.id, 'APPROVED')}
+                      >
+                        <Check size={20} color="white" />
+                      </IconButton>
+                      <IconButton
+                        color={theme.colors.error}
+                        onPress={() => handleAction(item.id, 'REJECTED')}
+                      >
+                        <X size={20} color="white" />
+                      </IconButton>
+                    </>
+                  )}
+                  <TouchableOpacity
+                    style={{ marginLeft: 10, alignSelf: 'center' }}
+                    onPress={() => deleteRequest(item.id)}
                   >
-                    <Check size={20} color="white" />
-                  </IconButton>
-                  <IconButton
-                    color={theme.colors.error}
-                    onPress={() => handleAction(item.id, 'REJECTED')}
-                  >
-                    <X size={20} color="white" />
-                  </IconButton>
+                    <Trash2 size={20} color={theme.colors.textSecondary} />
+                  </TouchableOpacity>
                 </ActionButtons>
               ) : (
-                !isAdminView &&
                 item.status === 'PENDING' && (
                   <TouchableOpacity onPress={() => deleteRequest(item.id)}>
                     <Trash2 size={20} color={theme.colors.textSecondary} />

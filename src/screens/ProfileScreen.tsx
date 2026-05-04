@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Switch,
 } from 'react-native';
+import Constants from 'expo-constants';
 import styled from 'styled-components/native';
 import { useAuth } from '../context/AuthContext';
 import { db, auth } from '../config/firebase';
