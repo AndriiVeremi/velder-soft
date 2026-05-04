@@ -644,14 +644,14 @@ const DashboardScreen = ({ navigation }: Props) => {
   return (
     <Container theme={theme}>
       {!isDbReady && role === 'DIRECTOR' && (
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={handleInitDb}
-          style={{ 
-            backgroundColor: theme.colors.warning, 
-            padding: 15, 
-            margin: 10, 
+          style={{
+            backgroundColor: theme.colors.warning,
+            padding: 15,
+            margin: 10,
             borderRadius: 8,
-            alignItems: 'center'
+            alignItems: 'center',
           }}
         >
           <RNText style={{ fontWeight: 'bold', color: 'white' }}>

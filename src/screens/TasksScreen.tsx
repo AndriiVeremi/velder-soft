@@ -190,7 +190,8 @@ const TasksScreen = () => {
               targetTokens,
               isUrgent ? '🚨 PILNE ZADANIE! 🚨' : 'Nowe zadanie! 📋',
               `${title.trim()}\n${dateStr} o ${time}`,
-              'alerts'
+              'alerts',
+              { screen: 'Tasks' }
             );
           }
         } catch (pushErr) {
@@ -235,7 +236,8 @@ const TasksScreen = () => {
               tokens,
               task.priority === 'URGENT' ? '🚨 PILNE ZADANIE WYKONANE! ✅' : 'Zadanie wykonane! ✅',
               `${userData?.name || 'Pracownik'} oznaczył jako wykonane: ${task.title}`,
-              'done'
+              'done',
+              { screen: 'Tasks' }
             );
           }
         } catch (pushErr) {

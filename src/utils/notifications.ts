@@ -49,8 +49,6 @@ Notifications.setNotificationHandler({
 });
 
 export const REMINDER_REPEAT_COUNT = 20;
-/** @deprecated use REMINDER_INTERVAL_SECONDS */
-export const REMINDER_INTERVAL_MINUTES = 1;
 export const REMINDER_SIGNALS_COUNT = 10;
 export const REMINDER_INTERVAL_SECONDS = 30;
 
@@ -188,59 +186,69 @@ export function setupNotificationListeners() {
   const handleResponse = async (response: Notifications.NotificationResponse) => {
     const data = response.notification.request.content.data;
     const reminderId = data?.reminderId as string | undefined;
+    const screen = data?.screen as string | undefined;
+    const params = data?.params as any;
     const actionId = response.actionIdentifier;
 
-    if (!reminderId) return;
+    if (reminderId) {
+      if (actionId === Notifications.DEFAULT_ACTION_IDENTIFIER) {
+        navigateToAlarm(reminderId, (data?.title as string) || '');
+        return;
+      }
 
-    if (actionId === Notifications.DEFAULT_ACTION_IDENTIFIER) {
-      navigateToAlarm(reminderId, (data?.title as string) || '');
+      if (actionId === 'dismiss') {
+        try {
+          await deleteDoc(doc(db, 'reminders', reminderId));
+        } catch (e) {
+          console.warn('Failed to delete reminder from DB:', e);
+        }
+        for (let i = 0; i < REMINDER_REPEAT_COUNT; i++) {
+          try {
+            await Notifications.cancelScheduledNotificationAsync(`${reminderId}_${i}`);
+          } catch (e) {}
+        }
+      }
+
+      if (actionId === 'snooze') {
+        for (let i = 0; i < REMINDER_REPEAT_COUNT; i++) {
+          try {
+            await Notifications.cancelScheduledNotificationAsync(`${reminderId}_${i}`);
+          } catch (e) {}
+        }
+        const snoozeBase = new Date(Date.now() + 5 * 60 * 1000);
+        for (let i = 0; i < REMINDER_SIGNALS_COUNT; i++) {
+          const scheduleDate = new Date(
+            snoozeBase.getTime() + i * REMINDER_INTERVAL_SECONDS * 1000
+          );
+          try {
+            await Notifications.scheduleNotificationAsync({
+              identifier: `${reminderId}_${i}`,
+              content: {
+                title: 'Przypomnienie (powrót) 🔔',
+                body: (data?.title as string) || '',
+                sound: 'reminder.wav',
+                categoryIdentifier: 'reminder',
+                data: { reminderId, title: data?.title },
+              },
+              trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.DATE,
+                date: scheduleDate,
+                channelId: 'reminders',
+              },
+            });
+          } catch (e) {}
+        }
+      }
       return;
     }
 
-    if (actionId === 'dismiss') {
-      try {
-        await deleteDoc(doc(db, 'reminders', reminderId));
-      } catch (e) {
-        console.warn('Failed to delete reminder from DB:', e);
-      }
-      for (let i = 0; i < REMINDER_REPEAT_COUNT; i++) {
-        try {
-          await Notifications.cancelScheduledNotificationAsync(`${reminderId}_${i}`);
-        } catch (e) {}
-      }
-    }
-
-    if (actionId === 'snooze') {
-      for (let i = 0; i < REMINDER_REPEAT_COUNT; i++) {
-        try {
-          await Notifications.cancelScheduledNotificationAsync(`${reminderId}_${i}`);
-        } catch (e) {}
-      }
-      const snoozeBase = new Date(Date.now() + 5 * 60 * 1000);
-      for (let i = 0; i < REMINDER_SIGNALS_COUNT; i++) {
-        const scheduleDate = new Date(snoozeBase.getTime() + i * REMINDER_INTERVAL_SECONDS * 1000);
-        try {
-          await Notifications.scheduleNotificationAsync({
-            identifier: `${reminderId}_${i}`,
-            content: {
-              title: 'Przypomnienie (powrót) 🔔',
-              body: (data?.title as string) || '',
-              sound: 'reminder.wav',
-              categoryIdentifier: 'reminder',
-              data: { reminderId, title: data?.title },
-            },
-            trigger: {
-              type: Notifications.SchedulableTriggerInputTypes.DATE,
-              date: scheduleDate,
-              channelId: 'reminders',
-            },
-          });
-        } catch (e) {}
+    if (screen && actionId === Notifications.DEFAULT_ACTION_IDENTIFIER) {
+      if (navigationRef.isReady()) {
+        navigationRef.navigate(screen, params);
       }
     }
   };
 
-  // Foreground: відкрити AlarmScreen одразу при отриманні нагадування
   const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
     const data = notification.request.content.data;
     if (data?.reminderId) {
@@ -268,7 +276,8 @@ export async function sendPushNotification(
   recipients: PushRecipient[],
   title: string,
   body: string,
-  channelId: 'alerts' | 'reminders' | 'done' = 'alerts'
+  channelId: 'alerts' | 'reminders' | 'done' = 'alerts',
+  data?: Record<string, any>
 ) {
   if (recipients.length === 0) return;
 
@@ -295,6 +304,7 @@ export async function sendPushNotification(
         },
         _displayInForeground: true,
         ttl: 3600,
+        data: { ...data, title },
       };
     })
     .filter((m) => !!m.to);
@@ -304,10 +314,7 @@ export async function sendPushNotification(
   if (Platform.OS === 'web') {
     try {
       const idToken = await auth.currentUser?.getIdToken();
-      if (!idToken) {
-        console.error('[Push API] No auth token');
-        return;
-      }
+      if (!idToken) return;
       await fetch(PUSH_FUNCTION_URL, {
         method: 'POST',
         headers: {
@@ -319,6 +326,7 @@ export async function sendPushNotification(
           title,
           body,
           channelId,
+          data,
         }),
       });
     } catch (error) {

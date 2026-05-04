@@ -343,7 +343,8 @@ const VacationsScreen = ({ route, navigation }: Props) => {
             tokens,
             'Nowy wniosek o urlop! 🏖️',
             `${userData?.name || 'Pracownik'} prosi o wolne: ${dates[0]} — ${dates[dates.length - 1]}`,
-            'alerts'
+            'alerts',
+            { screen: 'Vacations', params: { isAdminView: true } }
           );
         }
       } catch (pushErr) {
@@ -384,7 +385,9 @@ const VacationsScreen = ({ route, navigation }: Props) => {
                 status === 'APPROVED' ? 'Urlop zatwierdzony! ✅' : 'Wniosek odrzucony ❌',
                 status === 'APPROVED'
                   ? `Twój urlop (${request.startDate}) został zaakceptowany.`
-                  : `Twój wniosek o urlop (${request.startDate}) nie został przyjęty.`
+                  : `Twój wniosek o urlop (${request.startDate}) nie został przyjęty.`,
+                'alerts',
+                { screen: 'Vacations' }
               );
             }
           }

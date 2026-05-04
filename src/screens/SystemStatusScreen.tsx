@@ -229,7 +229,7 @@ const SystemStatusScreen = () => {
           </ProgressContainer>
 
           <StatRow>
-            <StatLabel theme={theme}>Wykorzystanie limitu (5k)</StatLabel>
+            <StatLabel theme={theme}>Wykorzystanie limitu (5 Gb)</StatLabel>
             <StatValue theme={theme}>{stats?.database.percentage}%</StatValue>
           </StatRow>
         </Card>
@@ -270,7 +270,7 @@ const SystemStatusScreen = () => {
           </CardHeader>
 
           <StatRow>
-            <StatLabel theme={theme}>Wysłano в системі</StatLabel>
+            <StatLabel theme={theme}>Wysłano w systemie</StatLabel>
             <StatValue theme={theme}>{stats?.push.count.toLocaleString()}</StatValue>
           </StatRow>
 
@@ -279,7 +279,7 @@ const SystemStatusScreen = () => {
           </ProgressContainer>
 
           <StatRow>
-            <StatLabel theme={theme}>Limit безкоштовний (Firebase)</StatLabel>
+            <StatLabel theme={theme}>Limit bezpłatny (Firebase)</StatLabel>
             <StatValue theme={theme}>2,000,000</StatValue>
           </StatRow>
         </Card>

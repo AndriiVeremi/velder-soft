@@ -215,7 +215,8 @@ const SendRequestScreen = ({ navigation }: Props) => {
             tokens,
             'Nowa wiadomość od pracownika! 📩',
             `${userData?.name || 'Pracownik'}: ${text.trim().length > 50 ? text.trim().substring(0, 50) + '...' : text.trim()}`,
-            'alerts'
+            'alerts',
+            { screen: 'Home' }
           );
         }
       } catch (pushErr) {

@@ -11,6 +11,7 @@ interface PushRequest {
   title: string;
   body: string;
   channelId?: string;
+  data?: Record<string, unknown>;
 }
 
 export const sendPushNotification = functions.https.onCall(async (request) => {
@@ -19,7 +20,7 @@ export const sendPushNotification = functions.https.onCall(async (request) => {
   }
 
   const data = request.data as PushRequest;
-  const { recipients, title, body, channelId = 'default' } = data;
+  const { recipients, title, body, channelId = 'default', data: extraData } = data;
 
   if (!recipients || recipients.length === 0) {
     return { success: false, error: 'Brak odbiorców' };
@@ -42,7 +43,7 @@ export const sendPushNotification = functions.https.onCall(async (request) => {
       body,
       priority: 'high',
       mutableContent: true,
-      data: { withSound: true },
+      data: { withSound: true, ...(extraData || {}) },
       android: {
         channelId: channelId,
         sound: soundFile,

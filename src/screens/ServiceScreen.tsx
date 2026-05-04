@@ -139,7 +139,8 @@ const ServiceScreen = () => {
             tokens,
             'Nowe zlecenie serwisowe! 🔧',
             `Nowe zadanie w: ${hospital.trim()} — ${department.trim()}`,
-            'alerts'
+            'alerts',
+            { screen: 'Service' }
           );
         }
       } catch (pushErr) {
@@ -187,7 +188,8 @@ const ServiceScreen = () => {
               tokens,
               'Serwis zakończony! ✅',
               `${userData?.name || 'Pracownik'} oznaczył jako wykonane: ${service.hospital} — ${service.department}`,
-              'done'
+              'done',
+              { screen: 'Service' }
             );
           }
         } catch (pushErr) {

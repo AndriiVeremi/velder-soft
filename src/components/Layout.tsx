@@ -37,6 +37,8 @@ import { auth, db } from '../config/firebase';
 import { NavigationProp } from '@react-navigation/native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { setBadgeCount } from '../utils/notifications';
+import { notify } from '../utils/notify';
 
 const { width } = Dimensions.get('window');
 const getIsDesktop = () => Platform.OS === 'web' && width > 768;
@@ -240,6 +242,113 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
   }, [user, role]);
 
   useEffect(() => {
+    if (!user || Platform.OS === 'web') return;
+
+    const counts: Record<string, number> = {};
+    const unsubscribes: (() => void)[] = [];
+
+    const update = () => {
+      const total = Object.values(counts).reduce((s, n) => s + n, 0);
+      setBadgeCount(total);
+    };
+
+    if (role === 'DIRECTOR') {
+      const rQ = query(collection(db, 'reports'), where('isNew', '==', true));
+      unsubscribes.push(
+        onSnapshot(rQ, (snap) => {
+          counts.reports = snap.size;
+          update();
+        })
+      );
+      const vQ = query(collection(db, 'vacations'), where('isNew', '==', true));
+      unsubscribes.push(
+        onSnapshot(vQ, (snap) => {
+          counts.vacations = snap.size;
+          update();
+        })
+      );
+    }
+
+    if (role === 'EMPLOYEE') {
+      const tQ = query(collection(db, 'tasks'), where('isNew', '==', true));
+      unsubscribes.push(
+        onSnapshot(tQ, (snap) => {
+          counts.tasks = snap.docs.filter(
+            (d) => d.data().assignedTo === user.uid || d.data().assignedTo === 'all'
+          ).length;
+          update();
+        })
+      );
+      const sQ = query(collection(db, 'services'), where('isNew', '==', true));
+      unsubscribes.push(
+        onSnapshot(sQ, (snap) => {
+          counts.services = snap.size;
+          update();
+        })
+      );
+    }
+
+    return () => unsubscribes.forEach((unsub) => unsub());
+  }, [user, role]);
+
+  useEffect(() => {
+    if (!user || Platform.OS !== 'web') return;
+    const unsubscribes: (() => void)[] = [];
+
+    const watchNew = (
+      q: ReturnType<typeof query>,
+      onAdded: (data: Record<string, any>) => void
+    ) => {
+      let initialized = false;
+      return onSnapshot(q, (snap) => {
+        if (!initialized) {
+          initialized = true;
+          return;
+        }
+        snap.docChanges()
+          .filter((c) => c.type === 'added')
+          .forEach((c) => onAdded(c.doc.data()));
+      });
+    };
+
+    if (role === 'DIRECTOR') {
+      unsubscribes.push(
+        watchNew(
+          query(collection(db, 'reports'), where('isNew', '==', true)),
+          (data) =>
+            notify.success(
+              `Nowe zgłoszenie od ${data.userName || 'pracownika'}: ${(data.description || '').substring(0, 40)}...`
+            )
+        )
+      );
+      unsubscribes.push(
+        watchNew(
+          query(collection(db, 'vacations'), where('isNew', '==', true)),
+          (data) =>
+            notify.success(`Nowy wniosek urlopowy od ${data.userName || 'pracownika'}! 🏖️`)
+        )
+      );
+    }
+
+    if (role === 'EMPLOYEE') {
+      unsubscribes.push(
+        watchNew(query(collection(db, 'tasks'), where('isNew', '==', true)), (data) => {
+          if (data.assignedTo !== user.uid && data.assignedTo !== 'all') return;
+          notify.success(data.priority === 'URGENT' ? 'Nowe pilne zadanie! 🚨' : 'Nowe zadanie! 📋');
+        })
+      );
+      unsubscribes.push(
+        watchNew(
+          query(collection(db, 'services'), where('isNew', '==', true)),
+          () => notify.success('Nowe zlecenie serwisowe! 🔧')
+        )
+      );
+    }
+
+    return () => unsubscribes.forEach((unsub) => unsub());
+  }, [user, role]);
+
+  useEffect(() => {
     if (Platform.OS !== 'web') return;
     const subscription = Dimensions.addEventListener('change', () => setIsDesktop(getIsDesktop()));
     return () => subscription.remove();
@@ -261,18 +370,6 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
           ...(role !== 'DIRECTOR'
             ? [{ name: 'LiniaDoSzefa', label: 'Linia do Szefa', icon: MessageSquare }]
             : []),
-        ],
-      },
-      {
-        title: 'Moje',
-        items: [
-          { name: 'Reminders', label: 'Przypomnienia', icon: Bell },
-          ...(role !== 'DIRECTOR' ? [{ name: 'Vacations', label: 'Urlop', icon: Palmtree }] : []),
-          ...(role === 'DIRECTOR'
-            ? [{ name: 'SystemStatus', label: 'Stan Systemu', icon: Info }]
-            : []),
-          { name: 'Profile', label: 'Profil', icon: User },
-          { name: 'About', label: 'O firmie', icon: Info },
         ],
       },
       ...(role === 'DIRECTOR'
@@ -299,6 +396,18 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
             },
           ]
         : []),
+      {
+        title: 'Moje',
+        items: [
+          { name: 'Reminders', label: 'Przypomnienia', icon: Bell },
+          ...(role !== 'DIRECTOR' ? [{ name: 'Vacations', label: 'Urlop', icon: Palmtree }] : []),
+          ...(role === 'DIRECTOR'
+            ? [{ name: 'SystemStatus', label: 'Stan Systemu', icon: Info }]
+            : []),
+          { name: 'Profile', label: 'Profil', icon: User },
+          { name: 'About', label: 'O firmie', icon: Info },
+        ],
+      },
     ],
     [role, badges]
   );

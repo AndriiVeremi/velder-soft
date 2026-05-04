@@ -12,28 +12,36 @@ export const initializeNewClientDatabase = async () => {
 
     // 1. Початкова статистика (потрібна для екрану системного моніторингу)
     const statsRef = doc(db, 'settings', 'stats');
-    await setDoc(statsRef, {
-      taskCount: 0,
-      serviceCount: 0,
-      projectCount: 0,
-      storageCount: 0,
-      lastCleanup: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }, { merge: true });
+    await setDoc(
+      statsRef,
+      {
+        taskCount: 0,
+        serviceCount: 0,
+        projectCount: 0,
+        storageCount: 0,
+        lastCleanup: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
 
     // 2. Початкові категорії документів (приклад)
     const defaultCategories = [
       { id: 'tech', name: 'Dokumentacja Techniczna', icon: 'file-text' },
       { id: 'hr', name: 'Kadry i BHP', icon: 'users' },
-      { id: 'norm', name: 'Normy i Standardy', icon: 'clipboard-list' }
+      { id: 'norm', name: 'Normy i Standardy', icon: 'clipboard-list' },
     ];
 
     for (const cat of defaultCategories) {
-      await setDoc(doc(db, 'docs_categories', cat.id), {
-        name: cat.name,
-        icon: cat.icon,
-        createdAt: new Date().toISOString()
-      }, { merge: true });
+      await setDoc(
+        doc(db, 'docs_categories', cat.id),
+        {
+          name: cat.name,
+          icon: cat.icon,
+          createdAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
     }
 
     // 3. Створення системного повідомлення
@@ -42,7 +50,7 @@ export const initializeNewClientDatabase = async () => {
       content: 'System został pomyślnie zainicjowany. Zapraszamy do pracy!',
       date: new Date().toISOString(),
       author: 'System',
-      priority: 'high'
+      priority: 'high',
     });
 
     console.log('Database initialized successfully!');

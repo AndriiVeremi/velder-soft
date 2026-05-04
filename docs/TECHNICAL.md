@@ -45,6 +45,7 @@ System implementuje model Role-Based Access Control (`src/utils/permissions.ts`)
 ### Monitorowanie Stanu Systemu (`src/utils/systemStats.ts`)
 
 Moduł analityczny agregujący dane w czasie rzeczywistym:
+
 - **Database:** Zliczanie dokumentów (limit 5000).
 - **Storage:** Monitorowanie liczby plików zdjęć i PDF (limit 1000).
 - **Push Stats:** Śledzenie wysłanych powiadomień Firebase.
@@ -73,6 +74,7 @@ Moduł analityczny agregujący dane w czasie rzeczywistym:
 ### Inicjalizacja Systemu (`src/utils/initDb.ts`)
 
 Skrypt `initializeNewClientDatabase` konfiguruje:
+
 - Początkowe dokumenty statystyk.
 - Domyślne kategorie dokumentacji (Kadry, Techniczne, Normy).
 - Powitanie systemowe.

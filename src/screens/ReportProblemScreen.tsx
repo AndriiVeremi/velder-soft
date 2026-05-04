@@ -252,7 +252,8 @@ const ReportProblemScreen = ({ navigation }: Props) => {
             tokens,
             'Nowe zgłoszenie problemu! ⚠️',
             `${userData?.name || 'Pracownik'}: ${description.substring(0, 50)}${description.length > 50 ? '...' : ''}`,
-            'alerts'
+            'alerts',
+            { screen: 'DirectorReports' }
           );
         }
       } catch (pushErr) {

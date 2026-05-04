@@ -13,10 +13,12 @@ Niniejszy przewodnik pomoże Ci szybko zapoznać się z funkcjami aplikacji Veld
 ## 📱 2. Nawigacja i Funkcje Główne
 
 System posiada inteligentny interfejs, który dostosowuje się do Twojego urządzenia:
+
 - **Tablet/Komputer:** Wygodny pasek boczny (Sidebar) ze wszystkimi sekcjami.
 - **Telefon:** Szybki pasek dolny z najważniejszymi funkcjami oraz menu "Więcej" dla pozostałych opcji.
 
 ### Główne Sekcje:
+
 - **Start (Home):** Twoje centrum dowodzenia. Widzisz tu najważniejsze powiadomienia, aktualne zadania oraz odliczanie do Twojego najbliższego urlopu.
 - **Zadania:** Lista Twoich bieżących prac. Dodanie zdjęcia do zadania automatycznie oznacza je jako wykonane.
 - **Projekty:** Przeglądaj strukturę szpitali i oddziałów. Znajdziesz tu przypisaną dokumentację techniczną i schematy (pliki PDF).
@@ -32,6 +34,7 @@ System posiada inteligentny interfejs, który dostosowuje się do Twojego urząd
 ## 🏖️ 4. Inteligentne Urlopy
 
 Aplikacja dba o Twój wypoczynek:
+
 - **Wnioski:** Wybierz daty w kalendarzu i wyślij wniosek. O decyzji Dyrektora zostaniesz powiadomiony automatycznie.
 - **Odliczanie:** Po zatwierdzeniu urlopu, na ekranie głównym pojawi się licznik dni.
 - **Automatyczne Przypomnienia:** Telefon sam przypomni Ci o nadchodzącym urlopie **5 dni** oraz **1 dzień** przed jego rozpoczęciem.
@@ -39,6 +42,7 @@ Aplikacja dba o Twój wypoczynek:
 ## 🎙️ 5. Inteligentny Mikrofon (Voice Assistant)
 
 Twórz przypomnienia głosowo:
+
 - Klikній ikonę mikrofonu przy dodawaniu przypomnienia.
 - Powiedz np.: _"Kupić rury miedziane jutro o dziesiątej rano"_ lub _"Zadzwonić do hurtowni w poniedziałek o 15:00"_.
 - System rozpozna datę, godzinę i treść automatycznie.
@@ -57,6 +61,7 @@ Twórz przypomnienia głosowo:
 ## 👥 8. Panel Dyrektora (Zarządzanie)
 
 Dyrektor posiada dodatkowe narzędzia kontrolne:
+
 - **Stan Systemu:** Monitorowanie zajętości bazy danych i plików na serwerze (Storage).
 - **Pracownicy:** Zarządzanie kontami użytkowników, aktywacja nowych pracowników i nadawanie ról.
 - **Zgłoszenia:** Przegląd wszystkich zgłoszonych problemów i próśb od zespołu.
