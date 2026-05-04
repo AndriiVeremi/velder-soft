@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { doc, writeBatch } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
-export function useMarkAsRead(collectionName: string) {
+export function useMarkAsRead(collectionName: string, field: string = 'isNew') {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -18,14 +18,14 @@ export function useMarkAsRead(collectionName: string) {
       timerRef.current = setTimeout(async () => {
         try {
           const batch = writeBatch(db);
-          ids.forEach((id) => batch.update(doc(db, collectionName, id), { isNew: false }));
+          ids.forEach((id) => batch.update(doc(db, collectionName, id), { [field]: false }));
           await batch.commit();
         } catch (e) {
           console.error(`Failed to mark ${collectionName} as read:`, e);
         }
       }, 2000);
     },
-    [collectionName]
+    [collectionName, field]
   );
 
   return scheduleMarkAsRead;

@@ -267,6 +267,13 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
           update();
         })
       );
+      const reqQ = query(collection(db, 'requests'), where('isNew', '==', true));
+      unsubscribes.push(
+        onSnapshot(reqQ, (snap) => {
+          counts.requests = snap.size;
+          update();
+        })
+      );
     }
 
     if (role === 'EMPLOYEE') {
@@ -283,6 +290,17 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
       unsubscribes.push(
         onSnapshot(sQ, (snap) => {
           counts.services = snap.size;
+          update();
+        })
+      );
+      const vacQ = query(
+        collection(db, 'vacations'),
+        where('userId', '==', user.uid),
+        where('statusChanged', '==', true)
+      );
+      unsubscribes.push(
+        onSnapshot(vacQ, (snap) => {
+          counts.vacationsStatus = snap.size;
           update();
         })
       );
@@ -311,6 +329,25 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
       });
     };
 
+    // Для оновлень існуючих документів (наприклад зміна статусу відпустки).
+    // Показує тост і при першому завантаженні (непрочитані), і при нових змінах.
+    const watchStatus = (
+      q: ReturnType<typeof query>,
+      onChanged: (data: Record<string, any>) => void
+    ) => {
+      let initialized = false;
+      return onSnapshot(q, (snap) => {
+        if (!initialized) {
+          initialized = true;
+          snap.docs.forEach((d) => onChanged(d.data()));
+          return;
+        }
+        snap.docChanges()
+          .filter((c) => c.type === 'modified')
+          .forEach((c) => onChanged(c.doc.data()));
+      });
+    };
+
     if (role === 'DIRECTOR') {
       unsubscribes.push(
         watchNew(
@@ -328,6 +365,13 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
             notify.success(`Nowy wniosek urlopowy od ${data.userName || 'pracownika'}! 🏖️`)
         )
       );
+      unsubscribes.push(
+        watchNew(
+          query(collection(db, 'requests'), where('isNew', '==', true)),
+          (data) =>
+            notify.success(`Nowa wiadomość od ${data.senderName || 'pracownika'}! 📩`)
+        )
+      );
     }
 
     if (role === 'EMPLOYEE') {
@@ -341,6 +385,21 @@ export const MainLayout = ({ children, navigation, currentRoute }: MainLayoutPro
         watchNew(
           query(collection(db, 'services'), where('isNew', '==', true)),
           () => notify.success('Nowe zlecenie serwisowe! 🔧')
+        )
+      );
+      unsubscribes.push(
+        watchStatus(
+          query(
+            collection(db, 'vacations'),
+            where('userId', '==', user.uid),
+            where('statusChanged', '==', true)
+          ),
+          (data) =>
+            notify.success(
+              data.status === 'APPROVED'
+                ? 'Twój urlop został zatwierdzony! ✅'
+                : 'Twój wniosek urlopowy został odrzucony ❌'
+            )
         )
       );
     }

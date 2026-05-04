@@ -191,6 +191,7 @@ const SendRequestScreen = ({ navigation }: Props) => {
         senderName: userData?.name || 'Pracownik',
         text: text.trim(),
         status: 'PENDING',
+        isNew: true,
         createdAt: serverTimestamp(),
       });
 

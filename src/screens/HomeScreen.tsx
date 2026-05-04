@@ -44,6 +44,7 @@ import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { notify } from '../utils/notify';
 import { runWeeklyCleanup } from '../utils/cleanup';
+import { useMarkAsRead } from '../hooks/useMarkAsRead';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Task, Announcement, VacationInfo, UserRequest, ServiceRecord } from '../types';
 import { RootStackParamList } from '../config/navigationTypes';
@@ -389,6 +390,7 @@ const StorageWarning = styled.TouchableOpacity`
 const HomeScreen = ({ navigation }: Props) => {
   const { user, role, userData } = useAuth();
   const { theme } = useAppTheme();
+  const scheduleMarkRequestsRead = useMarkAsRead('requests');
   const { width } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width > 768;
 
@@ -422,8 +424,9 @@ const HomeScreen = ({ navigation }: Props) => {
         (a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)
       );
       setPendingRequests(sorted);
+      scheduleMarkRequestsRead(data.filter((r) => (r as any).isNew).map((r) => r.id));
     });
-  }, [role]);
+  }, [role, scheduleMarkRequestsRead]);
 
   const handleConfirmRequest = async (requestId: string) => {
     setPendingRequests((prev) => prev.filter((r) => r.id !== requestId));

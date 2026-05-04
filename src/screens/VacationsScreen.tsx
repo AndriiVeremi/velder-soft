@@ -192,6 +192,7 @@ const VacationsScreen = ({ route, navigation }: Props) => {
   const [selectedDates, setSelectedDates] = useState<any>({});
   const [submitting, setSubmitting] = useState(false);
   const scheduleMarkAsRead = useMarkAsRead('vacations');
+  const scheduleMarkStatusChanged = useMarkAsRead('vacations', 'statusChanged');
 
   const getDaysRemaining = (startDate: string) => {
     const start = new Date(startDate);
@@ -238,6 +239,8 @@ const VacationsScreen = ({ route, navigation }: Props) => {
 
         if (isAdminView) {
           scheduleMarkAsRead(sortedData.filter((r) => r.isNew).map((r) => r.id));
+        } else {
+          scheduleMarkStatusChanged(sortedData.filter((r) => (r as any).statusChanged).map((r) => r.id));
         }
       },
       (error) => {
@@ -246,7 +249,7 @@ const VacationsScreen = ({ route, navigation }: Props) => {
       }
     );
     return unsubscribe;
-  }, [isAdminView, scheduleMarkAsRead]);
+  }, [isAdminView, scheduleMarkAsRead, scheduleMarkStatusChanged]);
 
   useEffect(() => {
     if (isAdminView || Platform.OS === 'web') return;
@@ -363,7 +366,7 @@ const VacationsScreen = ({ route, navigation }: Props) => {
 
   const handleAction = async (id: string, status: 'APPROVED' | 'REJECTED') => {
     try {
-      await updateDoc(doc(db, 'vacations', id), { status });
+      await updateDoc(doc(db, 'vacations', id), { status, statusChanged: true });
 
       try {
         const request = requests.find((r) => r.id === id);
